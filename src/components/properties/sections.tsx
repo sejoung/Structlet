@@ -5,6 +5,8 @@ import {
   CONTAINER_PRESETS,
   descendants,
   depth,
+  NODE_SIZES,
+  NODE_VARIANTS,
   SIDES,
   type Annotation,
   type ArrowHeads,
@@ -16,6 +18,7 @@ import {
   type Endpoint,
   type Id,
   type Node,
+  type NodeVariant,
   type Rect,
   type Side,
 } from '../../domain';
@@ -24,11 +27,32 @@ import type { Translate } from '../../i18n/messages';
 import type { PaletteService } from '../Palette';
 import { Buttons, Check, Pair, Select, TextArea } from './fields';
 
+export type LayoutChoice = 'flow' | 'flow-down' | 'grid';
+
+/** Actions that need geometry or catalog data, provided by the app. */
+export interface PanelActions {
+  layout(ids: readonly Id[], mode: LayoutChoice): void;
+  layoutContents(containerId: Id, mode: LayoutChoice): void;
+  attach(annotationId: Id, targetId: Id | null): void;
+  regenerateLegend(annotationId: Id): void;
+}
+
 export interface SectionProps {
   t: Translate;
   editor: Editor;
   doc: Document;
   rect: Rect | undefined;
+  actions: PanelActions;
+}
+
+export function LayoutButtons({ t, onLayout, testId }: { t: Translate; onLayout(mode: LayoutChoice): void; testId: string }) {
+  return (
+    <div className="button-row">
+      {(['flow', 'flow-down', 'grid'] as const).map((m) => (
+        <button type="button" key={m} data-testid={`${testId}-${m}`} onClick={() => onLayout(m)}>{t(`props.layout.${m}`)}</button>
+      ))}
+    </div>
+  );
 }
 
 function parentOptions(t: Translate, doc: Document, self: Id | null) {
@@ -70,11 +94,26 @@ export function NodeSection({ node, services, ...p }: SectionProps & { node: Nod
       <h2>{t('props.node')}</h2>
       <TextArea label={t('props.label')} value={node.label} onChange={(v) => editor.rename(node.id, v)} testId="prop-label" />
       <Select label={t('props.service')} value={node.serviceId} options={options} onChange={(v) => editor.update('nodes', node.id, { serviceId: v })} testId="prop-service" />
+      <div className="pair-row">
+        <Select label={t('props.variant')} value={node.variant} options={NODE_VARIANTS.map((v) => ({ value: v, label: t(`props.variant.${v}`) }))} onChange={(v: NodeVariant) => editor.setNodeStyle(node.id, v)} testId="prop-variant" />
+        <Select
+          label={t('props.sizePreset')}
+          value={sizeOf(node)}
+          options={[...(sizeOf(node) === 'custom' ? [{ value: 'custom' as const, label: '—' }] : []), ...(['s', 'm', 'l'] as const).map((k) => ({ value: k, label: k.toUpperCase() }))]}
+          onChange={(k) => k !== 'custom' && editor.setNodeStyle(node.id, node.variant, k)}
+          testId="prop-size"
+        />
+      </div>
       <Select label={t('props.parent')} value={node.parentId ?? ''} options={parentOptions(t, doc, null)} onChange={(v) => editor.setParent([node.id], v || null)} testId="prop-parent" />
       <Geometry t={t} editor={editor} id={node.id} rect={p.rect} sized />
       <Common t={t} editor={editor} id={node.id} locked={node.locked} />
     </section>
   );
+}
+
+function sizeOf(node: Node): 's' | 'm' | 'l' | 'custom' {
+  const presets = NODE_SIZES[node.variant];
+  return (['s', 'm', 'l'] as const).find((k) => presets[k].width === node.width && presets[k].height === node.height) ?? 'custom';
 }
 
 export function ContainerSection({ container: c, ...p }: SectionProps & { container: Container }) {
@@ -109,6 +148,10 @@ export function ContainerSection({ container: c, ...p }: SectionProps & { contai
       <Check label={t('props.filled')} checked={c.style.filled} onChange={(filled) => editor.update('containers', c.id, { style: { ...c.style, filled } })} />
       <Select label={t('props.parent')} value={c.parentId ?? ''} options={parentOptions(t, doc, c.id)} onChange={(v) => editor.setParent([c.id], v || null)} testId="prop-parent" />
       <Geometry t={t} editor={editor} id={c.id} rect={p.rect} sized />
+      <div className="field">
+        <span className="field-label">{t('props.layoutContents')}</span>
+        <LayoutButtons t={t} testId="layout-contents" onLayout={(m) => p.actions.layoutContents(c.id, m)} />
+      </div>
       <Common t={t} editor={editor} id={c.id} locked={c.locked} />
     </section>
   );
@@ -169,6 +212,18 @@ export function AnnotationSection({ annotation: a, ...p }: SectionProps & { anno
     <section>
       <h2>{t('props.annotation')} · {t(`note.${a.kind}`)}</h2>
       <TextArea label={t('props.text')} value={a.text} onChange={(v) => editor.rename(a.id, v)} testId="prop-label" />
+      <Select
+        label={t('props.target')}
+        value={a.targetId ?? ''}
+        options={[{ value: '', label: t('props.noTarget') }, ...[...p.doc.nodes, ...p.doc.containers].map((b) => ({ value: b.id, label: b.label.split('\n')[0] || b.id }))]}
+        onChange={(v) => p.actions.attach(a.id, v || null)}
+        testId="prop-target"
+      />
+      {a.kind === 'legend' && (
+        <Buttons>
+          <button type="button" data-testid="regenerate-legend" onClick={() => p.actions.regenerateLegend(a.id)}>{t('props.regenerateLegend')}</button>
+        </Buttons>
+      )}
       <Buttons>
         <button type="button" onClick={() => editor.duplicate([a.id])}>{t('props.duplicate')}</button>
         <button type="button" className="danger" onClick={() => editor.delete([a.id])}>{t('props.delete')}</button>

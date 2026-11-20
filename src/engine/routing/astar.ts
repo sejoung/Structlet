@@ -8,6 +8,12 @@ import { segmentHitsRect, strictlyInside } from '../geometry';
  */
 
 export const BEND_COST = 40;
+/** Extra cost for crossing an already routed line. */
+export const CROSS_COST = 28;
+/** Extra cost per pixel of running on top of an already routed line. */
+export const OVERLAP_COST = 1.5;
+/** Lanes offered beside routed lines so parallel lines can keep apart. */
+export const LANE_GAP = 12;
 const DIRS = [
   { x: 1, y: 0 },
   { x: -1, y: 0 },
@@ -66,12 +72,41 @@ export interface SearchInput {
   endDir: Point | null;
   obstacles: readonly Rect[];
   area: Rect;
+  /** Segments of lines routed before this one; crossing them costs `CROSS_COST`. */
+  crossings?: readonly (readonly [Point, Point])[];
+}
+
+/** Crossing count and collinear overlap length of a move against routed segments. */
+function crossCount(a: Point, b: Point, segments: readonly (readonly [Point, Point])[]): number {
+  let n = 0;
+  const horizontal = a.y === b.y;
+  for (const [p, q] of segments) {
+    if (horizontal && p.y === q.y && Math.abs(p.y - a.y) < 1) {
+      const overlap = Math.min(Math.max(a.x, b.x), Math.max(p.x, q.x)) - Math.max(Math.min(a.x, b.x), Math.min(p.x, q.x));
+      if (overlap > 0) n += (overlap * OVERLAP_COST) / CROSS_COST;
+      continue;
+    }
+    if (!horizontal && p.x === q.x && Math.abs(p.x - a.x) < 1) {
+      const overlap = Math.min(Math.max(a.y, b.y), Math.max(p.y, q.y)) - Math.max(Math.min(a.y, b.y), Math.min(p.y, q.y));
+      if (overlap > 0) n += (overlap * OVERLAP_COST) / CROSS_COST;
+      continue;
+    }
+    if (horizontal && p.x === q.x) {
+      if (p.x > Math.min(a.x, b.x) && p.x < Math.max(a.x, b.x) && a.y > Math.min(p.y, q.y) && a.y < Math.max(p.y, q.y)) n++;
+    } else if (!horizontal && p.y === q.y) {
+      if (p.y > Math.min(a.y, b.y) && p.y < Math.max(a.y, b.y) && a.x > Math.min(p.x, q.x) && a.x < Math.max(p.x, q.x)) n++;
+    }
+  }
+  return n;
 }
 
 export function orthogonalSearch(input: SearchInput): Point[] | null {
   const { start, end, obstacles, area } = input;
-  const xs = uniqueSorted([start.x, end.x, (start.x + end.x) / 2, area.x, area.x + area.width, ...obstacles.flatMap((o) => [o.x, o.x + o.width])]);
-  const ys = uniqueSorted([start.y, end.y, (start.y + end.y) / 2, area.y, area.y + area.height, ...obstacles.flatMap((o) => [o.y, o.y + o.height])]);
+  const lanes = (input.crossings ?? []).slice(0, 40);
+  const laneX = lanes.filter(([p, q]) => p.x === q.x).flatMap(([p]) => [p.x - LANE_GAP, p.x + LANE_GAP]);
+  const laneY = lanes.filter(([p, q]) => p.y === q.y).flatMap(([p]) => [p.y - LANE_GAP, p.y + LANE_GAP]);
+  const xs = uniqueSorted([start.x, end.x, (start.x + end.x) / 2, area.x, area.x + area.width, ...obstacles.flatMap((o) => [o.x, o.x + o.width]), ...laneX]);
+  const ys = uniqueSorted([start.y, end.y, (start.y + end.y) / 2, area.y, area.y + area.height, ...obstacles.flatMap((o) => [o.y, o.y + o.height]), ...laneY]);
   const W = xs.length;
   const H = ys.length;
   const blocked = (p: Point) => obstacles.some((o) => strictlyInside(o, p));
@@ -116,7 +151,8 @@ export function orthogonalSearch(input: SearchInput): Point[] | null {
       if (b.x < area.x || b.x > area.x + area.width || b.y < area.y || b.y > area.y + area.height) continue;
       if (blocked(b) || obstacles.some((o) => segmentHitsRect(a, b, o))) continue;
       const turn = d !== 4 && nd !== d ? BEND_COST : 0;
-      const cost = g + Math.abs(b.x - a.x) + Math.abs(b.y - a.y) + turn;
+      const cross = input.crossings?.length ? crossCount(a, b, input.crossings) * CROSS_COST : 0;
+      const cost = g + Math.abs(b.x - a.x) + Math.abs(b.y - a.y) + turn + cross;
       const nk = key(ni, nj, nd);
       if (cost < (best.get(nk) ?? Infinity)) {
         best.set(nk, cost);

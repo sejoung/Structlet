@@ -1,21 +1,28 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { DocumentStore, Editor, IdGenerator } from '../application';
+import { runChecks } from '../adapters/analysis/checks';
+import { buildLegend } from '../adapters/catalog/legend';
 import { createAppearance, searchServices, SERVICES, type ServiceDefinition } from '../adapters/catalog/services';
-import { CONTAINER_PRESETS, getBox, NODE_SIZE, type AnnotationKind, type ContainerKind, type Document, type Id, type Point } from '../domain';
+import type { LocalFileAccess } from '../adapters/files/file-access';
+import { CONTAINER_PRESETS, getBox, indexDocument, NODE_SIZE, type AnnotationKind, type ContainerKind, type Document, type Id, type Point } from '../domain';
 import { AREA_STROKE, computeScene, containerAt, fitView, screenToWorld, zoomAt, DEFAULT_VIEWPORT, type Viewport } from '../engine';
 import { createTranslator, type Language } from '../i18n/messages';
 import { Canvas } from '../components/canvas/Canvas';
 import { Palette, type PaletteService } from '../components/Palette';
-import { PropertiesPanel } from '../components/properties/PropertiesPanel';
+import { PropertiesPanel, type PanelFinding } from '../components/properties/PropertiesPanel';
 import { StatusBar } from '../components/StatusBar';
-import { Toolbar } from '../components/Toolbar';
+import { Toolbar, type ViewMode } from '../components/Toolbar';
 import { useSession } from '../components/use-session';
 import { createDocumentActions } from './document-actions';
+import { createPanelActions } from './panel-actions';
+import { useClipboard } from './use-clipboard';
 import { useShortcuts } from './use-shortcuts';
+import { useTheme } from './use-theme';
 
 interface AppProps {
   editor: Editor;
   store: DocumentStore;
+  files: LocalFileAccess;
   newId: IdGenerator;
   initialLanguage: Language;
   onLanguage(language: Language): void;
@@ -23,29 +30,39 @@ interface AppProps {
 
 const toPalette = (language: Language) => (s: ServiceDefinition): PaletteService => ({ id: s.id, name: s.name[language], category: s.category, glyph: s.glyph, color: s.color });
 
-export function App({ editor, store, newId, initialLanguage, onLanguage }: AppProps) {
+export function App({ editor, store, files, newId, initialLanguage, onLanguage }: AppProps) {
   const [language, setLanguage] = useState<Language>(initialLanguage);
   const [viewport, setViewport] = useState<Viewport>(DEFAULT_VIEWPORT);
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [editing, setEditing] = useState<Id | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [view, setView] = useState<ViewMode>('2d');
+  const theme = useTheme();
   const snapshot = useSession(editor.session);
   const t = useMemo(() => createTranslator(language), [language]);
   const appearance = useMemo(() => createAppearance(language), [language]);
   const scene = useMemo(() => computeScene(snapshot.document, appearance), [snapshot.document, appearance]);
   const services = useMemo(() => SERVICES.map(toPalette(language)), [language]);
   const search = useCallback((q: string) => searchServices(q).map(toPalette(language)), [language]);
+  const findings = useMemo<PanelFinding[]>(() => runChecks(snapshot.committed).map((f) => ({ severity: f.severity, ids: f.ids, message: `${t(`checks.${f.code}`)} · ${label(snapshot.committed, f.ids[0]!)}` })), [snapshot.committed, t]);
   const sizeRef = useRef(size);
   sizeRef.current = size;
+  const sceneRef = useRef(scene);
+  sceneRef.current = scene;
+  const viewRef = useRef(view);
+  viewRef.current = view;
 
   const fitTo = useCallback((doc: Document) => {
     const s = sizeRef.current;
     if (s.width > 0) setViewport(fitView(computeScene(doc, appearance).bounds, s));
   }, [appearance]);
 
-  const actions = useMemo(() => createDocumentActions(editor, newId, language, t, setNotice, fitTo), [editor, newId, language, t, fitTo]);
+  const actions = useMemo(
+    () => createDocumentActions({ editor, files, newId, language, t, notify: setNotice, onOpened: fitTo, view: () => viewRef.current }),
+    [editor, files, newId, language, t, fitTo],
+  );
+  const panelActions = useMemo(() => createPanelActions(editor, () => sceneRef.current, language), [editor, language]);
 
-  // Fit once when the canvas first gets a size.
   const fitted = useRef(false);
   useEffect(() => {
     if (fitted.current || size.width === 0) return;
@@ -53,7 +70,6 @@ export function App({ editor, store, newId, initialLanguage, onLanguage }: AppPr
     if (scene.bounds) setViewport(fitView(scene.bounds, size));
   }, [size, scene.bounds]);
 
-  // Browser autosave, debounced.
   useEffect(() => {
     if (!snapshot.dirty) return;
     const revision = snapshot.revision;
@@ -100,7 +116,7 @@ export function App({ editor, store, newId, initialLanguage, onLanguage }: AppPr
 
   const addNote = (kind: AnnotationKind) => {
     const c = viewCenter();
-    const text = kind === 'step' ? String(editor.nextStepNumber()) : kind === 'legend' ? t('note.legendDefault') : t('note.textDefault');
+    const text = kind === 'step' ? String(editor.nextStepNumber()) : kind === 'legend' ? buildLegend(snapshot.committed, language) : t('note.textDefault');
     editor.addAnnotation(kind, text, { x: c.x - 40, y: c.y - 12 });
   };
 
@@ -112,6 +128,17 @@ export function App({ editor, store, newId, initialLanguage, onLanguage }: AppPr
     edit: setEditing,
   });
 
+  useClipboard({
+    editor,
+    pasteParent: () => {
+      const sel = editor.session.selected;
+      const doc = editor.session.committedDocument;
+      if (sel.length === 1 && indexDocument(doc).containers.has(sel[0]!)) return sel[0]!;
+      return containerAt(sceneRef.current, screenToWorld(viewport, { x: sizeRef.current.width / 2, y: sizeRef.current.height / 2 }));
+    },
+    onImportText: (text) => void actions.importText(text),
+  });
+
   return (
     <div className="app">
       <Toolbar
@@ -120,9 +147,14 @@ export function App({ editor, store, newId, initialLanguage, onLanguage }: AppPr
         canUndo={snapshot.canUndo}
         canRedo={snapshot.canRedo}
         language={language}
+        view={view}
+        theme={theme.choice}
+        fileName={files.fileName}
         onNew={actions.newDocument}
         onOpen={() => void actions.open()}
-        onSave={actions.save}
+        onImport={() => void actions.importFile()}
+        onSave={() => void actions.save()}
+        onSaveAs={() => void actions.saveAs()}
         onExportSvg={actions.exportSvg}
         onExportPng={() => void actions.exportPng()}
         onUndo={() => editor.undo()}
@@ -130,6 +162,8 @@ export function App({ editor, store, newId, initialLanguage, onLanguage }: AppPr
         onFit={() => fitTo(editor.session.committedDocument)}
         onSample={actions.openSample}
         onTitle={(title) => editor.setTitle(title)}
+        onView={setView}
+        onTheme={theme.setChoice}
         onLanguage={(l) => {
           setLanguage(l);
           onLanguage(l);
@@ -158,10 +192,27 @@ export function App({ editor, store, newId, initialLanguage, onLanguage }: AppPr
           onOpenSample={actions.openSample}
           editing={editing}
           setEditing={setEditing}
+          theme={theme.diagram}
+          view={view}
         />
-        <PropertiesPanel t={t} editor={editor} snapshot={snapshot} scene={scene} services={services} onWrap={(ids, kind) => editor.wrapInArea(ids, kind, t(`area.${kind}`))} />
+        <PropertiesPanel
+          t={t}
+          editor={editor}
+          snapshot={snapshot}
+          scene={scene}
+          services={services}
+          findings={findings}
+          actions={panelActions}
+          onWrap={(ids, kind) => editor.wrapInArea(ids, kind, t(`area.${kind}`))}
+        />
       </div>
       <StatusBar t={t} zoom={viewport.zoom} dirty={snapshot.dirty} notice={notice} onDismiss={() => setNotice(null)} />
     </div>
   );
+}
+
+function label(doc: Document, id: Id): string {
+  const index = indexDocument(doc);
+  const o = index.nodes.get(id) ?? index.containers.get(id) ?? index.edges.get(id);
+  return (o?.label.split('\n')[0] || id).slice(0, 40);
 }

@@ -18,6 +18,22 @@ function clear(points: readonly Point[], obstacles: readonly Rect[]): boolean {
   return true;
 }
 
+/** Runs on top of an already routed line for more than a few pixels. */
+function overlapsRouted(points: readonly Point[], routed: readonly (readonly [Point, Point])[]): boolean {
+  for (let i = 1; i < points.length; i++) {
+    const a = points[i - 1]!;
+    const b = points[i]!;
+    for (const [p, q] of routed) {
+      if (a.y === b.y && p.y === q.y && Math.abs(a.y - p.y) < 1) {
+        if (Math.min(Math.max(a.x, b.x), Math.max(p.x, q.x)) - Math.max(Math.min(a.x, b.x), Math.min(p.x, q.x)) > 8) return true;
+      } else if (a.x === b.x && p.x === q.x && Math.abs(a.x - p.x) < 1) {
+        if (Math.min(Math.max(a.y, b.y), Math.max(p.y, q.y)) - Math.max(Math.min(a.y, b.y), Math.min(p.y, q.y)) > 8) return true;
+      }
+    }
+  }
+  return false;
+}
+
 /** Goes back on itself (a 180° turn), which looks like a spike. */
 function hasReversal(points: readonly Point[]): boolean {
   for (let i = 1; i < points.length - 1; i++) {
@@ -56,11 +72,11 @@ function defaultShape(source: ResolvedEnd, target: ResolvedEnd): Point[] {
  * obstacles; otherwise searches around them. Falls back to the default shape
  * when the area is too crowded or no path exists.
  */
-export function routeAuto(source: ResolvedEnd, target: ResolvedEnd, obstacleRects: readonly Rect[]): Point[] {
+export function routeAuto(source: ResolvedEnd, target: ResolvedEnd, obstacleRects: readonly Rect[], crossings: readonly (readonly [Point, Point])[] = []): Point[] {
   const obstacles = obstacleRects.map((r) => inflate(r, OBSTACLE_MARGIN));
   const middle = defaultShape(source, target);
   const shape = simplify([source.point, ...middle, target.point]);
-  if (clear(middle, obstacles) && !hasReversal(shape)) return shape;
+  if (clear(middle, obstacles) && !hasReversal(shape) && !overlapsRouted(middle, crossings)) return shape;
   const s = stubPoint(source);
   const e = stubPoint(target);
   const area = inflate(union([
@@ -76,6 +92,7 @@ export function routeAuto(source: ResolvedEnd, target: ResolvedEnd, obstacleRect
     endDir: target.side ? { x: -normal(target.side).x, y: -normal(target.side).y } : null,
     obstacles: nearby,
     area,
+    crossings: crossings.filter(([a, b]) => intersects(area, { x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), width: Math.abs(a.x - b.x) + 0.01, height: Math.abs(a.y - b.y) + 0.01 })),
   });
   if (!found) return shape;
   return simplify([source.point, ...found, target.point]);
@@ -86,7 +103,8 @@ export function routeAuto(source: ResolvedEnd, target: ResolvedEnd, obstacleRect
  * not aligned get one elbow, leaving each point at a right angle to how the
  * route arrived there, and entering the target stub across its side.
  */
-export function routeManual(source: ResolvedEnd, target: ResolvedEnd, waypoints: readonly Point[]): Point[] {
+export function routeManual(source: ResolvedEnd, target: ResolvedEnd, waypoints: readonly Point[], obstacleRects: readonly Rect[] = []): Point[] {
+  const obstacles = obstacleRects.map((r) => inflate(r, OBSTACLE_MARGIN));
   const s = stubPoint(source);
   const e = stubPoint(target);
   const fixed = [s, ...waypoints, e];
@@ -98,6 +116,13 @@ export function routeManual(source: ResolvedEnd, target: ResolvedEnd, waypoints:
     const b = fixed[i]!;
     const aligned = Math.abs(a.x - b.x) < 0.5 || Math.abs(a.y - b.y) < 0.5;
     if (aligned) {
+      const around = obstacles.length && i > 1 && i < fixed.length - 1 && !clear([a, b], obstacles) ? searchLeg(a, b, obstacles) : null;
+      if (around) {
+        out.push(...around.slice(1));
+        const last = around[around.length - 2]!;
+        arrival = Math.abs(last.y - b.y) < 0.5 ? 'h' : 'v';
+        continue;
+      }
       if (Math.abs(a.x - b.x) >= 0.5) arrival = 'h';
       else if (Math.abs(a.y - b.y) >= 0.5) arrival = 'v';
       out.push(b);
@@ -108,11 +133,26 @@ export function routeManual(source: ResolvedEnd, target: ResolvedEnd, waypoints:
     if (i === fixed.length - 1 && endAxis) leave = endAxis === 'h' ? 'h' : 'v';
     if (i === 1 && source.side) leave = arrival === 'h' ? 'v' : 'h';
     const elbow = leave === 'h' ? { x: b.x, y: a.y } : { x: a.x, y: b.y };
+    const detour = obstacles.length && !clear([a, elbow, b], obstacles) ? searchLeg(a, b, obstacles) : null;
+    if (detour) {
+      out.push(...detour.slice(1));
+      const last = detour[detour.length - 2]!;
+      arrival = Math.abs(last.y - b.y) < 0.5 ? 'h' : 'v';
+      continue;
+    }
     out.push(elbow, b);
     arrival = leave === 'h' ? 'v' : 'h';
   }
   out.push(target.point);
   return simplify(out);
+}
+
+/** A connecting leg of a manual route that goes around boxes; the user's points stay fixed. */
+function searchLeg(a: Point, b: Point, obstacles: readonly Rect[]): Point[] | null {
+  const area = inflate(union([{ x: a.x, y: a.y, width: 0, height: 0 }, { x: b.x, y: b.y, width: 0, height: 0 }])!, SEARCH_PADDING / 2);
+  const nearby = obstacles.filter((o) => intersects(o, area));
+  if (nearby.length > MAX_OBSTACLES) return null;
+  return orthogonalSearch({ start: a, startDir: null, end: b, endDir: null, obstacles: nearby, area });
 }
 
 export function routeStraight(source: ResolvedEnd, target: ResolvedEnd, waypoints: readonly Point[]): Point[] {

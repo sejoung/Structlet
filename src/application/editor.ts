@@ -7,6 +7,10 @@ import {
   CONTAINER_PRESETS,
   DEFAULT_EDGE_STYLE,
   deleteObjects,
+  diffDocuments,
+  NODE_SIZES,
+  pasteFragment,
+  sequence,
   duplicate,
   findCollection,
   getBox,
@@ -25,6 +29,8 @@ import {
   type ContainerKind,
   type Document,
   type Endpoint,
+  type Fragment,
+  type NodeVariant,
   type Id,
   type Patch,
   type Point,
@@ -190,6 +196,27 @@ export class Editor {
 
   resetRoute(edgeId: Id): EditResult {
     return this.update('edges', edgeId, { routingMode: 'auto', waypoints: [] });
+  }
+
+  /** Applies a computed layout: moves, then grows areas, as one undo step. */
+  applyLayout(moves: ReadonlyMap<Id, Point>, grow: ReadonlyMap<Id, Rect>): EditResult {
+    return this.run((d) => sequence(d, (x) => moveEach(x, moves), ...[...grow].map(([id, rect]) => (x: Document) => setBounds(x, id, rect))));
+  }
+
+  /** Replaces the document with an imported version as one undo step; the document id is kept. */
+  importDocument(next: Document, created: readonly Id[]): EditResult {
+    return this.run((d) => diffDocuments(d, { ...next, id: d.id, formatVersion: d.formatVersion }), { select: created.filter((id) => findCollection(next, id) !== 'edges') });
+  }
+
+  paste(fragment: Fragment, offset: Point, parentId: Id | null): Id[] {
+    const { patch, created } = pasteFragment(this.doc, fragment, (c) => this.newId(ID_KIND[c]), offset, parentId);
+    this.session.execute(patch, { select: created });
+    return created;
+  }
+
+  /** Switches a node between icon and box style, or picks a size preset. */
+  setNodeStyle(id: Id, variant: NodeVariant, size: 's' | 'm' | 'l' = 'm'): EditResult {
+    return this.update('nodes', id, { variant, ...NODE_SIZES[variant][size] });
   }
 
   undo(): boolean {

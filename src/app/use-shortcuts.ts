@@ -34,7 +34,7 @@ export function useShortcuts(deps: ShortcutDeps): void {
         editor.redo();
       } else if (mod && key === 's') {
         handled();
-        actions.save();
+        void (e.shiftKey ? actions.saveAs() : actions.save());
       } else if (mod && key === 'o') {
         handled();
         void actions.open();

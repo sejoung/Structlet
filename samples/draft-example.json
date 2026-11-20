@@ -1,0 +1,33 @@
+{
+  "format": "structlet-draft",
+  "formatVersion": 1,
+  "title": "Checkout · draft",
+  "layout": "flow",
+  "containers": [
+    { "id": "aws", "kind": "cloud", "label": "AWS Cloud", "layout": "flow" },
+    { "id": "vpc", "kind": "vpc", "label": "VPC 10.0.0.0/16", "parent": "aws", "layout": "flow" },
+    { "id": "public", "kind": "subnet", "label": "Public subnet", "parent": "vpc", "layout": "flow-down" },
+    { "id": "private", "kind": "subnet", "label": "Private subnet", "parent": "vpc", "layout": "flow-down", "color": "blue" }
+  ],
+  "nodes": [
+    { "id": "user", "service": "user", "label": "Customer" },
+    { "id": "dns", "service": "aws.route53", "label": "Route 53", "parent": "aws" },
+    { "id": "alb", "service": "aws.elb", "label": "Load balancer", "parent": "public" },
+    { "id": "api", "service": "aws.ecs", "label": "Checkout API\nECS", "parent": "private" },
+    { "id": "db", "service": "aws.aurora", "label": "Orders DB\nAurora", "parent": "private" },
+    { "id": "queue", "service": "aws.sqs", "label": "Order events", "parent": "aws" },
+    { "id": "pay", "service": "payment", "label": "Payment provider", "variant": "box" }
+  ],
+  "edges": [
+    { "from": "user", "to": "dns", "label": "DNS", "dashed": true },
+    { "from": "user", "to": "alb", "label": "HTTPS" },
+    { "from": "alb", "to": "api" },
+    { "from": "api", "to": "db", "label": "SQL" },
+    { "from": "api", "to": "queue", "label": "publish", "dashed": true },
+    { "from": "api", "to": "pay", "label": "charge" }
+  ],
+  "annotations": [
+    { "id": "s1", "kind": "step", "text": "1", "target": "alb" },
+    { "id": "legend", "kind": "legend", "text": "Legend\n#ed7100 Compute\n#3b48cc Databases\n--- Synchronous call\n- - Asynchronous message" }
+  ]
+}

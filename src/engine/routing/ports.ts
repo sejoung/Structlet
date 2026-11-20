@@ -1,5 +1,5 @@
 import type { Edge, Endpoint, Id, Point, Side } from '../../domain';
-import { normal } from '../geometry';
+import { intersects, normal } from '../geometry';
 
 /**
  * Where edges may attach to an object. For a service node the bottom side sits
@@ -78,12 +78,49 @@ export interface EndpointPair {
   readonly target: ResolvedEnd;
 }
 
+/** An object a port should not face directly (another node in front of the side). */
+export interface Blocker {
+  readonly id: Id;
+  readonly rect: { x: number; y: number; width: number; height: number };
+}
+
+export const CROWD_DEPTH = 32;
+
+function frontStrip(f: PortFrame, side: Side) {
+  const d = CROWD_DEPTH;
+  if (side === 'top') return { x: f.left, y: f.top - d, width: f.right - f.left, height: d };
+  if (side === 'bottom') return { x: f.left, y: f.bottom, width: f.right - f.left, height: d };
+  if (side === 'left') return { x: f.left - d, y: f.sideTop, width: d, height: f.sideBottom - f.sideTop };
+  return { x: f.right, y: f.sideTop, width: d, height: f.sideBottom - f.sideTop };
+}
+
+const OPPOSITE: Record<Side, Side> = { top: 'bottom', bottom: 'top', left: 'right', right: 'left' };
+
+/**
+ * `auto` side: the side facing the other end, unless another object sits right
+ * in front of it. Then the side turning toward the other end, the other
+ * perpendicular side, and finally the back side.
+ */
+export function autoSide(f: PortFrame, toward: Point, self: Id, other: Id | null, blockers: readonly Blocker[]): Side {
+  const primary = facingSide(f, toward);
+  if (blockers.length === 0) return primary;
+  const c = frameCenter(f);
+  const horizontal = primary === 'left' || primary === 'right';
+  const turn: Side = horizontal ? (toward.y < c.y ? 'top' : 'bottom') : toward.x < c.x ? 'left' : 'right';
+  const candidates: Side[] = [primary, turn, OPPOSITE[turn], OPPOSITE[primary]];
+  const free = (side: Side) => {
+    const strip = frontStrip(f, side);
+    return !blockers.some((b) => b.id !== self && b.id !== other && intersects(b.rect, strip));
+  };
+  return candidates.find(free) ?? primary;
+}
+
 /**
  * Resolves every edge end to a world point and side. `auto` sides face the
  * other end (or the nearest manual waypoint). Ends without a fixed offset that
  * share a side are spread in the order of their other ends.
  */
-export function resolveEndpoints(edges: readonly Edge[], frames: ReadonlyMap<Id, PortFrame>): Map<Id, EndpointPair> {
+export function resolveEndpoints(edges: readonly Edge[], frames: ReadonlyMap<Id, PortFrame>, blockers: readonly Blocker[] = []): Map<Id, EndpointPair> {
   type Pending = { edge: Id; which: 'source' | 'target'; objectId: Id; side: Side; toward: Point };
   const fixed = new Map<string, ResolvedEnd>();
   const groups = new Map<string, Pending[]>();
@@ -101,7 +138,9 @@ export function resolveEndpoints(edges: readonly Edge[], frames: ReadonlyMap<Id,
       const frame = frames.get(end.objectId)!;
       const wp = edge.routingMode === 'manual' ? (which === 'source' ? edge.waypoints[0] : edge.waypoints[edge.waypoints.length - 1]) : undefined;
       const toward = wp ?? (which === 'source' ? tRef : sRef);
-      const side = end.side === 'auto' ? facingSide(frame, toward) : end.side;
+      const otherEnd = which === 'source' ? edge.target : edge.source;
+      const other = otherEnd.kind === 'attached' ? otherEnd.objectId : null;
+      const side = end.side === 'auto' ? autoSide(frame, toward, end.objectId, other, blockers) : end.side;
       if (end.offset !== null) {
         fixed.set(key, { point: pointOnSide(frame, side, end.offset), side, objectId: end.objectId });
         continue;

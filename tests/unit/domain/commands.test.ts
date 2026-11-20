@@ -139,3 +139,16 @@ describe('delete and duplicate', () => {
     expect(rectOf(after, 'a')).toMatchObject({ x: 180, y: 200 });
   });
 });
+
+describe('undo order', () => {
+  it('restores adjacent deleted objects in their original order', () => {
+    const doc = build();
+    const more = applyPatch(doc, sequence(doc,
+      (d) => addNode(d, { id: 'x1', serviceId: 's', label: '', parentId: null, at: { x: 0, y: 900 }, width: 64, height: 64 }),
+      (d) => addNode(d, { id: 'x2', serviceId: 's', label: '', parentId: null, at: { x: 100, y: 900 }, width: 64, height: 64 }),
+      (d) => addNode(d, { id: 'x3', serviceId: 's', label: '', parentId: null, at: { x: 200, y: 900 }, width: 64, height: 64 }),
+    ));
+    const patch = deleteObjects(more, ['a', 'b', 'x1', 'x2']);
+    expect(applyPatch(applyPatch(more, patch), invertPatch(patch))).toEqual(more);
+  });
+});

@@ -13,7 +13,7 @@ const LAYERS = {
   domain: { layers: ['domain'], packages: [] as string[] },
   engine: { layers: ['domain', 'engine'], packages: [] },
   application: { layers: ['domain', 'application'], packages: [] },
-  adapters: { layers: ['domain', 'engine', 'application', 'adapters'], packages: ['lucide'] },
+  adapters: { layers: ['domain', 'engine', 'application', 'adapters'], packages: ['lucide', 'yaml'] },
   i18n: { layers: ['i18n'], packages: [] },
   components: { layers: ['domain', 'engine', 'application', 'i18n', 'components'], packages: ['react', 'react/jsx-runtime'] },
   app: { layers: ['domain', 'engine', 'application', 'adapters', 'i18n', 'components', 'app'], packages: ['react', 'react-dom/client', 'react/jsx-runtime'] },
@@ -92,7 +92,7 @@ describe('architecture', () => {
   });
 
   it('stateful adapters are created only in the app layer', () => {
-    const offenders = sources.filter((s) => layerOf(s.rel) !== 'app' && /new\s+LocalDocumentStore\b/.test(s.text) && !s.rel.startsWith('adapters/storage/')).map((s) => s.rel);
+    const offenders = sources.filter((s) => layerOf(s.rel) !== 'app' && /new\s+(LocalDocumentStore|LocalFileAccess)\b/.test(s.text) && !s.rel.startsWith('adapters/storage/')).map((s) => s.rel);
     expect(offenders).toEqual([]);
   });
 

@@ -1,15 +1,26 @@
-import type { Document } from '../../domain';
-import { computeScene, renderStandaloneSvg, type Appearance } from '../../engine';
+import type { Document, Rect } from '../../domain';
+import { computeScene, renderIsometricSvg, renderStandaloneSvg, type Appearance, type DiagramTheme } from '../../engine';
+
+export type ExportView = '2d' | 'isometric';
+
+export interface ExportOptions {
+  readonly view?: ExportView;
+  readonly theme?: DiagramTheme;
+}
+
+function render(doc: Document, appearance: Appearance, options: ExportOptions): { svg: string; box: Rect } {
+  const scene = computeScene(doc, appearance);
+  return options.view === 'isometric' ? renderIsometricSvg(scene, { theme: options.theme, title: doc.title }) : renderStandaloneSvg(scene, { title: doc.title, theme: options.theme });
+}
 
 /** SVG file text for a document, using the same scene and renderer as the canvas. */
-export function exportSvg(doc: Document, appearance: Appearance): string {
-  const { svg } = renderStandaloneSvg(computeScene(doc, appearance), { title: doc.title });
-  return `<?xml version="1.0" encoding="UTF-8"?>\n${svg}\n`;
+export function exportSvg(doc: Document, appearance: Appearance, options: ExportOptions = {}): string {
+  return `<?xml version="1.0" encoding="UTF-8"?>\n${render(doc, appearance, options).svg}\n`;
 }
 
 /** PNG from the exported SVG, drawn at `scale` for sharp output. Browser only. */
-export async function exportPng(doc: Document, appearance: Appearance, scale = 2): Promise<Blob> {
-  const { svg, box } = renderStandaloneSvg(computeScene(doc, appearance), { title: doc.title });
+export async function exportPng(doc: Document, appearance: Appearance, options: ExportOptions = {}, scale = 2): Promise<Blob> {
+  const { svg, box } = render(doc, appearance, options);
   const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
   try {
     const image = new Image();

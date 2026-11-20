@@ -23,6 +23,10 @@ export interface Rect {
 export type Side = 'top' | 'right' | 'bottom' | 'left';
 export const SIDES: readonly Side[] = ['top', 'right', 'bottom', 'left'];
 
+/** `icon`: service tile with the name below (AWS-docs style). `box`: bordered box with the icon and name inside. */
+export const NODE_VARIANTS = ['icon', 'box'] as const;
+export type NodeVariant = (typeof NODE_VARIANTS)[number];
+
 export interface Node {
   readonly id: Id;
   /** Reference into the service catalog. Unknown ids render as a generic icon. */
@@ -34,6 +38,7 @@ export interface Node {
   readonly width: number;
   readonly height: number;
   readonly locked: boolean;
+  readonly variant: NodeVariant;
 }
 
 export const CONTAINER_KINDS = [
@@ -147,6 +152,11 @@ export interface CollectionItem {
 }
 
 export const NODE_SIZE = 64;
+/** Size presets per variant. */
+export const NODE_SIZES: Record<NodeVariant, Record<'s' | 'm' | 'l', { width: number; height: number }>> = {
+  icon: { s: { width: 48, height: 48 }, m: { width: 64, height: 64 }, l: { width: 88, height: 88 } },
+  box: { s: { width: 144, height: 48 }, m: { width: 184, height: 60 }, l: { width: 232, height: 76 } },
+};
 
 export function emptyDocument(id: Id, title: string): Document {
   return { formatVersion: FORMAT_VERSION, id, title, nodes: [], containers: [], edges: [], annotations: [] };

@@ -1,11 +1,12 @@
 import { useRef, useState, type PointerEvent as ReactPointerEvent, type RefObject } from 'react';
 import type { Editor, SessionSnapshot } from '../../application';
 import { indexDocument, type Endpoint, type Id, type Point, type Rect } from '../../domain';
-import { dragSegment, edgeAt, idsInRect, screenToWorld, snapMove, snapToGrid, type Guide, type Scene, type Viewport } from '../../engine';
+import { dragSegment, edgeAt, idsInRect, MAX_ZOOM, MIN_ZOOM, screenToWorld, snapMove, snapToGrid, type Guide, type Scene, type Viewport } from '../../engine';
 import { dropParents, endpointAt, movableIds, movingRect, movingSet, resizeRect, type ResizeHandle } from './endpoints';
 
 type Gesture =
   | { type: 'pan'; start: Point; from: Viewport }
+  | { type: 'pinch'; distance: number; mid: Point; from: Viewport }
   | { type: 'marquee'; start: Point; additive: boolean; base: readonly Id[] }
   | { type: 'move'; ids: Id[]; start: Point; startScreen: Point; pressed: Id; moved: boolean; shift: boolean; delta: Point; base: Rect | null; others: Rect[] }
   | { type: 'resize'; id: Id; handle: ResizeHandle; start: Point; rect: Rect; current: Rect | null }
@@ -42,6 +43,7 @@ export function useGestures(deps: GestureDeps) {
   const latest = useRef(deps);
   latest.current = deps;
   const gesture = useRef<Gesture | null>(null);
+  const touches = useRef(new Map<number, Point>());
   const [overlay, setOverlay] = useState<CanvasOverlay>(EMPTY_OVERLAY);
   const [hover, setHover] = useState<Id | null>(null);
 
@@ -57,7 +59,24 @@ export function useGestures(deps: GestureDeps) {
     const world = worldOf(e);
     const hit = hitOf(e.target);
     const selection = snapshot.selection;
-    e.currentTarget.setPointerCapture(e.pointerId);
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {
+      // The pointer is no longer active (e.g. already lifted); the gesture still works without capture.
+    }
+    if (e.pointerType === 'touch') {
+      touches.current.set(e.pointerId, screenOf(e));
+      if (touches.current.size === 2) {
+        editor.cancelPreview();
+        const [a, b] = [...touches.current.values()] as [Point, Point];
+        gesture.current = { type: 'pinch', distance: Math.hypot(a.x - b.x, a.y - b.y) || 1, mid: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }, from: viewport };
+        return;
+      }
+      if (!hit) {
+        gesture.current = { type: 'pan', start: screenOf(e), from: viewport };
+        return;
+      }
+    }
     if (e.button === 1 || spaceDown.current) {
       gesture.current = { type: 'pan', start: screenOf(e), from: viewport };
       return;
@@ -138,7 +157,18 @@ export function useGestures(deps: GestureDeps) {
     }
     const world = worldOf(e);
     const screen = screenOf(e);
+    if (e.pointerType === 'touch' && touches.current.has(e.pointerId)) touches.current.set(e.pointerId, screen);
     switch (g.type) {
+      case 'pinch': {
+        const pts = [...touches.current.values()];
+        if (pts.length < 2) return;
+        const [a, b] = pts as [Point, Point];
+        const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+        const zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, g.from.zoom * (Math.hypot(a.x - b.x, a.y - b.y) / g.distance)));
+        const anchor = { x: (g.mid.x - g.from.panX) / g.from.zoom, y: (g.mid.y - g.from.panY) / g.from.zoom };
+        setViewport({ zoom, panX: mid.x - anchor.x * zoom, panY: mid.y - anchor.y * zoom });
+        return;
+      }
       case 'pan':
         setViewport({ ...g.from, panX: g.from.panX + screen.x - g.start.x, panY: g.from.panY + screen.y - g.start.y });
         return;
@@ -199,6 +229,11 @@ export function useGestures(deps: GestureDeps) {
 
   function onPointerUp(e: ReactPointerEvent<SVGSVGElement>) {
     const { editor, scene, viewport, snapshot } = latest.current;
+    touches.current.delete(e.pointerId);
+    if (gesture.current?.type === 'pinch') {
+      if (touches.current.size === 0) gesture.current = null;
+      return;
+    }
     const g = gesture.current;
     gesture.current = null;
     setOverlay(EMPTY_OVERLAY);
@@ -247,7 +282,8 @@ export function useGestures(deps: GestureDeps) {
     }
   }
 
-  function onPointerCancel() {
+  function onPointerCancel(e: ReactPointerEvent<SVGSVGElement>) {
+    touches.current.delete(e.pointerId);
     gesture.current = null;
     setOverlay(EMPTY_OVERLAY);
     latest.current.editor.cancelPreview();

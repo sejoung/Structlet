@@ -5,6 +5,7 @@ import {
   CONTAINER_PRESETS,
   FORMAT_VERSION,
   LIMITS,
+  NODE_VARIANTS,
   SIDES,
   validateDocument,
   type Annotation,
@@ -53,6 +54,7 @@ function node(v: unknown, path: string): Node {
     width: num(o, 'width', path),
     height: num(o, 'height', path),
     locked: bool(o, 'locked', path, false),
+    variant: oneOf(o, 'variant', path, NODE_VARIANTS, 'icon'),
   };
 }
 
@@ -178,6 +180,7 @@ export function serializeStructlet(doc: Document): string {
       width: n.width,
       height: n.height,
       locked: n.locked,
+      variant: n.variant,
     })),
     edges: doc.edges.map((e) => ({
       id: e.id,

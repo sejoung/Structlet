@@ -157,7 +157,27 @@ vite.config.ts.timestamp-*
 .nx/migrate-runs
 
 # Structlet
+# Build output and test artifacts
 dist/
 test-results/
 playwright-report/
+blob-report/
+playwright/.cache/
+
+# Editors and IDEs
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/*
+!.vscode/extensions.json
+*.swp
+*~
+
+# OS files
 .DS_Store
+Thumbs.db
+Desktop.ini
+
+# Local Claude Code settings
+.claude/settings.local.json

@@ -10,3 +10,6 @@ export * from './render-svg';
 export * from './routing/ports';
 export * from './routing/route';
 export * from './routing/edit';
+export * from './layout/arrange';
+export * from './layout/place';
+export * from './render-isometric';

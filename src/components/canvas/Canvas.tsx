@@ -1,10 +1,13 @@
-import { useEffect, useMemo, useRef, useState, type DragEvent, type MouseEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type DragEvent, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent } from 'react';
 import type { Editor, SessionSnapshot } from '../../application';
 import { indexDocument, type Id, type Point } from '../../domain';
-import { polylineMidpoint, renderSceneBody, screenToWorld, worldToScreen, zoomAt, type Scene, type Viewport } from '../../engine';
+import { polylineMidpoint, renderSceneBody, screenToWorld, worldToScreen, zoomAt, type DiagramTheme, type Scene, type Viewport } from '../../engine';
 import type { Translate } from '../../i18n/messages';
 import { SERVICE_DRAG_TYPE } from '../Palette';
+import type { ViewMode } from '../Toolbar';
 import { Handles } from './Handles';
+import { IsometricView } from './IsometricView';
+import { Minimap } from './Minimap';
 import { useGestures } from './use-gestures';
 
 interface CanvasProps {
@@ -19,6 +22,13 @@ interface CanvasProps {
   onOpenSample(): void;
   editing: Id | null;
   setEditing(id: Id | null): void;
+  theme: DiagramTheme;
+  view: ViewMode;
+}
+
+/** Objects in reading order for keyboard navigation. */
+function tabOrder(scene: Scene): Id[] {
+  return [...scene.containers.map((c) => c.id), ...scene.nodes.map((n) => n.id), ...scene.edges.map((e) => e.id), ...scene.annotations.map((a) => a.id)];
 }
 
 export function Canvas(props: CanvasProps) {
@@ -30,15 +40,21 @@ export function Canvas(props: CanvasProps) {
   const latest = useRef({ viewport, setViewport });
   latest.current = { viewport, setViewport };
   const gestures = useGestures({ svgRef, editor, snapshot, scene, viewport, setViewport, spaceDown });
-  const markup = useMemo(() => renderSceneBody(scene), [scene]);
+  const markup = useMemo(() => renderSceneBody(scene, props.theme), [scene, props.theme]);
+  const [size, setSize] = useState({ width: 0, height: 0 });
 
   useEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
-    const observer = new ResizeObserver(([entry]) => entry && props.onResize({ width: entry.contentRect.width, height: entry.contentRect.height }));
+    const observer = new ResizeObserver(([entry]) => {
+      if (!entry) return;
+      const next = { width: entry.contentRect.width, height: entry.contentRect.height };
+      setSize(next);
+      props.onResize(next);
+    });
     observer.observe(el);
     return () => observer.disconnect();
-  }, []);
+  }, [props.view]);
 
   useEffect(() => {
     const el = svgRef.current;
@@ -53,7 +69,7 @@ export function Canvas(props: CanvasProps) {
     };
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => el.removeEventListener('wheel', onWheel);
-  }, []);
+  }, [props.view]);
 
   useEffect(() => {
     const typing = (e: KeyboardEvent) => (e.target as HTMLElement | null)?.closest?.('input, textarea, select, [contenteditable="true"]');
@@ -104,6 +120,39 @@ export function Canvas(props: CanvasProps) {
     props.onDropService(serviceId, screenToWorld(viewport, { x: e.clientX - r.left, y: e.clientY - r.top }));
   };
 
+  const onKeyDown = (e: ReactKeyboardEvent<SVGSVGElement>) => {
+    if (e.key !== 'Tab') return;
+    const order = tabOrder(scene);
+    if (order.length === 0) return;
+    e.preventDefault();
+    const current = snapshot.selection.length === 1 ? order.indexOf(snapshot.selection[0]!) : -1;
+    const next = current < 0 ? (e.shiftKey ? order.length - 1 : 0) : (current + (e.shiftKey ? -1 : 1) + order.length) % order.length;
+    editor.session.select([order[next]!]);
+    const r = scene.rects.get(order[next]!) ?? scene.annotations.find((a) => a.id === order[next])?.rect;
+    if (r) {
+      const p = worldToScreen(viewport, { x: r.x + r.width / 2, y: r.y + r.height / 2 });
+      if (p.x < 0 || p.y < 0 || p.x > size.width || p.y > size.height) setViewport({ ...viewport, panX: viewport.panX + size.width / 2 - p.x, panY: viewport.panY + size.height / 2 - p.y });
+    }
+  };
+
+  const announcement = useMemo(() => {
+    if (snapshot.selection.length !== 1) return '';
+    const id = snapshot.selection[0]!;
+    const index = indexDocument(snapshot.document);
+    const kind = index.nodes.has(id) ? t('props.node') : index.containers.has(id) ? t('props.area') : index.edges.has(id) ? t('props.edge') : t('props.annotation');
+    const o = index.nodes.get(id) ?? index.containers.get(id) ?? index.edges.get(id);
+    const label = (o ? o.label : (index.annotations.get(id)?.text ?? '')).replace(/\n/g, ' ');
+    return t('canvas.selected', { kind, label });
+  }, [snapshot.selection, snapshot.document, t]);
+
+  if (props.view === 'isometric') {
+    return (
+      <div ref={wrapRef} className="canvas">
+        <IsometricView scene={scene} theme={props.theme} notice={t('canvas.readonly')} />
+      </div>
+    );
+  }
+
   const empty = snapshot.document.nodes.length === 0 && snapshot.document.containers.length === 0 && snapshot.document.annotations.length === 0;
   const grid = 16 * viewport.zoom;
   const z = viewport.zoom;
@@ -125,6 +174,10 @@ export function Canvas(props: CanvasProps) {
         ref={svgRef}
         className="canvas-svg"
         data-testid="canvas"
+        tabIndex={0}
+        role="application"
+        aria-label={t('canvas.label')}
+        onKeyDown={onKeyDown}
         onPointerDown={gestures.onPointerDown}
         onPointerMove={gestures.onPointerMove}
         onPointerUp={gestures.onPointerUp}
@@ -157,6 +210,8 @@ export function Canvas(props: CanvasProps) {
           <Handles scene={scene} selection={snapshot.selection} hover={gestures.hover} zoom={z} overlay={gestures.overlay} connecting={!!gestures.overlay.connect} />
         </g>
       </svg>
+      <Minimap scene={scene} viewport={viewport} size={size} setViewport={setViewport} label={t('minimap')} />
+      <div className="sr-only" aria-live="polite" data-testid="announcer">{announcement}</div>
       {props.editing && <InlineEditor key={props.editing} id={props.editing} {...props} />}
       {empty && (
         <div className="empty-state">

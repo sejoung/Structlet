@@ -1,6 +1,8 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Editor, EditorSession, type IdGenerator } from '../application';
+import { LocalFileAccess, type FileAccessHost } from '../adapters/files/file-access';
+import { FILE_EXTENSION, MIME_TYPE } from '../adapters/format/structlet-format';
 import { LocalDocumentStore } from '../adapters/storage/local-document-store';
 import { emptyDocument } from '../domain';
 import { createTranslator, pickLanguage, type Language } from '../i18n/messages';
@@ -25,6 +27,7 @@ const newId: IdGenerator = (kind) => `${PREFIX[kind]}-${crypto.randomUUID().slic
 const language = initialLanguage();
 const store = new LocalDocumentStore(window.localStorage);
 const doc = store.load() ?? emptyDocument(newId('document'), createTranslator(language)('app.untitled'));
+const files = new LocalFileAccess(window as unknown as FileAccessHost, [{ description: 'Structlet diagram', accept: { [MIME_TYPE]: [FILE_EXTENSION] } }]);
 const session = new EditorSession(doc);
 const editor = new Editor(session, newId);
 
@@ -33,6 +36,7 @@ createRoot(document.getElementById('root')!).render(
     <App
       editor={editor}
       store={store}
+      files={files}
       newId={newId}
       initialLanguage={language}
       onLanguage={(l) => {

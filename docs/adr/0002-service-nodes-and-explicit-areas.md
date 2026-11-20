@@ -9,7 +9,7 @@ Stormlet은 구성 요소를 아이콘이 붙은 포스트잇으로, 경계를 �
 
 ## 결정
 
-- **서비스 노드(`Node`).** `serviceId`, `label`, `parentId`, `x`, `y`, `width`, `height`, `locked`만 가진다. 서비스 정의(이름·아이콘·색)는 카탈로그에 두고 노드는 ID로 참조한다([ADR 0006](0006-service-catalog-and-icons.md)). 모르는 `serviceId`는 값을 그대로 보존하고 일반 아이콘으로 그린다.
+- **서비스 노드(`Node`).** `serviceId`, `label`, `parentId`, `x`, `y`, `width`, `height`, `locked`, `variant`(icon/box, [ADR 0011](0011-views-themes-and-accessibility.md))만 가진다. 서비스 정의(이름·아이콘·색)는 카탈로그에 두고 노드는 ID로 참조한다([ADR 0006](0006-service-catalog-and-icons.md)). 모르는 `serviceId`는 값을 그대로 보존하고 일반 아이콘으로 그린다.
 - **영역(`Container`).** `kind`(cloud, account, region, availability-zone, vpc, subnet, custom), `label`, `parentId`, 위치·크기, `style`(color, dashed, filled), `locked`. 종류마다 기본 스타일을 둔다.
 - **명시적 계층.** 노드와 영역의 부모는 `parentId`로만 정한다. 좌표는 부모 왼쪽 위를 원점으로 한 로컬 좌표다. 그래서 영역을 옮기면 자식 데이터를 건드리지 않고도 모두 따라온다. 월드 좌표는 engine이 계산한다.
 - **순환 거부.** `setParent`는 순환을 만들면 `CommandError`로 거부한다. 끌어 놓기(`moveInto`)는 순환이 될 부모 변경만 건너뛰고 이동은 적용한다. 가져오기 검증은 순환 문서를 거부한다.
@@ -21,4 +21,4 @@ Stormlet은 구성 요소를 아이콘이 붙은 포스트잇으로, 경계를 �
 
 `tests/unit/domain/commands.test.ts`가 로컬 좌표, 자식 동반 이동, 중복 이동 방지, 고정, 부모 변경 시 월드 위치 유지, 순환 거부, 한 패치 undo, 삭제·복제·감싸기를 검사한다. e2e는 VPC 끌기 후 한 번의 undo, 다른 영역으로 끌어 넣기, 감싸기를 확인한다.
 
-노드 크기는 기본 64×64 아이콘 타일이고 이름은 아래에 그린다. 상자형 노드, 영역 자동 확장, 영역 안 자동 배치는 다루지 않는다.
+노드 크기는 기본 64×64 아이콘 타일이고 이름은 아래에 그린다. 영역 안 자동 배치와 넘칠 때의 영역 확장은 [ADR 0008](0008-auto-layout-and-draft-import.md)에 있다. 끌어 놓을 때 영역을 자동으로 키우지는 않는다.

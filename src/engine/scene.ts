@@ -10,11 +10,12 @@ import {
   type Id,
   type Point,
   type Rect,
+  type NodeVariant,
   type Side,
 } from '../domain';
 import type { Appearance, Glyph } from './appearance';
-import { polylineMidpoint, union } from './geometry';
-import { resolveEndpoints, type PortFrame } from './routing/ports';
+import { intersects, polylineLength, union } from './geometry';
+import { resolveEndpoints, type Blocker, type PortFrame } from './routing/ports';
 import { routeAuto, routeManual, routeStraight } from './routing/route';
 import { measureText, wrapText } from './text';
 
@@ -25,6 +26,7 @@ export const CONTAINER_HEADER = { height: 28, fontSize: 12, glyph: 22 } as const
 export const EDGE_LABEL = { fontSize: 11, lineHeight: 14, padX: 5, padY: 3 } as const;
 export const ANNOTATION_TEXT = { fontSize: 13, lineHeight: 18, maxWidth: 320 } as const;
 export const STEP_SIZE = 24;
+export const BOX_NODE = { icon: 32, pad: 12, gap: 10, fontSize: 12, lineHeight: 15 } as const;
 
 export interface SceneContainer {
   readonly id: Id;
@@ -39,6 +41,7 @@ export interface SceneContainer {
 
 export interface SceneNode {
   readonly id: Id;
+  readonly variant: NodeVariant;
   readonly rect: Rect;
   readonly label: readonly string[];
   readonly labelBox: Rect | null;
@@ -81,11 +84,29 @@ function textBlock(lines: readonly string[], fontSize: number): number {
   return Math.max(0, ...lines.map((l) => measureText(l, fontSize)));
 }
 
+/** A legend line may start with a color swatch (`#rrggbb`), a solid line sample (`---`) or a dashed one (`- -`). */
+export type LegendMarker = { kind: 'swatch'; color: string } | { kind: 'line'; dashed: boolean } | null;
+
+export function legendMarker(line: string): { marker: LegendMarker; text: string } {
+  const swatch = /^(#[0-9a-fA-F]{6})\s+(.*)$/.exec(line);
+  if (swatch) return { marker: { kind: 'swatch', color: swatch[1]! }, text: swatch[2]! };
+  if (line.startsWith('--- ')) return { marker: { kind: 'line', dashed: false }, text: line.slice(4) };
+  if (line.startsWith('- - ')) return { marker: { kind: 'line', dashed: true }, text: line.slice(4) };
+  return { marker: null, text: line };
+}
+
+export const LEGEND_MARKER_WIDTH = 30;
+
 export function annotationRect(a: Annotation): { rect: Rect; lines: string[] } {
   if (a.kind === 'step') return { rect: { x: a.x, y: a.y, width: STEP_SIZE, height: STEP_SIZE }, lines: [a.text] };
-  const lines = wrapText(a.text || ' ', ANNOTATION_TEXT.maxWidth, ANNOTATION_TEXT.fontSize, 40);
+  const lines = a.kind === 'legend' ? a.text.split('\n') : wrapText(a.text || ' ', ANNOTATION_TEXT.maxWidth, ANNOTATION_TEXT.fontSize, 40);
   const pad = a.kind === 'legend' ? 12 : 0;
-  const width = Math.max(24, textBlock(lines, ANNOTATION_TEXT.fontSize)) + pad * 2;
+  const widths = lines.map((l) => {
+    if (a.kind !== 'legend') return measureText(l, ANNOTATION_TEXT.fontSize);
+    const { marker, text } = legendMarker(l);
+    return measureText(text, ANNOTATION_TEXT.fontSize) + (marker ? LEGEND_MARKER_WIDTH : 0);
+  });
+  const width = Math.max(24, ...widths) + pad * 2;
   const height = lines.length * ANNOTATION_TEXT.lineHeight + pad * 2;
   return { rect: { x: a.x, y: a.y, width, height }, lines };
 }
@@ -137,10 +158,21 @@ export function computeScene(doc: Document, appearance: Appearance): Scene {
     });
 
   const obstacles: Rect[] = [];
+  const blockers: Blocker[] = [];
   const nodes: SceneNode[] = doc.nodes.map((n) => {
     const rect = rects.get(n.id)!;
     const service = appearance.service(n.serviceId);
     const look = service ?? appearance.fallback;
+    const base = { id: n.id, variant: n.variant, rect, glyph: look.glyph, color: look.color, serviceName: look.name, knownService: !!service, locked: n.locked };
+    blockers.push({ id: n.id, rect });
+    if (n.variant === 'box') {
+      const textWidth = rect.width - BOX_NODE.pad - BOX_NODE.icon - BOX_NODE.gap - BOX_NODE.pad;
+      const maxLines = Math.max(1, Math.floor((rect.height - 8) / BOX_NODE.lineHeight));
+      const label = n.label.trim() ? wrapText(n.label, Math.max(textWidth, 24), BOX_NODE.fontSize, maxLines) : [];
+      frames.set(n.id, { left: rect.x, right: rect.x + rect.width, top: rect.y, bottom: rect.y + rect.height, sideTop: rect.y, sideBottom: rect.y + rect.height });
+      obstacles.push(rect);
+      return { ...base, label, labelBox: null };
+    }
     const label = n.label.trim() ? wrapText(n.label, NODE_LABEL.maxWidth, NODE_LABEL.fontSize, 4) : [];
     let labelBox: Rect | null = null;
     if (label.length > 0) {
@@ -150,12 +182,17 @@ export function computeScene(doc: Document, appearance: Appearance): Scene {
     const bottom = labelBox ? labelBox.y + labelBox.height + 2 : rect.y + rect.height;
     frames.set(n.id, { left: rect.x, right: rect.x + rect.width, top: rect.y, bottom, sideTop: rect.y, sideBottom: rect.y + rect.height });
     obstacles.push(rect);
-    if (labelBox) obstacles.push(labelBox);
-    return { id: n.id, rect, label, labelBox, glyph: look.glyph, color: look.color, serviceName: look.name, knownService: !!service, locked: n.locked };
+    if (labelBox) {
+      obstacles.push(labelBox);
+      blockers.push({ id: n.id, rect: labelBox });
+    }
+    return { ...base, label, labelBox };
   });
 
-  const ends = resolveEndpoints(doc.edges, frames);
+  const ends = resolveEndpoints(doc.edges, frames, blockers);
   const edges: SceneEdge[] = [];
+  const routed: (readonly [Point, Point])[] = [];
+  const taken: Rect[] = [...obstacles];
   for (const e of doc.edges) {
     const pair = ends.get(e.id);
     if (!pair) continue;
@@ -164,15 +201,16 @@ export function computeScene(doc: Document, appearance: Appearance): Scene {
       e.style.shape === 'straight'
         ? routeStraight(pair.source, pair.target, manual ? e.waypoints : [])
         : manual
-          ? routeManual(pair.source, pair.target, e.waypoints)
-          : cachedAuto(pair.source, pair.target, obstacles);
+          ? routeManual(pair.source, pair.target, e.waypoints, obstacles)
+          : cachedAuto(pair.source, pair.target, obstacles, routed);
+    for (let i = 1; i < points.length; i++) routed.push([points[i - 1]!, points[i]!]);
     const label = e.label.trim() ? wrapText(e.label, 160, EDGE_LABEL.fontSize, 3) : [];
     let labelBox: Rect | null = null;
     if (label.length > 0) {
-      const mid = polylineMidpoint(points).point;
       const w = textBlock(label, EDGE_LABEL.fontSize) + EDGE_LABEL.padX * 2;
       const h = label.length * EDGE_LABEL.lineHeight + EDGE_LABEL.padY * 2;
-      labelBox = { x: mid.x - w / 2, y: mid.y - h / 2, width: w, height: h };
+      labelBox = placeLabel(points, w, h, taken);
+      taken.push(labelBox);
     }
     edges.push({ id: e.id, points, label, labelBox, style: e.style, manual, sourceSide: pair.source.side, targetSide: pair.target.side });
   }
@@ -188,18 +226,49 @@ export function computeScene(doc: Document, appearance: Appearance): Scene {
   return { containers, nodes, edges, annotations, frames, rects, bounds: union(all) };
 }
 
+/** Point at fraction `t` of a polyline's length. */
+function pointAt(points: readonly Point[], t: number): Point {
+  const goal = polylineLength(points) * t;
+  let walked = 0;
+  for (let i = 1; i < points.length; i++) {
+    const a = points[i - 1]!;
+    const b = points[i]!;
+    const len = Math.hypot(b.x - a.x, b.y - a.y);
+    if (walked + len >= goal && len > 0) {
+      const k = (goal - walked) / len;
+      return { x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k };
+    }
+    walked += len;
+  }
+  return points[points.length - 1] ?? { x: 0, y: 0 };
+}
+
+/** Label box along the line: the middle if free, otherwise the nearest position that does not cover boxes or other labels. */
+function placeLabel(points: readonly Point[], w: number, h: number, taken: readonly Rect[]): Rect {
+  const at = (p: Point): Rect => ({ x: p.x - w / 2, y: p.y - h / 2, width: w, height: h });
+  for (const t of [0.5, 0.4, 0.6, 0.3, 0.7, 0.2, 0.8]) {
+    const box = at(pointAt(points, t));
+    if (!taken.some((r) => intersects(r, box))) return box;
+  }
+  return at(pointAt(points, 0.5));
+}
+
 const routeCache = new Map<string, Point[]>();
 
-function cachedAuto(source: Parameters<typeof routeAuto>[0], target: Parameters<typeof routeAuto>[1], obstacles: readonly Rect[]): Point[] {
+type Segment = readonly [Point, Point];
+
+function cachedAuto(source: Parameters<typeof routeAuto>[0], target: Parameters<typeof routeAuto>[1], obstacles: readonly Rect[], routed: readonly Segment[]): Point[] {
   const minX = Math.min(source.point.x, target.point.x) - 300;
   const maxX = Math.max(source.point.x, target.point.x) + 300;
   const minY = Math.min(source.point.y, target.point.y) - 300;
   const maxY = Math.max(source.point.y, target.point.y) + 300;
-  const near = obstacles.filter((o) => o.x < maxX && o.x + o.width > minX && o.y < maxY && o.y + o.height > minY);
-  const key = JSON.stringify([source.point, source.side, target.point, target.side, near.map((r) => [r.x, r.y, r.width, r.height])]);
+  const inside = (r: Rect) => r.x < maxX && r.x + r.width > minX && r.y < maxY && r.y + r.height > minY;
+  const near = obstacles.filter(inside);
+  const crossings = routed.filter(([a, b]) => inside({ x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), width: Math.abs(a.x - b.x), height: Math.abs(a.y - b.y) }));
+  const key = JSON.stringify([source.point, source.side, target.point, target.side, near.map((r) => [r.x, r.y, r.width, r.height]), crossings]);
   const hit = routeCache.get(key);
   if (hit) return hit;
-  const route = routeAuto(source, target, near);
+  const route = routeAuto(source, target, near, crossings);
   if (routeCache.size > 4000) routeCache.clear();
   routeCache.set(key, route);
   return route;

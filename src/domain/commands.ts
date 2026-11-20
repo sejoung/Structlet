@@ -1,4 +1,4 @@
-import { ancestors, descendants, topmost, worldOrigin, worldRect, wouldCreateCycle } from './hierarchy';
+import { descendants, topmost, worldOrigin, worldRect, wouldCreateCycle } from './hierarchy';
 import { findCollection, getBox, indexDocument } from './lookup';
 import type {
   Annotation,
@@ -10,6 +10,7 @@ import type {
   Endpoint,
   Id,
   Node,
+  NodeVariant,
   Point,
   Rect,
 } from './model';
@@ -66,6 +67,7 @@ export interface NewNode {
   at: Point;
   width: number;
   height: number;
+  variant?: NodeVariant;
 }
 
 export function addNode(doc: Document, init: NewNode): Patch {
@@ -82,6 +84,7 @@ export function addNode(doc: Document, init: NewNode): Patch {
     width: init.width,
     height: init.height,
     locked: false,
+    variant: init.variant ?? 'icon',
   };
   return { changes: [insert('nodes', node)] };
 }
@@ -265,11 +268,19 @@ export function deleteObjects(doc: Document, ids: Iterable<Id>): Patch {
     else if (a.targetId !== null && doomed.has(a.targetId)) changes.push(update('annotations', a, { ...a, targetId: null }));
   }
   for (const n of doc.nodes) if (doomed.has(n.id)) changes.push(remove(doc, 'nodes', n));
-  // Remove containers deepest first so undo restores parents before children.
-  const containers = doc.containers.filter((c) => doomed.has(c.id));
-  containers.sort((a, b) => ancestors(doc, b.id).length - ancestors(doc, a.id).length);
-  for (const c of containers) changes.push(remove(doc, 'containers', c));
-  return { changes };
+  for (const c of doc.containers) if (doomed.has(c.id)) changes.push(remove(doc, 'containers', c));
+  return { changes: removalsLast(changes) };
+}
+
+/**
+ * Orders removals from the same list by descending index, so each recorded
+ * index is still right when the patch is applied in order and when its
+ * inverse re-inserts in reverse order.
+ */
+export function removalsLast(changes: readonly ObjectChange[]): ObjectChange[] {
+  const updates = changes.filter((c) => c.after !== null);
+  const removals = changes.filter((c) => c.after === null).sort((a, b) => a.collection.localeCompare(b.collection) || (b.index ?? 0) - (a.index ?? 0));
+  return [...updates, ...removals];
 }
 
 /**

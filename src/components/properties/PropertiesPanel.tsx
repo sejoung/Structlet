@@ -5,7 +5,13 @@ import { alignDeltas, distributeDeltas, type AlignMode, type Scene } from '../..
 import type { Translate } from '../../i18n/messages';
 import type { PaletteService } from '../Palette';
 import { Buttons } from './fields';
-import { AnnotationSection, ContainerSection, EdgeSection, NodeSection } from './sections';
+import { AnnotationSection, ContainerSection, EdgeSection, LayoutButtons, NodeSection, type PanelActions } from './sections';
+
+export interface PanelFinding {
+  readonly severity: 'warning' | 'info';
+  readonly message: string;
+  readonly ids: readonly Id[];
+}
 
 interface PropertiesProps {
   t: Translate;
@@ -13,6 +19,8 @@ interface PropertiesProps {
   snapshot: SessionSnapshot;
   scene: Scene;
   services: readonly PaletteService[];
+  findings: readonly PanelFinding[];
+  actions: PanelActions;
   onWrap(ids: readonly Id[], kind: ContainerKind): void;
 }
 
@@ -40,9 +48,28 @@ export function PropertiesPanel(props: PropertiesProps) {
         <p className="hint">{t('props.empty')}</p>
       </section>
     );
+    body = (
+      <>
+        {body}
+        <section data-testid="checks">
+          <h2>{t('checks.title')}</h2>
+          {props.findings.length === 0 && <p className="hint">{t('checks.none')}</p>}
+          <ul className="findings">
+            {props.findings.map((f, i) => (
+              <li key={i}>
+                <button type="button" className={`finding ${f.severity}`} onClick={() => editor.session.select(f.ids.filter((id) => index.nodes.has(id) || index.containers.has(id) || index.edges.has(id)))}>
+                  <span className="finding-mark" aria-hidden="true">{f.severity === 'warning' ? '!' : 'i'}</span>
+                  {f.message}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      </>
+    );
   } else if (selection.length === 1) {
     const id = selection[0]!;
-    const common = { t, editor, doc, rect: scene.rects.get(id) };
+    const common = { t, editor, doc, rect: scene.rects.get(id), actions: props.actions };
     const node = index.nodes.get(id);
     const container = index.containers.get(id);
     const edge = index.edges.get(id);
@@ -61,7 +88,7 @@ export function PropertiesPanel(props: PropertiesProps) {
   );
 }
 
-function MultiSection({ t, editor, snapshot, scene, onWrap }: PropertiesProps) {
+function MultiSection({ t, editor, snapshot, scene, onWrap, actions }: PropertiesProps) {
   const doc = snapshot.document;
   const selection = snapshot.selection;
   const [kind, setKind] = useState<ContainerKind>('custom');
@@ -81,6 +108,13 @@ function MultiSection({ t, editor, snapshot, scene, onWrap }: PropertiesProps) {
               <button type="button" key={a.mode} title={a.mode} data-align={a.mode} onClick={() => editor.moveEach(alignDeltas(placed, a.mode))}>{a.icon}</button>
             ))}
           </div>
+        </div>
+      )}
+      {placed.length >= 2 && (
+        <div className="field">
+          <span className="field-label">{t('props.layout')}</span>
+          <LayoutButtons t={t} testId="layout" onLayout={(m) => actions.layout(selection, m)} />
+          <p className="hint">{t('props.layoutHint')}</p>
         </div>
       )}
       {placed.length >= 3 && (

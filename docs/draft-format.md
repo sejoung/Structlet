@@ -1,0 +1,37 @@
+# 초안 JSON 형식 (`structlet-draft`)
+
+사람, 스크립트, AI 도우미가 좌표 없이 구성도를 쓰거나 기존 구성도를 고칠 때 쓰는 입력이다. 툴바 **가져오기**(또는 붙여넣기)로 현재 구성도에 합친다. 외부 AI 호출 없이 파일만으로 동작한다. 예시: [`samples/draft-example.json`](../samples/draft-example.json).
+
+## 규칙
+
+- 모든 필드는 생략할 수 있다. 생략한 값은 **현재 값을 유지**하고, 새 객체는 기본값을 쓴다.
+- `id`가 현재 문서에 있으면 그 객체를 고치고, 없으면 새로 만든다. ID는 `[A-Za-z0-9_.:-]`만 쓴다.
+- 좌표(`x`, `y`)는 부모 영역 기준이다. **좌표가 없는 새 객체만 자동 배치**된다. 기존 객체는 좌표를 주지 않으면 그 자리에 있다. 고정(`locked`)된 객체는 좌표를 줘도 움직이지 않는다.
+- 연결선은 `id`가 있으면 그 선을, 없으면 같은 `from → to` 선을 고친다. 둘 다 없으면 새 선(`e-<from>-<to>`)을 만든다.
+- `remove`에 적은 ID는 지운다. 영역을 지우면 내용과 거기 붙은 선도 지워진다.
+- 하나라도 잘못되면(모르는 참조, 부모 순환, 종류 충돌, 잘못된 값) 아무것도 바뀌지 않고 오류만 보인다. 가져오기는 한 번의 실행 취소로 되돌린다.
+
+## 필드
+
+| 위치 | 필드 |
+| --- | --- |
+| 최상위 | `format: "structlet-draft"`, `formatVersion: 1`, `title`, `layout`(`flow` 왼→오, `flow-down` 위→아래, `grid`), `containers`, `nodes`, `edges`, `annotations`, `remove` |
+| `containers[]` | `id`, `kind`(cloud, account, region, availability-zone, vpc, subnet, custom), `label`, `parent`, `layout`, `x`, `y`, `width`, `height`, `color`(gray, teal, purple, green, blue, orange, pink, red), `dashed`, `filled`, `locked` |
+| `nodes[]` | `id`, `service`(서비스 ID, 예: `database`, `aws.lambda`; 모르는 ID는 일반 아이콘으로 보존), `label`(`\n`으로 줄바꿈: 첫 줄은 역할, 둘째 줄은 기술), `parent`, `x`, `y`, `variant`(`icon`, `box`), `size`(`s`, `m`, `l`), `locked` |
+| `edges[]` | `id`, `from`, `to`, `label`, `dashed`(비동기), `arrow`(end, start, both, none), `shape`(orthogonal, straight) |
+| `annotations[]` | `id`, `kind`(text, step, legend), `text`, `x`, `y`(월드 좌표), `target`(붙을 객체; 좌표가 없으면 대상 옆에 놓인다) |
+
+범례 `text`의 줄은 `#rrggbb 이름`(색 견본), `--- 이름`(실선 견본), `- - 이름`(점선 견본)으로 시작할 수 있다.
+
+## 배치 방식
+
+영역은 안쪽부터 크기를 정하고 바깥부터 놓는다. 한 부모 안에서:
+
+1. 이미 자리가 있는 형제와 선으로 이어진 새 객체는 그 형제 옆(나가는 선이면 오른쪽, 들어오는 선이면 왼쪽)의 빈자리에 놓는다.
+2. 나머지는 부모의 `layout`으로 기존 내용 아래에 배치한다. `flow`는 연결선의 최장 경로로 열을 정하고, 교차가 적어지도록 열 안의 순서를 정한다.
+3. 새 영역은 내용에 맞는 크기가 되고, 기존 영역은 내용이 넘치면 커진다.
+
+## 다른 입력
+
+- **docker-compose.yml**: 서비스 → 노드(이미지로 아이콘 추정), `depends_on`과 `environment` 안의 서비스 이름 → 선, `ports` → 클라이언트 노드, 이름 있는 볼륨 → 스토리지 노드, 네트워크가 둘 이상이면 영역.
+- **Terraform**: HCL이 아니라 `terraform show -json`(state 또는 `terraform show -json plan.out`) 결과를 읽는다. VPC/서브넷(가상 네트워크) → 중첩 영역, 알려진 리소스 → 노드, 선은 plan의 참조, state의 `depends_on`, 다른 리소스의 ID·ARN을 값으로 가진 속성, 이벤트 소스 매핑 같은 연결 리소스에서 만든다. 정책·첨부·규칙처럼 설정만 하는 리소스는 그리지 않는다.
