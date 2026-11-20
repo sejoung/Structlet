@@ -144,6 +144,19 @@ export class EditorSession {
     this.emit();
   }
 
+  /**
+   * Applies a change that came from elsewhere (another device's edits merged from Drive).
+   * It is shown and saved locally but not recorded for undo: undoing it would undo someone
+   * else's work.
+   */
+  applyExternal(patch: Patch): void {
+    if (isEmptyPatch(patch)) return;
+    this.previewPatch = null;
+    this.committed = applyPatch(this.committed, patch);
+    this.selection = this.existing(this.selection);
+    this.changed();
+  }
+
   /** Opens another document: clears history and selection. */
   replaceDocument(doc: Document, options: { dirty?: boolean } = {}): void {
     this.committed = doc;

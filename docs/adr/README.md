@@ -19,6 +19,8 @@ Structlet의 구조와 동작에 대한 결정이다. 결정을 바꾸면 해당
 | [0013](0013-icon-packs.md) | 사용자가 불러오는 아이콘 팩 | 채택 |
 | [0014](0014-static-deployment.md) | 정적 HTML 배포 | 채택 |
 | [0015](0015-editor-layout.md) | 편집기 화면 구성 | 채택 |
+| [0016](0016-google-drive-sync.md) | Google Drive 동기화 | 채택, 실제 OAuth 검증 대기 |
+| [0017](0017-usage-statistics.md) | Google Analytics 사용 통계 | 채택 |
 
 [stormlet-reference/](stormlet-reference/)에는 시작할 때 참고한 Stormlet ADR 원본을 따로 보관한다.
 

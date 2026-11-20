@@ -27,6 +27,13 @@ test('single structlet.html works from file://', async ({ page }) => {
   const [png] = await Promise.all([page.waitForEvent('download'), act(page, 'tb-png')]);
   expect(readFileSync((await png.path())!).subarray(1, 4).toString()).toBe('PNG');
 
+  // Google sign-in needs a web origin: with Drive configured, the menu says why it is off.
+  expect(await page.getByTestId('drive-button').count()).toBe(0);
+  await act(page, 'menu-file');
+  const webOnly = page.getByTestId('drive-web-only');
+  if (await webOnly.count()) await expect(webOnly).toBeDisabled();
+  await page.keyboard.press('Escape');
+
   // Autosave survives a reload.
   await page.waitForTimeout(600);
   await page.reload();

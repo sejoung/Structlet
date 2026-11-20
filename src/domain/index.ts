@@ -6,3 +6,5 @@ export * from './commands';
 export * from './validate';
 export * from './diff';
 export * from './fragment';
+export * from './sync/remote';
+export * from './sync/merge';

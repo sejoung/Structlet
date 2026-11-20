@@ -4,6 +4,7 @@ import { pickFiles } from '../adapters/files/browser-files';
 import type { IconPackStore } from '../adapters/storage/icon-pack-store';
 import type { PackProviderChoice } from '../components/IconPacksDialog';
 import type { Translate } from '../i18n/messages';
+import { log } from '../adapters/diagnostics/log';
 
 interface Deps {
   store: IconPackStore;
@@ -33,6 +34,7 @@ export function createIconPackActions({ store, t, notify, setPacks, setBusy, new
           return;
         }
         await store.put(result.pack);
+        log.info('packs.loaded', { provider: result.pack.provider });
         await refresh();
         notify(t('packs.loaded', { name: result.pack.name, matched: summarize(result.pack).matched }));
       } catch (error) {

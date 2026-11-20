@@ -1,6 +1,8 @@
 import type { Language, Translate } from '../i18n/messages';
+import { DriveButton } from './drive/DriveButton';
+import type { DriveActions, DriveView } from './drive/types';
 import { Icon } from './ui/Icon';
-import { Menu } from './ui/Menu';
+import { Menu, type MenuItem } from './ui/Menu';
 import { IconButton, Segmented } from './ui/controls';
 
 export type ViewMode = '2d' | 'isometric';
@@ -30,6 +32,11 @@ export interface ToolbarActions {
   onPresent(on: boolean): void;
 }
 
+/** Google Drive in this build: working, or configured but unusable here (a page opened from a file). */
+export type DriveBar =
+  | { readonly kind: 'ready'; readonly view: DriveView; readonly actions: DriveActions; onDetails(): void; onConflict(): void; onDisconnect(): void }
+  | { readonly kind: 'web-only' };
+
 interface ToolbarProps extends ToolbarActions {
   t: Translate;
   title: string;
@@ -42,14 +49,33 @@ interface ToolbarProps extends ToolbarActions {
   fileName: string | null;
   leftOpen: boolean;
   rightOpen: boolean;
+  drive?: DriveBar;
+  /** Usage statistics in this build: the current choice and how to change it. */
+  stats?: { readonly granted: boolean; toggle(): void };
   presenting: boolean;
 }
 
 const mod = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl+';
 
 /** Top bar: document on the left, editing in the middle, output on the right. */
+function driveItems(t: Translate, drive: DriveBar | undefined): MenuItem[] {
+  if (!drive) return [];
+  if (drive.kind === 'web-only') return [{ id: 'drive-web-only', label: t('drive.webOnly'), disabled: true, separated: true, heading: t('drive.section'), onSelect: () => undefined }];
+  const { view, actions } = drive;
+  const linked = view.state.status !== 'unlinked';
+  const items: MenuItem[] = [];
+  if (!view.connected) items.push({ id: 'drive-connect', label: t('drive.connect'), onSelect: actions.connect });
+  items.push({ id: 'drive-open', label: t('drive.open'), onSelect: actions.open });
+  items.push({ id: 'drive-save', label: t('drive.saveTo'), onSelect: actions.saveToFolder });
+  if (linked) items.push({ id: 'drive-copy', label: t('drive.saveCopy'), onSelect: actions.saveCopy }, { id: 'drive-stop', label: t('drive.stop'), onSelect: actions.stop });
+  if (view.connected || linked) items.push({ id: 'drive-disconnect', label: t('drive.disconnect'), onSelect: drive.onDisconnect });
+  items[0] = { ...items[0]!, separated: true, heading: t('drive.section') };
+  return items;
+}
+
 export function Toolbar(props: ToolbarProps) {
   const { t } = props;
+  const drive = props.drive?.kind === 'ready' ? props.drive : undefined;
   return (
     <header className="topbar" role="toolbar" aria-label="Structlet">
       <div className="topbar-start">
@@ -62,6 +88,7 @@ export function Toolbar(props: ToolbarProps) {
         </div>
         <Menu
           testId="menu-file"
+          onOpen={drive?.actions.prepare}
           label={<>{t('menu.file')}<Icon name="chevronDown" size={14} /></>}
           items={[
             { id: 'tb-new', label: t('toolbar.new'), icon: 'newFile', onSelect: props.onNew },
@@ -70,6 +97,7 @@ export function Toolbar(props: ToolbarProps) {
             { id: 'tb-save', label: t('toolbar.save'), icon: 'save', shortcut: `${mod}S`, separated: true, onSelect: props.onSave },
             { id: 'tb-save-as', label: t('toolbar.saveAs'), shortcut: `⇧${mod}S`, onSelect: props.onSaveAs },
             { id: 'tb-sample', label: t('toolbar.sample'), separated: true, onSelect: props.onSample },
+            ...driveItems(t, props.drive),
           ]}
         />
         <div className="doc-title">
@@ -105,6 +133,7 @@ export function Toolbar(props: ToolbarProps) {
         )}
       </div>
       <div className="topbar-end">
+        {drive && <DriveButton t={t} view={drive.view} actions={drive.actions} onDetails={drive.onDetails} onConflict={drive.onConflict} />}
         <div className="panel-toggles" role="group" aria-label={t('panels.label')}>
           <IconButton icon="panelLeft" label={props.leftOpen ? t('panels.left.hide') : t('panels.left.show')} pressed={props.leftOpen} disabled={props.presenting} onClick={() => props.onLeftPanel(!props.leftOpen)} testId="toggle-left" />
           <IconButton icon="panelRight" label={props.rightOpen ? t('panels.right.hide') : t('panels.right.show')} pressed={props.rightOpen} disabled={props.presenting} onClick={() => props.onRightPanel(!props.rightOpen)} testId="toggle-right" />
@@ -128,6 +157,7 @@ export function Toolbar(props: ToolbarProps) {
             { id: 'tb-icon-packs', label: t('toolbar.iconPacks'), icon: 'pack', onSelect: props.onIconPacks },
             ...(['system', 'light', 'dark'] as const).map((v, i) => ({ id: `tb-theme-${v}`, label: t(`toolbar.theme.${v}`), checked: props.theme === v, heading: i === 0 ? t('menu.theme') : undefined, separated: i === 0, onSelect: () => props.onTheme(v) })),
             ...(['ko', 'en'] as const).map((l, i) => ({ id: `tb-lang-${l}`, label: l === 'ko' ? '한국어' : 'English', checked: props.language === l, heading: i === 0 ? t('menu.language') : undefined, separated: i === 0, onSelect: () => props.onLanguage(l) })),
+            ...(props.stats ? [{ id: 'tb-usage-stats', label: t('consent.setting'), checked: props.stats.granted, separated: true, onSelect: props.stats.toggle }] : []),
           ]}
         />
         <Menu

@@ -92,7 +92,7 @@ describe('architecture', () => {
   });
 
   it('stateful adapters are created only in the app layer', () => {
-    const offenders = sources.filter((s) => layerOf(s.rel) !== 'app' && /new\s+(LocalDocumentStore|LocalFileAccess|IconPackStore)\b/.test(s.text) && !s.rel.startsWith('adapters/storage/')).map((s) => s.rel);
+    const offenders = sources.filter((s) => layerOf(s.rel) !== 'app' && /new\s+(LocalDocumentStore|LocalFileAccess|IconPackStore|GoogleConnection|DriveClient|GoogleAnalytics|LocalDriveLinks|LocalDriveFolder|LocalCreations)\b/.test(s.text) && !s.rel.startsWith('adapters/storage/')).map((s) => s.rel);
     expect(offenders).toEqual([]);
   });
 

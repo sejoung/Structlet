@@ -1,6 +1,15 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Editor, EditorSession, type IdGenerator } from '../application';
+import { DriveSync, Editor, EditorSession, type IdGenerator } from '../application';
+import { analyticsConfig } from '../adapters/analytics/config';
+import { GoogleAnalytics } from '../adapters/analytics/google-analytics';
+import { log } from '../adapters/diagnostics/log';
+import { openAuthChannel } from '../adapters/drive/auth-channel';
+import { DriveClient } from '../adapters/drive/client';
+import { driveConfig, webOrigin } from '../adapters/drive/config';
+import { LocalCreations } from '../adapters/drive/creations';
+import { GoogleConnection } from '../adapters/drive/google';
+import { LocalDriveFolder, LocalDriveLinks } from '../adapters/drive/links';
 import { LocalFileAccess, type FileAccessHost } from '../adapters/files/file-access';
 import { FILE_EXTENSION, MIME_TYPE } from '../adapters/format/structlet-format';
 import { IconPackStore } from '../adapters/storage/icon-pack-store';
@@ -27,11 +36,34 @@ const newId: IdGenerator = (kind) => `${PREFIX[kind]}-${crypto.randomUUID().slic
 
 const language = initialLanguage();
 const store = new LocalDocumentStore(window.localStorage);
-const doc = store.load() ?? emptyDocument(newId('document'), createTranslator(language)('app.untitled'));
+// A diagram linked to Drive whose browser copy was lost (or never written before a reload)
+// starts from the diagram as last synced: starting empty would read as deleting everything
+// and that would be saved to Drive on reconnecting (ADR 0016).
+const stored = store.load();
+const linked = new LocalDriveLinks().read();
+const doc = linked && (!stored || stored.id !== linked.base.id) ? linked.base : (stored ?? emptyDocument(newId('document'), createTranslator(language)('app.untitled')));
 const files = new LocalFileAccess(window as unknown as FileAccessHost, [{ description: 'Structlet diagram', accept: { [MIME_TYPE]: [FILE_EXTENSION] } }]);
 const packStore = new IconPackStore(typeof indexedDB === 'undefined' ? undefined : indexedDB);
 const session = new EditorSession(doc);
 const editor = new Editor(session, newId);
+
+// Google Drive and usage statistics: only when configured, and only on a web origin, since
+// Google sign-in cannot work on a page opened from a file (ADR 0016, ADR 0017).
+const web = webOrigin(window.location);
+const google = driveConfig();
+function driveServices() {
+  if (!google || !web) return undefined;
+  const auth = new GoogleConnection(google, openAuthChannel(google.clientId));
+  const client = new DriveClient(auth.getToken, undefined, (token) => auth.clearToken(token), new LocalCreations());
+  return { auth, sync: new DriveSync(session, client, new LocalDriveLinks()), folder: new LocalDriveFolder() };
+}
+const drive = driveServices();
+const analytics = web ? analyticsConfig() : null;
+const stats = analytics ? new GoogleAnalytics(analytics.measurementId) : undefined;
+
+// Failures are recorded by kind only; their messages may quote what the user typed.
+window.addEventListener('error', (e) => log.error('app.uncaught', { name: e.error instanceof Error ? e.error.name : 'Error' }));
+window.addEventListener('unhandledrejection', (e) => log.error('app.unhandled', { name: e.reason instanceof Error ? e.reason.name : typeof e.reason }));
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -40,6 +72,9 @@ createRoot(document.getElementById('root')!).render(
       store={store}
       files={files}
       packStore={packStore}
+      drive={drive}
+      driveWebOnly={Boolean(google) && !web}
+      stats={stats}
       newId={newId}
       initialLanguage={language}
       onLanguage={(l) => {

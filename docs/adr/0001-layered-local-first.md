@@ -16,7 +16,7 @@ Structlet은 서버 없이 정적 호스팅으로 동작한다. 문서는 사용
 | `domain` | 문서·노드·영역·연결선·주석 모델, 계층 계산, 명령, 패치, 검증 | domain |
 | `application` | 편집 세션, 선택, undo/redo, 편집 유스케이스, 저장소 포트 | domain |
 | `engine` | 월드 좌표, 장면 계산, 포트, 라우팅, 스냅, 정렬, 히트 테스트, SVG 마크업 | domain |
-| `adapters` | `.structlet` 형식, 브라우저 저장소, 파일 입출력, SVG/PNG 내보내기, 서비스 카탈로그 | domain, engine, application, `lucide` |
+| `adapters` | `.structlet` 형식, 브라우저 저장소, 파일 입출력, SVG/PNG 내보내기, 서비스 카탈로그, Google Drive, 사용 통계 | domain, engine, application, `lucide`, `yaml`, `fflate` |
 | `components` | 위 막대, 사이드바, 캔버스, 인스펙터. 주입받은 값과 액션으로만 동작 | domain, engine, application, i18n, `react`, `lucide`(화면 아이콘 데이터) |
 | `app` | 조립, 수명 주기, 자동 저장, 단축키 | 전부 |
 | `i18n` | 한국어·영어 메시지 | 없음 |

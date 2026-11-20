@@ -336,3 +336,25 @@ button.twisty:hover { background: var(--surface-3); color: var(--ink); }
 .tool-hint { position: absolute; left: 12px; top: 56px; z-index: 4; max-width: 320px; padding: 5px 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--float); color: var(--ink-2); font-size: 12px; }
 .tool-hint.present { top: 12px; }
 .panel-toggles { display: flex; gap: 2px; }
+
+/* Google Drive */
+.drive-button { display: inline-flex; align-items: center; gap: 6px; height: var(--control-h); padding: 0 10px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); color: var(--ink-2); white-space: nowrap; font-size: 12.5px; }
+.drive-button:hover { border-color: var(--line-strong); background: var(--surface-2); color: var(--ink); }
+.drive-button.synced { color: var(--ink); }
+.drive-button.synced svg:last-child { color: #2f9e6b; }
+.drive-button.attention { border-color: var(--warn); color: var(--warn); }
+.drive-button[aria-busy='true'] .drive-mark { animation: drive-pulse 1.2s ease-in-out infinite; }
+.drive-mark { width: 16px; height: 16px; flex: none; }
+@keyframes drive-pulse { 50% { opacity: 0.35; } }
+.drive-facts { display: grid; grid-template-columns: auto 1fr; gap: 4px 16px; margin: 8px 0; }
+.drive-facts dt { color: var(--muted); }
+.drive-facts dd { margin: 0; overflow-wrap: anywhere; }
+.dialog .button-row button.primary, .consent button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.conflict-list { list-style: none; margin: 8px 0; padding: 0; display: grid; gap: 10px; max-height: 50vh; overflow: auto; }
+.conflict-list li { display: grid; gap: 6px; }
+.conflict-list .segmented { width: 100%; }
+.conflict-list .segmented button { flex: 1; height: auto; padding: 6px 8px; display: grid; justify-items: start; gap: 2px; text-align: left; }
+.side-name { font-size: 11px; color: var(--muted); font-weight: 500; }
+.side-value { font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.consent { position: fixed; left: 50%; top: 58px; transform: translateX(-50%); z-index: 40; display: flex; align-items: center; gap: 10px; max-width: min(720px, calc(100% - 32px)); padding: 10px 12px 10px 16px; background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--float); font-size: 12.5px; }
+.consent button { flex: none; height: 30px; padding: 0 12px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }

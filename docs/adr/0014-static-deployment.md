@@ -11,6 +11,9 @@ Structlet은 서버 없이 HTML로만 배포한다. 정적 호스팅(루트나 �
 
 - 기본 빌드(`npm run build`, `dist/`)는 `base: './'`로 상대 경로를 쓴다. 어느 경로에 올려도 동작하고, compose·Kubernetes 파서는 필요할 때 불러오는 별도 청크다.
 - 단일 파일 빌드(`npm run build:single`)는 `vite-plugin-singlefile`로 JS·CSS·지연 청크를 모두 넣은 `dist-single/structlet.html` 하나를 만든다(약 0.5MB). 파비콘도 `data:` URI로 넣었다.
+- 개발 서버와 미리보기는 `127.0.0.1`(5183·5184)에서 연다. Google OAuth에 등록하는 origin과 같게 하기 위해서다.
+- 웹 배포 빌드에는 CSP를 넣는다(`scripts/csp.ts`). Drive·GA는 설정된 빌드에서만 그 origin을 연다([ADR 0016](0016-google-drive-sync.md), [ADR 0017](0017-usage-statistics.md)). 단일 파일 빌드는 스크립트가 인라인이라 CSP를 넣지 않고, Drive·GA도 꺼진다.
+- E2E는 개발 서버가 아니라 프로덕션 빌드를 `vite preview`로 띄워 실행한다. 그래서 CSP를 포함해 배포되는 모습 그대로 검사한다.
 - 모든 기능(가져오기, 저장, 내보내기, 아이콘 팩)은 브라우저 안에서만 동작한다. `file://`에서 생길 수 있는 제약은 다음과 같다.
   - 자동 저장과 아이콘 팩 보관은 브라우저의 저장소 정책을 따른다.
   - 같은 파일 덮어쓰기는 API가 없으면 다운로드로 대신한다.

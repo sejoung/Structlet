@@ -1,4 +1,5 @@
 import type { Editor, IdGenerator } from '../application';
+import { log } from '../adapters/diagnostics/log';
 import { importInto, type ImportSource } from '../adapters/draft/import';
 import { exportPng, exportSvg, type ExportView } from '../adapters/export/image-export';
 import { downloadBlob, downloadText } from '../adapters/files/browser-files';
@@ -10,7 +11,7 @@ import type { Translate } from '../i18n/messages';
 import sampleText from '../../samples/three-tier.structlet?raw';
 
 export interface DocumentActions {
-  newDocument(): void;
+  newDocument(): Promise<void>;
   open(): Promise<void>;
   importFile(): Promise<void>;
   importText(text: string, name?: string): Promise<void>;
@@ -18,7 +19,7 @@ export interface DocumentActions {
   saveAs(): Promise<void>;
   exportSvg(): void;
   exportPng(): Promise<void>;
-  openSample(): void;
+  openSample(): Promise<void>;
 }
 
 interface Deps {
@@ -30,25 +31,33 @@ interface Deps {
   notify(message: string): void;
   onOpened(doc: Document): void;
   view(): ExportView;
+  /** Google Drive, when this build has it: settle before replacing, save to the linked file. */
+  drive?: () => { beforeReplace(): Promise<boolean>; markFresh(): void; linked: boolean; saveNow(): void } | null;
 }
 
 const SOURCE_NAMES: Record<ImportSource, string> = { draft: 'draft JSON', compose: 'docker-compose', terraform: 'Terraform', kubernetes: 'Kubernetes' };
 
 /** File use cases wired to browser adapters. `onOpened` lets the view fit the new document. */
-export function createDocumentActions({ editor, files, newId, appearance, t, notify, onOpened, view }: Deps): DocumentActions {
+export function createDocumentActions({ editor, files, newId, appearance, t, notify, onOpened, view, drive }: Deps): DocumentActions {
   const session = editor.session;
-  const replace = (doc: Document, keepFile = false) => {
+  /** False when unsaved Drive changes could not be saved first; nothing is replaced then. */
+  const replace = async (doc: Document, keepFile = false): Promise<boolean> => {
+    const d = drive?.();
+    if (d && !(await d.beforeReplace())) return false;
     if (!keepFile) files.forget();
     session.replaceDocument(doc, { dirty: true });
     onOpened(doc);
+    return true;
   };
   const importText = async (text: string, name?: string) => {
     const result = await importInto(session.committedDocument, text, undefined, name?.replace(/\.[^.]+$/, ''));
     const doc = session.committedDocument;
     if (!result.ok) {
+      log.warn('files.import-failed', { source: result.source });
       notify(`${t('import.failed')}: ${result.errors.slice(0, 3).join(' · ')}`);
       return;
     }
+    log.info('files.imported', { source: result.source });
     const hadContent = doc.nodes.length + doc.containers.length > 0;
     // Merging into an existing diagram keeps its title; an empty diagram takes the imported one.
     const next = hadContent ? { ...result.document, title: doc.title } : result.document;
@@ -62,11 +71,13 @@ export function createDocumentActions({ editor, files, newId, appearance, t, not
     if (outcome === 'saved' && files.fileName) notify(t('save.saved', { name: files.fileName }));
   };
   return {
-    newDocument() {
+    async newDocument() {
       const doc = session.committedDocument;
       const hasContent = doc.nodes.length + doc.containers.length + doc.annotations.length > 0;
-      if (hasContent && !window.confirm(t('confirm.new'))) return;
-      replace(emptyDocument(newId('document'), t('app.untitled')));
+      if (hasContent && !drive?.()?.linked && !window.confirm(t('confirm.new'))) return;
+      if (!(await replace(emptyDocument(newId('document'), t('app.untitled'))))) return;
+      drive?.()?.markFresh();
+      log.info('files.new');
     },
     async open() {
       const file = await files.open(`${FILE_EXTENSION},application/json,.json`);
@@ -77,7 +88,7 @@ export function createDocumentActions({ editor, files, newId, appearance, t, not
         notify(`${t('error.open')}: ${result.errors.slice(0, 3).join(' · ')}`);
         return;
       }
-      replace(result.document, true);
+      if (await replace(result.document, true)) log.info('files.opened');
     },
     async importFile() {
       const file = await files.read('.json,.yml,.yaml,application/json,text/yaml');
@@ -85,28 +96,41 @@ export function createDocumentActions({ editor, files, newId, appearance, t, not
     },
     importText,
     async save() {
-      saved(await files.save(text(), name(), MIME_TYPE));
+      const d = drive?.();
+      if (d?.linked) {
+        d.saveNow();
+        log.info('files.saved', { target: 'drive' });
+        return;
+      }
+      const outcome = await files.save(text(), name(), MIME_TYPE);
+      if (outcome !== 'cancelled') log.info('files.saved', { target: outcome === 'saved' ? 'file' : 'download' });
+      saved(outcome);
     },
     async saveAs() {
-      saved(await files.saveAs(text(), name(), MIME_TYPE));
+      const outcome = await files.saveAs(text(), name(), MIME_TYPE);
+      if (outcome !== 'cancelled') log.info('files.saved', { target: outcome === 'saved' ? 'file' : 'download' });
+      saved(outcome);
     },
     exportSvg() {
       const doc = session.committedDocument;
       const suffix = view() === 'isometric' ? '-isometric' : '';
       downloadText(exportSvg(doc, appearance(), { view: view() }), fileNameFor(doc.title + suffix, '.svg'), 'image/svg+xml');
+      log.info('files.exported', { format: 'svg', view: view() });
     },
     async exportPng() {
       const doc = session.committedDocument;
       try {
         const suffix = view() === 'isometric' ? '-isometric' : '';
         downloadBlob(await exportPng(doc, appearance(), { view: view() }), fileNameFor(doc.title + suffix, '.png'));
+        log.info('files.exported', { format: 'png', view: view() });
       } catch {
+        log.error('files.png-failed');
         notify(t('error.png'));
       }
     },
-    openSample() {
+    async openSample() {
       const result = parseStructlet(sampleText);
-      if (result.ok) replace({ ...result.document, id: newId('document') });
+      if (result.ok && (await replace({ ...result.document, id: newId('document') }))) log.info('files.sample');
     },
   };
 }

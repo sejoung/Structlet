@@ -24,6 +24,14 @@ import { createPanelActions } from './panel-actions';
 import { useClipboard } from './use-clipboard';
 import { useShortcuts } from './use-shortcuts';
 import { useTheme } from './use-theme';
+import { useAutosave } from './use-autosave';
+import { RECENT_KEY, PANELS_KEY, store as storePref, storedPanels, storedRecent, type Panels } from './preferences';
+import { useDriveBar } from './drive/use-drive-bar';
+import type { DriveServices } from './drive/use-drive';
+import { useUsageStats } from './use-usage-stats';
+import type { UsageStats } from '../adapters/analytics/google-analytics';
+import { log } from '../adapters/diagnostics/log';
+import { ConsentBanner } from '../components/drive/DriveDialogs';
 
 /** Canvas surface colors; keep in sync with --canvas in styles.css. */
 const CANVAS_LIGHT = '#eef0f4';
@@ -34,6 +42,10 @@ interface AppProps {
   store: DocumentStore;
   files: LocalFileAccess;
   packStore: IconPackStore;
+  drive?: DriveServices;
+  /** Drive is configured but this page has no web origin (opened from a file). */
+  driveWebOnly?: boolean;
+  stats?: UsageStats;
   newId: IdGenerator;
   initialLanguage: Language;
   onLanguage(language: Language): void;
@@ -41,29 +53,7 @@ interface AppProps {
 
 const toPalette = (language: Language, look: ReturnType<typeof createAppearance>) => (s: ServiceDefinition): PaletteService => ({ id: s.id, name: s.name[language], provider: s.provider, role: s.role, glyph: s.glyph, color: s.color, image: look.service(s.id)?.image });
 
-const PANELS_KEY = 'structlet:panels';
-type Panels = { left: boolean; right: boolean };
-function storedPanels(): Panels {
-  try {
-    const v = JSON.parse(localStorage.getItem(PANELS_KEY) ?? 'null');
-    if (v && typeof v.left === 'boolean' && typeof v.right === 'boolean') return v;
-  } catch {
-    // per-browser convenience only
-  }
-  return { left: true, right: !window.matchMedia?.('(max-width: 1100px)').matches };
-}
-
-const RECENT_KEY = 'structlet:recent-services';
-function storedRecent(): string[] {
-  try {
-    const v = JSON.parse(localStorage.getItem(RECENT_KEY) ?? '[]');
-    return Array.isArray(v) ? v.filter((x) => typeof x === 'string').slice(0, 8) : [];
-  } catch {
-    return [];
-  }
-}
-
-export function App({ editor, store, files, packStore, newId, initialLanguage, onLanguage }: AppProps) {
+export function App({ editor, store, files, packStore, drive: driveServices, driveWebOnly = false, stats, newId, initialLanguage, onLanguage }: AppProps) {
   const [language, setLanguage] = useState<Language>(initialLanguage);
   const [viewport, setViewport] = useState<Viewport>(DEFAULT_VIEWPORT);
   const [size, setSize] = useState({ width: 0, height: 0 });
@@ -78,11 +68,7 @@ export function App({ editor, store, files, packStore, newId, initialLanguage, o
   const [presenting, setPresentingState] = useState(false);
   const setPanels = useCallback((next: Panels) => {
     setPanelsState(next);
-    try {
-      localStorage.setItem(PANELS_KEY, JSON.stringify(next));
-    } catch {
-      // per-browser convenience only
-    }
+    storePref(PANELS_KEY, next);
   }, []);
   const panelsRef = useRef(panels);
   panelsRef.current = panels;
@@ -90,6 +76,7 @@ export function App({ editor, store, files, packStore, newId, initialLanguage, o
   const setPresenting = useCallback((on: boolean) => {
     setPresentingState(on);
     fitOnResize.current = on;
+    if (on) log.info('view.presenting');
     if (on) {
       editor.session.select([]);
       setEditing(null);
@@ -139,8 +126,19 @@ export function App({ editor, store, files, packStore, newId, initialLanguage, o
     if (s.width > 0) setViewport(fitView(computeScene(doc, appearance).bounds, s));
   }, [appearance]);
 
+  const driveUi = useDriveBar({ services: driveServices, webOnly: driveWebOnly, editor, t, language, notify: setNotice, onOpened: fitTo });
+  const driveRef = useRef(driveUi.controller);
+  driveRef.current = driveUi.controller;
+  const usage = useUsageStats(stats);
   const actions = useMemo(
-    () => createDocumentActions({ editor, files, newId, appearance: () => appearanceRef.current, t, notify: setNotice, onOpened: fitTo, view: () => viewRef.current }),
+    () =>
+      createDocumentActions({
+        editor, files, newId, appearance: () => appearanceRef.current, t, notify: setNotice, onOpened: fitTo, view: () => viewRef.current,
+        drive: () => {
+          const d = driveRef.current;
+          return d ? { beforeReplace: d.beforeReplace, markFresh: d.markFresh, linked: d.linked, saveNow: d.actions.saveNow } : null;
+        },
+      }),
     [editor, files, newId, t, fitTo],
   );
   const panelActions = useMemo(() => createPanelActions(editor, () => sceneRef.current, language), [editor, language]);
@@ -159,15 +157,7 @@ export function App({ editor, store, files, packStore, newId, initialLanguage, o
     if (scene.bounds) setViewport(fitView(scene.bounds, size));
   }, [size, scene.bounds]);
 
-  useEffect(() => {
-    if (!snapshot.dirty) return;
-    const revision = snapshot.revision;
-    const timer = setTimeout(() => {
-      store.save(editor.session.committedDocument);
-      editor.session.markSaved(revision);
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [snapshot.revision, snapshot.dirty, editor, store]);
+  useAutosave(editor, store, snapshot);
 
   useEffect(() => {
     document.title = `${snapshot.document.title} · Structlet`;
@@ -195,11 +185,7 @@ export function App({ editor, store, files, packStore, newId, initialLanguage, o
     editor.addService(serviceId, name, center, containerAt(scene, center));
     const next = [serviceId, ...recent.filter((x) => x !== serviceId)].slice(0, 8);
     setRecent(next);
-    try {
-      localStorage.setItem(RECENT_KEY, JSON.stringify(next));
-    } catch {
-      // per-browser convenience only
-    }
+    storePref(RECENT_KEY, next);
   };
 
   const addArea = (kind: ContainerKind) => {
@@ -272,7 +258,7 @@ export function App({ editor, store, files, packStore, newId, initialLanguage, o
         view={view}
         theme={theme.choice}
         fileName={files.fileName}
-        onNew={actions.newDocument}
+        onNew={() => void actions.newDocument()}
         onOpen={() => void actions.open()}
         onImport={() => void actions.importFile()}
         onSave={() => void actions.save()}
@@ -281,9 +267,14 @@ export function App({ editor, store, files, packStore, newId, initialLanguage, o
         onExportPng={() => void actions.exportPng()}
         onUndo={() => editor.undo()}
         onRedo={() => editor.redo()}
-        onSample={actions.openSample}
+        onSample={() => void actions.openSample()}
         onTitle={(title) => editor.setTitle(title)}
-        onView={setView}
+        onView={(v) => {
+          setView(v);
+          log.info('view.changed', { view: v });
+        }}
+        drive={driveUi.bar}
+        {...(usage ? { stats: { granted: usage.granted, toggle: usage.toggle } } : {})}
         onTheme={theme.setChoice}
         onIconPacks={() => setPacksOpen(true)}
         onShortcuts={() => setShortcutsOpen(true)}
@@ -329,7 +320,7 @@ export function App({ editor, store, files, packStore, newId, initialLanguage, o
             setViewport={setViewport}
             onResize={onCanvasResize}
             onDropService={(id, world) => addService(id, world)}
-            onOpenSample={actions.openSample}
+            onOpenSample={() => void actions.openSample()}
             editing={editing}
             setEditing={setEditing}
             theme={canvasTheme}
@@ -368,6 +359,8 @@ export function App({ editor, store, files, packStore, newId, initialLanguage, o
         />
       )}
       {shortcutsOpen && <ShortcutsDialog t={t} onClose={() => setShortcutsOpen(false)} />}
+      {driveUi.dialogs}
+      {usage?.undecided && <ConsentBanner t={t} onChoose={(granted) => usage.choose(granted ? 'granted' : 'denied')} />}
     </div>
   );
 }

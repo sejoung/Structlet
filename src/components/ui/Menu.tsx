@@ -21,10 +21,12 @@ interface MenuProps {
   readonly testId: string;
   readonly className?: string;
   readonly align?: 'start' | 'end';
+  /** Called when the menu opens, e.g. to load what its items need. */
+  readonly onOpen?: () => void;
 }
 
 /** A button that opens a list of actions. Arrow keys move, Escape closes, clicking outside closes. */
-export function Menu({ label, ariaLabel, items, testId, className = '', align = 'start' }: MenuProps) {
+export function Menu({ label, ariaLabel, items, testId, className = '', align = 'start', onOpen }: MenuProps) {
   const [open, setOpen] = useState(false);
   const id = useId();
   const root = useRef<HTMLDivElement>(null);
@@ -43,7 +45,10 @@ export function Menu({ label, ariaLabel, items, testId, className = '', align = 
   };
   return (
     <div className={`menu ${className}`} ref={root}>
-      <button type="button" className="menu-button" aria-haspopup="menu" aria-expanded={open} aria-controls={id} aria-label={ariaLabel} data-testid={testId} onClick={() => setOpen((o) => !o)}>
+      <button type="button" className="menu-button" aria-haspopup="menu" aria-expanded={open} aria-controls={id} aria-label={ariaLabel} data-testid={testId} onClick={() => {
+          if (!open) onOpen?.();
+          setOpen((o) => !o);
+        }}>
         {label}
       </button>
       {open && (

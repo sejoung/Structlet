@@ -182,3 +182,4 @@ Desktop.ini
 # Local Claude Code settings
 .claude/settings.local.json
 dist-single/
+.e2e/
