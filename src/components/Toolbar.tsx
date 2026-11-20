@@ -19,6 +19,7 @@ export interface ToolbarActions {
   onLanguage(language: Language): void;
   onView(view: ViewMode): void;
   onTheme(theme: ThemeChoice): void;
+  onIconPacks(): void;
 }
 
 interface ToolbarProps extends ToolbarActions {
@@ -67,6 +68,7 @@ export function Toolbar(props: ToolbarProps) {
       </div>
       <div className="toolbar-spacer" />
       <button type="button" className="ghost" data-testid="tb-sample" onClick={props.onSample}>{t('toolbar.sample')}</button>
+      <button type="button" className="ghost" data-testid="tb-icon-packs" onClick={props.onIconPacks}>{t('toolbar.iconPacks')}</button>
       <select aria-label={t('toolbar.theme')} data-testid="tb-theme" value={props.theme} onChange={(e) => props.onTheme(e.target.value as ThemeChoice)}>
         {(['system', 'light', 'dark'] as const).map((v) => (
           <option key={v} value={v}>{t(`toolbar.theme.${v}`)}</option>

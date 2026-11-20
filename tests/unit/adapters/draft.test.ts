@@ -153,3 +153,63 @@ describe('documented example', () => {
     expect(Math.abs(step.x - alb.x)).toBeLessThan(20);
   });
 });
+
+describe('terraform for Azure and Google Cloud', () => {
+  it('maps resources to provider services and nests them in networks', async () => {
+    const result = await importInto(emptyDocument('d', 'x'), fixture('terraform-azure-gcp.json'));
+    expect(result.ok, !result.ok ? result.errors.join() : '').toBe(true);
+    if (!result.ok) return;
+    const doc = result.document;
+    const node = (id: string) => doc.nodes.find((n) => n.id === id)!;
+    const parent = (id: string) => [...doc.nodes, ...doc.containers].find((b) => b.id === id)!.parentId;
+    expect(node('tf-azurerm_kubernetes_cluster.aks').serviceId).toBe('azure.aks');
+    expect(node('tf-google_compute_instance.web').serviceId).toBe('gcp.compute-engine');
+    expect(node('tf-google_sql_database_instance.db').serviceId).toBe('gcp.cloud-sql');
+    expect(parent('tf-azurerm_subnet.app')).toBe('tf-azurerm_virtual_network.main');
+    expect(parent('tf-azurerm_kubernetes_cluster.aks')).toBe('tf-azurerm_subnet.app');
+    expect(parent('tf-azurerm_linux_virtual_machine.vm')).toBe('tf-azurerm_subnet.app');
+    expect(parent('tf-google_compute_subnetwork.sub')).toBe('tf-google_compute_network.vpc');
+    expect(parent('tf-google_compute_instance.web')).toBe('tf-google_compute_subnetwork.sub');
+    expect(parent('tf-azurerm_key_vault.kv')).toBe('tf-cloud-azurerm');
+    expect(doc.containers.map((c) => c.label)).toEqual(expect.arrayContaining(['Azure', 'Google Cloud']));
+    noOverlaps(doc);
+  });
+});
+
+describe('kubernetes manifests', () => {
+  const edge = (doc: Document, a: string, b: string) => doc.edges.find((e) => e.source.kind === 'attached' && e.target.kind === 'attached' && e.source.objectId === a && e.target.objectId === b);
+
+  it('maps a multi-document manifest into cluster and namespace areas with its relations', async () => {
+    const text = fixture('k8s.yaml');
+    expect(detectSource(text)).toBe('kubernetes');
+    const result = await importInto(emptyDocument('d', 'x'), text);
+    expect(result.ok, !result.ok ? result.errors.join() : '').toBe(true);
+    if (!result.ok) return;
+    const doc = result.document;
+    const ids = doc.nodes.map((n) => n.id);
+    expect(ids).toEqual(expect.arrayContaining(['k8s-shop-ingress-web', 'k8s-shop-service-api', 'k8s-shop-deployment-api', 'k8s-shop-statefulset-db', 'k8s-shop-persistentvolumeclaim-data-db', 'k8s-jobs-cronjob-report', 'k8s-clients']));
+    expect(ids.some((id) => id.includes('-pod-'))).toBe(false);
+    expect(doc.nodes.find((n) => n.id === 'k8s-shop-deployment-api')!.label).toBe('api\n3 replicas');
+    expect(doc.containers.map((c) => [c.id, c.kind])).toEqual(expect.arrayContaining([['k8s-cluster', 'cluster'], ['k8s-ns-shop', 'namespace'], ['k8s-ns-jobs', 'namespace']]));
+    expect(edge(doc, 'k8s-shop-ingress-web', 'k8s-shop-service-api')!.label).toBe('shop.example.com/api');
+    expect(edge(doc, 'k8s-shop-service-api', 'k8s-shop-deployment-api')).toBeTruthy();
+    expect(edge(doc, 'k8s-shop-deployment-api', 'k8s-shop-configmap-api-config')!.style.dashed).toBe(true);
+    expect(edge(doc, 'k8s-shop-deployment-api', 'k8s-shop-secret-db-secret')).toBeTruthy();
+    expect(edge(doc, 'k8s-shop-horizontalpodautoscaler-api', 'k8s-shop-deployment-api')!.label).toBe('scales');
+    expect(edge(doc, 'k8s-shop-statefulset-db', 'k8s-shop-persistentvolumeclaim-data-db')).toBeTruthy();
+    expect(edge(doc, 'k8s-clients', 'k8s-shop-ingress-web')).toBeTruthy();
+    noOverlaps(doc);
+  });
+
+  it('reads kubectl JSON lists and re-imports without moving placed objects', async () => {
+    const list = JSON.stringify({ apiVersion: 'v1', kind: 'List', items: [{ apiVersion: 'apps/v1', kind: 'Deployment', metadata: { name: 'web' }, spec: { replicas: 2, template: { metadata: { labels: { app: 'web' } } } } }] });
+    expect(detectSource(list)).toBe('kubernetes');
+    const first = await importInto(emptyDocument('d', 'x'), list);
+    if (!first.ok) throw new Error(first.errors.join());
+    const moved = { ...first.document, nodes: first.document.nodes.map((n) => (n.id === 'k8s-default-deployment-web' ? { ...n, x: n.x + 40 } : n)) };
+    const again = await importInto(moved, list);
+    if (!again.ok) throw new Error(again.errors.join());
+    expect(again.document.nodes.find((n) => n.id === 'k8s-default-deployment-web')!.x).toBe(moved.nodes.find((n) => n.id === 'k8s-default-deployment-web')!.x);
+    expect(again.created).toEqual([]);
+  });
+});

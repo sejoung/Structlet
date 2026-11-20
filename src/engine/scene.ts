@@ -36,6 +36,8 @@ export interface SceneContainer {
   readonly label: string;
   readonly style: ContainerStyle;
   readonly glyph: Glyph | null;
+  /** Area icon from an icon pack (`data:` URI), drawn instead of the glyph. */
+  readonly image: string | null;
   readonly locked: boolean;
 }
 
@@ -46,6 +48,8 @@ export interface SceneNode {
   readonly label: readonly string[];
   readonly labelBox: Rect | null;
   readonly glyph: Glyph;
+  /** Official icon from an icon pack (`data:` URI), drawn instead of the tile and glyph. */
+  readonly image: string | null;
   readonly color: string;
   readonly serviceName: string;
   readonly knownService: boolean;
@@ -154,7 +158,7 @@ export function computeScene(doc: Document, appearance: Appearance): Scene {
     .map(({ c, depth }) => {
       const rect = rects.get(c.id)!;
       frames.set(c.id, { left: rect.x, right: rect.x + rect.width, top: rect.y, bottom: rect.y + rect.height, sideTop: rect.y, sideBottom: rect.y + rect.height });
-      return { id: c.id, kind: c.kind, rect, depth, label: c.label, style: c.style, glyph: appearance.containerGlyph(c.kind), locked: c.locked };
+      return { id: c.id, kind: c.kind, rect, depth, label: c.label, style: c.style, glyph: appearance.containerGlyph(c.kind), image: appearance.containerImage?.(c.kind) ?? null, locked: c.locked };
     });
 
   const obstacles: Rect[] = [];
@@ -163,7 +167,7 @@ export function computeScene(doc: Document, appearance: Appearance): Scene {
     const rect = rects.get(n.id)!;
     const service = appearance.service(n.serviceId);
     const look = service ?? appearance.fallback;
-    const base = { id: n.id, variant: n.variant, rect, glyph: look.glyph, color: look.color, serviceName: look.name, knownService: !!service, locked: n.locked };
+    const base = { id: n.id, variant: n.variant, rect, glyph: look.glyph, image: look.image ?? null, color: look.color, serviceName: look.name, knownService: !!service, locked: n.locked };
     blockers.push({ id: n.id, rect });
     if (n.variant === 'box') {
       const textWidth = rect.width - BOX_NODE.pad - BOX_NODE.icon - BOX_NODE.gap - BOX_NODE.pad;

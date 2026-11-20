@@ -128,7 +128,31 @@ export function markerDefs(t: DiagramTheme): string {
 }
 
 
-function nodeMarkup(node: SceneNode, t: DiagramTheme): string {
+/**
+ * Icon-pack images are defined once per drawing as symbols and placed with
+ * `<use>`, so a pack icon used many times is embedded once.
+ */
+export class ImageSymbols {
+  private ids = new Map<string, string>();
+  constructor(private readonly prefix = 'sl-img') {}
+
+  use(uri: string, x: number, y: number, size: number): string {
+    let id = this.ids.get(uri);
+    if (!id) {
+      id = `${this.prefix}-${this.ids.size}`;
+      this.ids.set(uri, id);
+    }
+    return `<use href="#${id}" xlink:href="#${id}" x="${n(x)}" y="${n(y)}" width="${n(size)}" height="${n(size)}"/>`;
+  }
+
+  defs(): string {
+    if (this.ids.size === 0) return '';
+    const symbols = [...this.ids].map(([uri, id]) => `<symbol id="${id}" viewBox="0 0 1 1"><image width="1" height="1" preserveAspectRatio="xMidYMid meet" href="${escapeXml(uri)}" xlink:href="${escapeXml(uri)}"/></symbol>`);
+    return `<defs>${symbols.join('')}</defs>`;
+  }
+}
+
+function nodeMarkup(node: SceneNode, t: DiagramTheme, images: ImageSymbols): string {
   const r = node.rect;
   if (node.variant === 'box') {
     const icon = BOX_NODE.icon;
@@ -139,17 +163,19 @@ function nodeMarkup(node: SceneNode, t: DiagramTheme): string {
     return (
       `<g data-node="${escapeXml(node.id)}">` +
       `<rect x="${n(r.x)}" y="${n(r.y)}" width="${n(r.width)}" height="${n(r.height)}" rx="6" fill="${t.boxFill}" stroke="${node.color}" stroke-width="1.5"/>` +
-      `<rect x="${n(ix)}" y="${n(iy)}" width="${icon}" height="${icon}" rx="5" fill="${node.color}"/>` +
-      glyphMarkup(node.glyph, ix + 6, iy + 6, icon - 12, '#ffffff', 1.7) +
+      (node.image ? images.use(node.image, ix, iy, icon) : `<rect x="${n(ix)}" y="${n(iy)}" width="${icon}" height="${icon}" rx="5" fill="${node.color}"/>` + glyphMarkup(node.glyph, ix + 6, iy + 6, icon - 12, '#ffffff', 1.7)) +
       textLines(node.label, tx, ty, BOX_NODE.lineHeight, `font-size="${BOX_NODE.fontSize}" fill="${t.nodeLabel}"`) +
       '</g>'
     );
   }
   const size = Math.min(r.width, r.height) * 0.62;
+  const side = Math.min(r.width, r.height);
+  const icon = node.image
+    ? images.use(node.image, r.x + (r.width - side) / 2, r.y + (r.height - side) / 2, side)
+    : `<rect x="${n(r.x)}" y="${n(r.y)}" width="${n(r.width)}" height="${n(r.height)}" rx="${n(side * 0.14)}" fill="${node.color}"/>` + glyphMarkup(node.glyph, r.x + (r.width - size) / 2, r.y + (r.height - size) / 2, size, '#ffffff', 1.8);
   return (
     `<g data-node="${escapeXml(node.id)}">` +
-    `<rect x="${n(r.x)}" y="${n(r.y)}" width="${n(r.width)}" height="${n(r.height)}" rx="${n(Math.min(r.width, r.height) * 0.14)}" fill="${node.color}"/>` +
-    glyphMarkup(node.glyph, r.x + (r.width - size) / 2, r.y + (r.height - size) / 2, size, '#ffffff', 1.8) +
+    icon +
     (node.labelBox ? textLines(node.label, r.x + r.width / 2, node.labelBox.y + NODE_LABEL.fontSize - 1, NODE_LABEL.lineHeight, `font-size="${NODE_LABEL.fontSize}" fill="${t.nodeLabel}" text-anchor="middle"`) : '') +
     '</g>'
   );
@@ -182,6 +208,7 @@ function annotationMarkup(a: SceneAnnotation, t: DiagramTheme): string {
 
 /** Diagram content without the outer `<svg>`, in world coordinates. */
 export function renderSceneBody(scene: Scene, theme: DiagramTheme = LIGHT_THEME): string {
+  const images = new ImageSymbols();
   const out: string[] = [markerDefs(theme)];
   for (const c of scene.containers) {
     const stroke = AREA_STROKE[c.style.color] ?? AREA_STROKE.gray!;
@@ -191,7 +218,10 @@ export function renderSceneBody(scene: Scene, theme: DiagramTheme = LIGHT_THEME)
     out.push(`<g data-container="${escapeXml(c.id)}">`);
     out.push(`<rect x="${n(r.x)}" y="${n(r.y)}" width="${n(r.width)}" height="${n(r.height)}" ${fill} stroke="${stroke}" stroke-width="1.5"${dash}/>`);
     let labelX = r.x + 10;
-    if (c.glyph) {
+    if (c.image) {
+      out.push(images.use(c.image, r.x, r.y, CONTAINER_HEADER.glyph));
+      labelX = r.x + CONTAINER_HEADER.glyph + 8;
+    } else if (c.glyph) {
       const g = CONTAINER_HEADER.glyph;
       out.push(`<rect x="${n(r.x)}" y="${n(r.y)}" width="${g}" height="${g}" fill="${stroke}"/>`);
       out.push(glyphMarkup(c.glyph, r.x + 3, r.y + 3, g - 6, '#ffffff', 1.6));
@@ -201,9 +231,10 @@ export function renderSceneBody(scene: Scene, theme: DiagramTheme = LIGHT_THEME)
     out.push('</g>');
   }
   for (const e of scene.edges) out.push(edgeMarkup(e, theme));
-  for (const node of scene.nodes) out.push(nodeMarkup(node, theme));
+  for (const node of scene.nodes) out.push(nodeMarkup(node, theme, images));
   for (const e of scene.edges) out.push(edgeLabelMarkup(e, theme));
   for (const a of scene.annotations) out.push(annotationMarkup(a, theme));
+  out.push(images.defs());
   return out.join('');
 }
 
@@ -223,7 +254,7 @@ export function renderStandaloneSvg(scene: Scene, options: StandaloneOptions = {
   const title = options.title ? `<title>${escapeXml(options.title)}</title>` : '';
   const background = bg ? `<rect x="${n(box.x)}" y="${n(box.y)}" width="${n(box.width)}" height="${n(box.height)}" fill="${bg}"/>` : '';
   const svg =
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${n(box.width)}" height="${n(box.height)}" viewBox="${n(box.x)} ${n(box.y)} ${n(box.width)} ${n(box.height)}" font-family="${escapeXml(FONT_FAMILY)}">` +
+    `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${n(box.width)}" height="${n(box.height)}" viewBox="${n(box.x)} ${n(box.y)} ${n(box.width)} ${n(box.height)}" font-family="${escapeXml(FONT_FAMILY)}">` +
     title +
     background +
     renderSceneBody(scene, theme) +

@@ -25,13 +25,14 @@ const DATA = new Set<string>([ROLE_COLORS.data, ROLE_COLORS.storage]);
 const CLIENT = new Set<string>([ROLE_COLORS.client, ROLE_COLORS.external]);
 const PUBLIC = /public|퍼블릭|공개|dmz/i;
 
-export function runChecks(doc: Document): Finding[] {
+/** `known` lets services that only exist in an icon pack count as known. */
+export function runChecks(doc: Document, known: (serviceId: string) => boolean = () => false): Finding[] {
   const index = indexDocument(doc);
   const findings: Finding[] = [];
   const color = (id: Id) => findService(index.nodes.get(id)?.serviceId ?? '')?.color ?? '';
   for (const n of doc.nodes) {
     const def = findService(n.serviceId);
-    if (!def) findings.push({ code: 'unknown-service', severity: 'info', ids: [n.id] });
+    if (!def && !known(n.serviceId)) findings.push({ code: 'unknown-service', severity: 'info', ids: [n.id] });
     if (!n.label.trim()) findings.push({ code: 'unnamed', severity: 'info', ids: [n.id] });
     if (def && DATA.has(def.color)) {
       const publicArea = ancestors(doc, n.id).find((a) => {

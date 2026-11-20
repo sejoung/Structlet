@@ -35,3 +35,4 @@
 
 - **docker-compose.yml**: 서비스 → 노드(이미지로 아이콘 추정), `depends_on`과 `environment` 안의 서비스 이름 → 선, `ports` → 클라이언트 노드, 이름 있는 볼륨 → 스토리지 노드, 네트워크가 둘 이상이면 영역.
 - **Terraform**: HCL이 아니라 `terraform show -json`(state 또는 `terraform show -json plan.out`) 결과를 읽는다. VPC/서브넷(가상 네트워크) → 중첩 영역, 알려진 리소스 → 노드, 선은 plan의 참조, state의 `depends_on`, 다른 리소스의 ID·ARN을 값으로 가진 속성, 이벤트 소스 매핑 같은 연결 리소스에서 만든다. 정책·첨부·규칙처럼 설정만 하는 리소스는 그리지 않는다.
+- **Kubernetes**: 여러 문서 YAML, `kubectl get -o yaml` 또는 `-o json`(List), `helm template` 결과. 클러스터·네임스페이스 → 영역, 워크로드·Service·Ingress·ConfigMap·Secret·PVC·HPA → 노드. 선은 Ingress 규칙, Service selector, 볼륨·환경 변수 참조, HPA 대상에서 만든다. 컨트롤러가 관리하는 Pod·ReplicaSet은 그리지 않는다.

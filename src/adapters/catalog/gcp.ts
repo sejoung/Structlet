@@ -1,0 +1,43 @@
+import { Activity, Archive, ArrowLeftRight, Boxes, Brain, BrickWall, ChartLine, Container, Cpu, Database, FolderOpen, Globe, Inbox, Key, KeyRound, Layers, Lock, MemoryStick, Radio, ScrollText, Signpost, Sparkles, Split, SquareFunction, Table2, Timer, Warehouse, Waves, Waypoints, Webhook, Workflow } from 'lucide';
+import { define, type Row } from './types';
+
+/** Google Cloud services: names as text with generic symbols; official icons come from a user-supplied icon pack. */
+const ROWS: Row[] = [
+  ['gcp.compute-engine', 'Compute Engine', 'Compute Engine', Cpu, 'compute', 'vm instance gce'],
+  ['gcp.gke', 'Google Kubernetes Engine', 'Google Kubernetes Engine', Boxes, 'compute', 'kubernetes k8s gke cluster'],
+  ['gcp.cloud-run', 'Cloud Run', 'Cloud Run', Container, 'compute', 'container serverless'],
+  ['gcp.cloud-functions', 'Cloud Functions', 'Cloud Functions', SquareFunction, 'compute', 'function serverless'],
+  ['gcp.app-engine', 'App Engine', 'App Engine', Layers, 'compute', 'paas'],
+  ['gcp.cloud-sql', 'Cloud SQL', 'Cloud SQL', Database, 'data', 'mysql postgres database'],
+  ['gcp.spanner', 'Cloud Spanner', 'Cloud Spanner', Database, 'data', 'database'],
+  ['gcp.alloydb', 'AlloyDB', 'AlloyDB', Database, 'data', 'postgres database'],
+  ['gcp.firestore', 'Firestore', 'Firestore', Table2, 'data', 'nosql document'],
+  ['gcp.bigtable', 'Bigtable', 'Bigtable', Table2, 'data', 'nosql wide column'],
+  ['gcp.memorystore', 'Memorystore', 'Memorystore', MemoryStick, 'data', 'redis cache'],
+  ['gcp.cloud-storage', 'Cloud Storage', 'Cloud Storage', Archive, 'storage', 'bucket gcs object'],
+  ['gcp.filestore', 'Filestore', 'Filestore', FolderOpen, 'storage', 'nfs file'],
+  ['gcp.pubsub', 'Pub/Sub', 'Pub/Sub', Radio, 'integration', 'topic subscription messaging'],
+  ['gcp.cloud-tasks', 'Cloud Tasks', 'Cloud Tasks', Inbox, 'integration', 'queue'],
+  ['gcp.cloud-scheduler', 'Cloud Scheduler', 'Cloud Scheduler', Timer, 'integration', 'cron'],
+  ['gcp.workflows', 'Workflows', 'Workflows', Workflow, 'integration', 'orchestration'],
+  ['gcp.eventarc', 'Eventarc', 'Eventarc', Waypoints, 'integration', 'events'],
+  ['gcp.api-gateway', 'API Gateway', 'API Gateway', Webhook, 'network', 'api'],
+  ['gcp.apigee', 'Apigee', 'Apigee', Webhook, 'network', 'api management'],
+  ['gcp.cloud-load-balancing', 'Cloud Load Balancing', 'Cloud Load Balancing', Split, 'network', 'load balancer lb 로드밸런서'],
+  ['gcp.cloud-cdn', 'Cloud CDN', 'Cloud CDN', Globe, 'network', 'cdn'],
+  ['gcp.cloud-dns', 'Cloud DNS', 'Cloud DNS', Signpost, 'network', 'dns'],
+  ['gcp.cloud-nat', 'Cloud NAT', 'Cloud NAT', ArrowLeftRight, 'network', 'nat'],
+  ['gcp.cloud-armor', 'Cloud Armor', 'Cloud Armor', BrickWall, 'security', 'waf firewall'],
+  ['gcp.iam', 'Cloud IAM', 'Cloud IAM', KeyRound, 'security', 'identity'],
+  ['gcp.secret-manager', 'Secret Manager', 'Secret Manager', Lock, 'security', 'secrets'],
+  ['gcp.kms', 'Cloud KMS', 'Cloud KMS', Key, 'security', 'key encryption'],
+  ['gcp.cloud-monitoring', 'Cloud Monitoring', 'Cloud Monitoring', Activity, 'operations', 'metrics'],
+  ['gcp.cloud-logging', 'Cloud Logging', 'Cloud Logging', ScrollText, 'operations', 'logs'],
+  ['gcp.bigquery', 'BigQuery', 'BigQuery', Warehouse, 'analytics', 'warehouse sql'],
+  ['gcp.dataflow', 'Dataflow', 'Dataflow', Waves, 'analytics', 'stream beam'],
+  ['gcp.looker', 'Looker', 'Looker', ChartLine, 'analytics', 'bi dashboard'],
+  ['gcp.vertex-ai', 'Vertex AI', 'Vertex AI', Brain, 'analytics', 'ml ai'],
+  ['gcp.gemini', 'Gemini API', 'Gemini API', Sparkles, 'analytics', 'ai genai llm'],
+];
+
+export const GCP_SERVICES = define('gcp', ROWS);

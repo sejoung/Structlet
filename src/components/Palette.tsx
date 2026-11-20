@@ -9,10 +9,15 @@ export const SERVICE_DRAG_TYPE = 'application/x-structlet-service';
 export interface PaletteService {
   readonly id: string;
   readonly name: string;
-  readonly category: 'general' | 'aws';
+  readonly provider: PaletteProvider;
   readonly glyph: Glyph;
   readonly color: string;
+  /** Official icon from an icon pack, if loaded. */
+  readonly image?: string;
 }
+
+export const PALETTE_PROVIDERS = ['general', 'aws', 'gcp', 'azure', 'k8s'] as const;
+export type PaletteProvider = (typeof PALETTE_PROVIDERS)[number];
 
 interface PaletteProps {
   t: Translate;
@@ -29,7 +34,7 @@ export function Palette(props: PaletteProps) {
   const { t } = props;
   const [query, setQuery] = useState('');
   const results = useMemo(() => props.search(query), [props, query]);
-  const groups = (['general', 'aws'] as const).map((category) => ({ category, items: results.filter((s) => s.category === category) })).filter((g) => g.items.length > 0);
+  const groups = PALETTE_PROVIDERS.map((provider) => ({ provider, items: results.filter((s) => s.provider === provider) })).filter((g) => g.items.length > 0);
 
   return (
     <aside className="palette" aria-label={t('palette.services')}>
@@ -50,8 +55,10 @@ export function Palette(props: PaletteProps) {
         <div className="service-list">
           {groups.length === 0 && <p className="hint">{t('palette.noResults')}</p>}
           {groups.map((g) => (
-            <div key={g.category}>
-              <h3>{t(g.category === 'general' ? 'palette.general' : 'palette.aws')}</h3>
+            <details key={g.provider} open={query.trim() !== '' || g.provider === 'general'} data-provider={g.provider}>
+              <summary>
+                {t(`palette.provider.${g.provider}`)} <span className="count">{g.items.length}</span>
+              </summary>
               <ul>
                 {g.items.map((s) => (
                   <li key={s.id}>
@@ -67,13 +74,13 @@ export function Palette(props: PaletteProps) {
                       onClick={() => props.onAddService(s.id)}
                       title={s.id}
                     >
-                      <ServiceTile glyph={s.glyph} color={s.color} size={24} />
+                      {s.image ? <img className="service-image" src={s.image} alt="" width={24} height={24} /> : <ServiceTile glyph={s.glyph} color={s.color} size={24} />}
                       <span>{s.name}</span>
                     </button>
                   </li>
                 ))}
               </ul>
-            </div>
+            </details>
           ))}
         </div>
       </section>

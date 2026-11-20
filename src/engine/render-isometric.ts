@@ -1,6 +1,6 @@
 import type { Point, Rect } from '../domain';
 import { AREA_STROKE } from './appearance';
-import { glyphMarkup, escapeXml, LIGHT_THEME, markerDefs, pathData, type DiagramTheme } from './render-svg';
+import { glyphMarkup, escapeXml, ImageSymbols, LIGHT_THEME, markerDefs, pathData, type DiagramTheme } from './render-svg';
 import { CONTAINER_HEADER, EDGE_LABEL, NODE_LABEL, type Scene } from './scene';
 import { FONT_FAMILY } from './text';
 
@@ -45,6 +45,7 @@ export function isometricBounds(scene: Scene): Rect {
 }
 
 export function renderIsometricBody(scene: Scene, theme: DiagramTheme = LIGHT_THEME): string {
+  const images = new ImageSymbols('sl-iso-img');
   const out: string[] = [markerDefs(theme), `<g transform="${PLANE}">`];
   for (const c of scene.containers) {
     const stroke = AREA_STROKE[c.style.color] ?? AREA_STROKE.gray!;
@@ -78,7 +79,8 @@ export function renderIsometricBody(scene: Scene, theme: DiagramTheme = LIGHT_TH
     out.push(polygon([up(b), up(c), c, b], shade(node.color, 0.2)));
     out.push(polygon([up(a), up(b), up(c), up(d)], node.color));
     const size = Math.min(r.width, r.height) * 0.6;
-    out.push(`<g transform="translate(0 ${-h}) ${PLANE}">${glyphMarkup(node.glyph, r.x + (r.width - size) / 2, r.y + (r.height - size) / 2, size, '#ffffff', 1.8)}</g>`);
+    const face = node.image ? images.use(node.image, r.x + (r.width - size) / 2, r.y + (r.height - size) / 2, size) : glyphMarkup(node.glyph, r.x + (r.width - size) / 2, r.y + (r.height - size) / 2, size, '#ffffff', 1.8);
+    out.push(`<g transform="translate(0 ${-h}) ${PLANE}">${face}</g>`);
     const labelAt = { x: (c.x + d.x) / 2 + 6, y: Math.max(c.y, d.y) + 14 };
     out.push(upright(node.label, labelAt, NODE_LABEL.fontSize, NODE_LABEL.lineHeight, theme.nodeLabel));
     out.push('</g>');
@@ -96,6 +98,7 @@ export function renderIsometricBody(scene: Scene, theme: DiagramTheme = LIGHT_TH
     const p = iso({ x: a.rect.x, y: a.rect.y });
     out.push(upright(a.lines, { x: p.x, y: p.y }, 13, 18, theme.annotation, 'start'));
   }
+  out.push(images.defs());
   return out.join('');
 }
 
@@ -104,7 +107,7 @@ export function renderIsometricSvg(scene: Scene, options: { theme?: DiagramTheme
   const b = isometricBounds(scene);
   const box = { x: b.x - 32, y: b.y - 32, width: b.width + 64, height: b.height + 64 };
   const svg =
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${n(box.width)}" height="${n(box.height)}" viewBox="${n(box.x)} ${n(box.y)} ${n(box.width)} ${n(box.height)}" font-family="${escapeXml(FONT_FAMILY)}">` +
+    `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${n(box.width)}" height="${n(box.height)}" viewBox="${n(box.x)} ${n(box.y)} ${n(box.width)} ${n(box.height)}" font-family="${escapeXml(FONT_FAMILY)}">` +
     (options.title ? `<title>${escapeXml(options.title)}</title>` : '') +
     `<rect x="${n(box.x)}" y="${n(box.y)}" width="${n(box.width)}" height="${n(box.height)}" fill="${theme.background}"/>` +
     renderIsometricBody(scene, theme) +

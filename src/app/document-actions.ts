@@ -1,12 +1,12 @@
 import type { Editor, IdGenerator } from '../application';
-import { createAppearance } from '../adapters/catalog/services';
 import { importInto, type ImportSource } from '../adapters/draft/import';
 import { exportPng, exportSvg, type ExportView } from '../adapters/export/image-export';
 import { downloadBlob, downloadText } from '../adapters/files/browser-files';
 import type { LocalFileAccess } from '../adapters/files/file-access';
 import { FILE_EXTENSION, fileNameFor, MIME_TYPE, parseStructlet, serializeStructlet } from '../adapters/format/structlet-format';
 import { emptyDocument, type Document } from '../domain';
-import type { Language, Translate } from '../i18n/messages';
+import type { Appearance } from '../engine';
+import type { Translate } from '../i18n/messages';
 import sampleText from '../../samples/three-tier.structlet?raw';
 
 export interface DocumentActions {
@@ -25,19 +25,18 @@ interface Deps {
   editor: Editor;
   files: LocalFileAccess;
   newId: IdGenerator;
-  language: Language;
+  appearance(): Appearance;
   t: Translate;
   notify(message: string): void;
   onOpened(doc: Document): void;
   view(): ExportView;
 }
 
-const SOURCE_NAMES: Record<ImportSource, string> = { draft: 'draft JSON', compose: 'docker-compose', terraform: 'Terraform' };
+const SOURCE_NAMES: Record<ImportSource, string> = { draft: 'draft JSON', compose: 'docker-compose', terraform: 'Terraform', kubernetes: 'Kubernetes' };
 
 /** File use cases wired to browser adapters. `onOpened` lets the view fit the new document. */
-export function createDocumentActions({ editor, files, newId, language, t, notify, onOpened, view }: Deps): DocumentActions {
+export function createDocumentActions({ editor, files, newId, appearance, t, notify, onOpened, view }: Deps): DocumentActions {
   const session = editor.session;
-  const appearance = createAppearance(language);
   const replace = (doc: Document, keepFile = false) => {
     if (!keepFile) files.forget();
     session.replaceDocument(doc, { dirty: true });
@@ -94,13 +93,13 @@ export function createDocumentActions({ editor, files, newId, language, t, notif
     exportSvg() {
       const doc = session.committedDocument;
       const suffix = view() === 'isometric' ? '-isometric' : '';
-      downloadText(exportSvg(doc, appearance, { view: view() }), fileNameFor(doc.title + suffix, '.svg'), 'image/svg+xml');
+      downloadText(exportSvg(doc, appearance(), { view: view() }), fileNameFor(doc.title + suffix, '.svg'), 'image/svg+xml');
     },
     async exportPng() {
       const doc = session.committedDocument;
       try {
         const suffix = view() === 'isometric' ? '-isometric' : '';
-        downloadBlob(await exportPng(doc, appearance, { view: view() }), fileNameFor(doc.title + suffix, '.png'));
+        downloadBlob(await exportPng(doc, appearance(), { view: view() }), fileNameFor(doc.title + suffix, '.png'));
       } catch {
         notify(t('error.png'));
       }

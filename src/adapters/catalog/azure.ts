@@ -1,0 +1,42 @@
+import { Activity, AppWindow, Archive, ArrowLeftRight, Boxes, Brain, BrickWall, ChartLine, Container, Cpu, Database, FolderOpen, Globe, KeyRound, Layers, Lock, MemoryStick, Radio, ScrollText, Signpost, Sparkles, Split, SquareFunction, Table2, UserCheck, Warehouse, Waves, Webhook, Workflow, Gauge, Inbox } from 'lucide';
+import { define, type Row } from './types';
+
+/** Microsoft Azure services: names as text with generic symbols; official icons come from a user-supplied icon pack. */
+const ROWS: Row[] = [
+  ['azure.vm', 'Virtual Machines', 'Virtual Machines', Cpu, 'compute', 'vm instance'],
+  ['azure.vmss', 'Virtual Machine Scale Sets', 'Virtual Machine Scale Sets', Layers, 'compute', 'vmss autoscale'],
+  ['azure.aks', 'Azure Kubernetes Service', 'Azure Kubernetes Service', Boxes, 'compute', 'aks kubernetes k8s'],
+  ['azure.container-apps', 'Container Apps', 'Container Apps', Container, 'compute', 'container serverless'],
+  ['azure.app-service', 'App Service', 'App Service', AppWindow, 'compute', 'web app'],
+  ['azure.functions', 'Azure Functions', 'Azure Functions', SquareFunction, 'compute', 'function serverless'],
+  ['azure.sql-database', 'Azure SQL Database', 'Azure SQL Database', Database, 'data', 'sql server mssql'],
+  ['azure.postgresql', 'Azure Database for PostgreSQL', 'Azure Database for PostgreSQL', Database, 'data', 'postgres'],
+  ['azure.mysql', 'Azure Database for MySQL', 'Azure Database for MySQL', Database, 'data', 'mysql'],
+  ['azure.cosmos-db', 'Azure Cosmos DB', 'Azure Cosmos DB', Table2, 'data', 'nosql document'],
+  ['azure.cache-redis', 'Azure Cache for Redis', 'Azure Cache for Redis', MemoryStick, 'data', 'redis cache'],
+  ['azure.storage', 'Storage Account', 'Storage Account', Archive, 'storage', 'blob storage account'],
+  ['azure.files', 'Azure Files', 'Azure Files', FolderOpen, 'storage', 'file share smb'],
+  ['azure.service-bus', 'Service Bus', 'Service Bus', Inbox, 'integration', 'queue topic messaging'],
+  ['azure.event-hubs', 'Event Hubs', 'Event Hubs', Waves, 'integration', 'stream kafka'],
+  ['azure.event-grid', 'Event Grid', 'Event Grid', Radio, 'integration', 'events'],
+  ['azure.logic-apps', 'Logic Apps', 'Logic Apps', Workflow, 'integration', 'workflow'],
+  ['azure.api-management', 'API Management', 'API Management', Webhook, 'network', 'apim api gateway'],
+  ['azure.application-gateway', 'Application Gateway', 'Application Gateway', Split, 'network', 'load balancer waf'],
+  ['azure.load-balancer', 'Load Balancer', 'Load Balancer', Split, 'network', 'lb 로드밸런서'],
+  ['azure.front-door', 'Front Door', 'Front Door', Globe, 'network', 'cdn edge'],
+  ['azure.dns', 'Azure DNS', 'Azure DNS', Signpost, 'network', 'dns'],
+  ['azure.nat-gateway', 'NAT Gateway', 'NAT Gateway', ArrowLeftRight, 'network', 'nat'],
+  ['azure.firewall', 'Azure Firewall', 'Azure Firewall', BrickWall, 'security', 'firewall'],
+  ['azure.key-vault', 'Key Vault', 'Key Vault', Lock, 'security', 'secrets keys'],
+  ['azure.entra-id', 'Microsoft Entra ID', 'Microsoft Entra ID', UserCheck, 'security', 'active directory aad identity'],
+  ['azure.managed-identity', 'Managed Identity', 'Managed Identity', KeyRound, 'security', 'identity'],
+  ['azure.monitor', 'Azure Monitor', 'Azure Monitor', Activity, 'operations', 'metrics alerts'],
+  ['azure.log-analytics', 'Log Analytics', 'Log Analytics', ScrollText, 'operations', 'logs workspace'],
+  ['azure.application-insights', 'Application Insights', 'Application Insights', Gauge, 'operations', 'apm telemetry'],
+  ['azure.synapse', 'Azure Synapse Analytics', 'Azure Synapse Analytics', Warehouse, 'analytics', 'warehouse'],
+  ['azure.power-bi', 'Power BI', 'Power BI', ChartLine, 'analytics', 'bi dashboard'],
+  ['azure.machine-learning', 'Azure Machine Learning', 'Azure Machine Learning', Brain, 'analytics', 'ml'],
+  ['azure.openai', 'Azure OpenAI', 'Azure OpenAI', Sparkles, 'analytics', 'ai genai llm'],
+];
+
+export const AZURE_SERVICES = define('azure', ROWS);

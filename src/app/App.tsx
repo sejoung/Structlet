@@ -2,18 +2,22 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { DocumentStore, Editor, IdGenerator } from '../application';
 import { runChecks } from '../adapters/analysis/checks';
 import { buildLegend } from '../adapters/catalog/legend';
-import { createAppearance, searchServices, SERVICES, type ServiceDefinition } from '../adapters/catalog/services';
+import { createAppearance, packServices, searchServices, SERVICES, type ServiceDefinition } from '../adapters/catalog/services';
+import { summarize, type IconPack } from '../adapters/icon-packs/pack';
+import type { IconPackStore } from '../adapters/storage/icon-pack-store';
 import type { LocalFileAccess } from '../adapters/files/file-access';
 import { CONTAINER_PRESETS, getBox, indexDocument, NODE_SIZE, type AnnotationKind, type ContainerKind, type Document, type Id, type Point } from '../domain';
 import { AREA_STROKE, computeScene, containerAt, fitView, screenToWorld, zoomAt, DEFAULT_VIEWPORT, type Viewport } from '../engine';
 import { createTranslator, type Language } from '../i18n/messages';
 import { Canvas } from '../components/canvas/Canvas';
+import { IconPacksDialog } from '../components/IconPacksDialog';
 import { Palette, type PaletteService } from '../components/Palette';
 import { PropertiesPanel, type PanelFinding } from '../components/properties/PropertiesPanel';
 import { StatusBar } from '../components/StatusBar';
 import { Toolbar, type ViewMode } from '../components/Toolbar';
 import { useSession } from '../components/use-session';
 import { createDocumentActions } from './document-actions';
+import { createIconPackActions } from './icon-pack-actions';
 import { createPanelActions } from './panel-actions';
 import { useClipboard } from './use-clipboard';
 import { useShortcuts } from './use-shortcuts';
@@ -23,14 +27,15 @@ interface AppProps {
   editor: Editor;
   store: DocumentStore;
   files: LocalFileAccess;
+  packStore: IconPackStore;
   newId: IdGenerator;
   initialLanguage: Language;
   onLanguage(language: Language): void;
 }
 
-const toPalette = (language: Language) => (s: ServiceDefinition): PaletteService => ({ id: s.id, name: s.name[language], category: s.category, glyph: s.glyph, color: s.color });
+const toPalette = (language: Language, look: ReturnType<typeof createAppearance>) => (s: ServiceDefinition): PaletteService => ({ id: s.id, name: s.name[language], provider: s.provider, glyph: s.glyph, color: s.color, image: look.service(s.id)?.image });
 
-export function App({ editor, store, files, newId, initialLanguage, onLanguage }: AppProps) {
+export function App({ editor, store, files, packStore, newId, initialLanguage, onLanguage }: AppProps) {
   const [language, setLanguage] = useState<Language>(initialLanguage);
   const [viewport, setViewport] = useState<Viewport>(DEFAULT_VIEWPORT);
   const [size, setSize] = useState({ width: 0, height: 0 });
@@ -40,11 +45,22 @@ export function App({ editor, store, files, newId, initialLanguage, onLanguage }
   const theme = useTheme();
   const snapshot = useSession(editor.session);
   const t = useMemo(() => createTranslator(language), [language]);
-  const appearance = useMemo(() => createAppearance(language), [language]);
+  const [packs, setPacks] = useState<IconPack[]>([]);
+  const [packsOpen, setPacksOpen] = useState(false);
+  const [packsBusy, setPacksBusy] = useState(false);
+  const [persistentPacks, setPersistentPacks] = useState(true);
+  const appearance = useMemo(() => createAppearance(language, packs), [language, packs]);
+  const appearanceRef = useRef(appearance);
+  appearanceRef.current = appearance;
+  const packActions = useMemo(() => createIconPackActions({ store: packStore, t, notify: setNotice, setPacks, setBusy: setPacksBusy, newId: () => newId('document').replace(/^doc-/, 'pack-') }), [packStore, t, newId]);
+  useEffect(() => {
+    void packActions.refresh();
+    void packStore.persistent().then(setPersistentPacks);
+  }, [packActions, packStore]);
   const scene = useMemo(() => computeScene(snapshot.document, appearance), [snapshot.document, appearance]);
-  const services = useMemo(() => SERVICES.map(toPalette(language)), [language]);
-  const search = useCallback((q: string) => searchServices(q).map(toPalette(language)), [language]);
-  const findings = useMemo<PanelFinding[]>(() => runChecks(snapshot.committed).map((f) => ({ severity: f.severity, ids: f.ids, message: `${t(`checks.${f.code}`)} · ${label(snapshot.committed, f.ids[0]!)}` })), [snapshot.committed, t]);
+  const services = useMemo(() => [...SERVICES, ...packServices(packs)].map(toPalette(language, appearance)), [language, appearance, packs]);
+  const search = useCallback((q: string) => searchServices(q, packServices(packs)).map(toPalette(language, appearance)), [language, appearance, packs]);
+  const findings = useMemo<PanelFinding[]>(() => runChecks(snapshot.committed, (id) => !!appearance.service(id)).map((f) => ({ severity: f.severity, ids: f.ids, message: `${t(`checks.${f.code}`)} · ${label(snapshot.committed, f.ids[0]!)}` })), [snapshot.committed, t]);
   const sizeRef = useRef(size);
   sizeRef.current = size;
   const sceneRef = useRef(scene);
@@ -58,8 +74,8 @@ export function App({ editor, store, files, newId, initialLanguage, onLanguage }
   }, [appearance]);
 
   const actions = useMemo(
-    () => createDocumentActions({ editor, files, newId, language, t, notify: setNotice, onOpened: fitTo, view: () => viewRef.current }),
-    [editor, files, newId, language, t, fitTo],
+    () => createDocumentActions({ editor, files, newId, appearance: () => appearanceRef.current, t, notify: setNotice, onOpened: fitTo, view: () => viewRef.current }),
+    [editor, files, newId, t, fitTo],
   );
   const panelActions = useMemo(() => createPanelActions(editor, () => sceneRef.current, language), [editor, language]);
 
@@ -98,9 +114,9 @@ export function App({ editor, store, files, newId, initialLanguage, onLanguage }
   };
 
   const addService = (serviceId: string, at?: Point) => {
-    const def = SERVICES.find((s) => s.id === serviceId);
+    const name = appearance.service(serviceId)?.name ?? serviceId;
     const center = at ?? freeSpot(viewCenter());
-    editor.addService(serviceId, def ? def.name[language] : serviceId, center, containerAt(scene, center));
+    editor.addService(serviceId, name, center, containerAt(scene, center));
   };
 
   const addArea = (kind: ContainerKind) => {
@@ -164,6 +180,7 @@ export function App({ editor, store, files, newId, initialLanguage, onLanguage }
         onTitle={(title) => editor.setTitle(title)}
         onView={setView}
         onTheme={theme.setChoice}
+        onIconPacks={() => setPacksOpen(true)}
         onLanguage={(l) => {
           setLanguage(l);
           onLanguage(l);
@@ -206,6 +223,18 @@ export function App({ editor, store, files, newId, initialLanguage, onLanguage }
           onWrap={(ids, kind) => editor.wrapInArea(ids, kind, t(`area.${kind}`))}
         />
       </div>
+      {packsOpen && (
+        <IconPacksDialog
+          t={t}
+          packs={packs.map(summarize)}
+          persistent={persistentPacks}
+          busy={packsBusy}
+          onImport={(source, provider) => void packActions.load(source, provider)}
+          onToggle={(id, enabled) => void packActions.toggle(packs, id, enabled)}
+          onRemove={(id) => void packActions.remove(id)}
+          onClose={() => setPacksOpen(false)}
+        />
+      )}
       <StatusBar t={t} zoom={viewport.zoom} dirty={snapshot.dirty} notice={notice} onDismiss={() => setNotice(null)} />
     </div>
   );

@@ -189,3 +189,18 @@ html, body { background: var(--surface); }
 @media (pointer: coarse) {
   .handle.connect, .handle.endpoint { r: 9px; }
 }
+
+.service-list details { margin-top: 6px; }
+.service-list summary { cursor: pointer; font-size: 11px; font-weight: 600; color: var(--muted); padding: 4px 2px; list-style-position: inside; }
+.service-list summary .count { font-weight: 400; opacity: 0.8; }
+.service-image { width: 24px; height: 24px; flex: none; object-fit: contain; }
+.dialog { border: 1px solid var(--line); border-radius: 10px; padding: 18px 20px; width: min(560px, 92vw); background: var(--surface); color: var(--ink); box-shadow: 0 16px 48px rgba(0, 0, 0, 0.25); }
+.dialog::backdrop { background: rgba(17, 24, 39, 0.35); }
+.dialog h2 { font-size: 15px; text-transform: none; letter-spacing: 0; color: var(--ink); }
+.pack-sources { margin: 4px 0 12px; padding-left: 18px; color: var(--muted); font-size: 12px; line-height: 1.6; }
+.pack-table { width: 100%; border-collapse: collapse; margin: 8px 0; }
+.pack-table td { border-top: 1px solid var(--line); padding: 8px 4px; vertical-align: middle; }
+.pack-table td:last-child { text-align: right; width: 1%; }
+.pack-table .check { margin: 0 0 2px; }
+.hint.small { font-size: 11px; }
+.button-row.end { justify-content: flex-end; }

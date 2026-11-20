@@ -9,13 +9,15 @@ Structlet의 구조와 동작에 대한 결정이다. 결정을 바꾸면 해당
 | [0003](0003-edge-routing-and-manual-waypoints.md) | 연결선: 직교 자동 경로와 수동 꺾임점 | 채택 |
 | [0004](0004-structlet-file-format.md) | `.structlet` 파일 형식과 가져오기 검증 | 채택 |
 | [0005](0005-one-renderer-for-canvas-and-export.md) | 캔버스와 내보내기가 같은 렌더러를 쓴다 | 채택 |
-| [0006](0006-service-catalog-and-icons.md) | 서비스 카탈로그와 아이콘 | 채택 |
+| [0006](0006-service-catalog-and-icons.md) | 서비스 카탈로그와 아이콘 | 채택 (개정) |
 | [0007](0007-editing-session-and-undo.md) | 편집 세션, 미리보기, 실행 취소 | 채택 |
 | [0008](0008-auto-layout-and-draft-import.md) | 자동 배치와 초안 가져오기 | 채택 |
-| [0009](0009-compose-and-terraform-import.md) | docker-compose와 Terraform 가져오기 | 채택 |
+| [0009](0009-compose-and-terraform-import.md) | docker-compose, Terraform, Kubernetes 가져오기 | 채택 (개정) |
 | [0010](0010-clipboard-and-file-access.md) | 클립보드와 같은 파일에 저장 | 채택 |
 | [0011](0011-views-themes-and-accessibility.md) | 보기, 테마, 접근성 | 채택 |
 | [0012](0012-local-architecture-checks.md) | 로컬 구성 점검 | 채택 |
+| [0013](0013-icon-packs.md) | 사용자가 불러오는 아이콘 팩 | 채택 |
+| [0014](0014-static-deployment.md) | 정적 HTML 배포 | 채택 |
 
 [stormlet-reference/](stormlet-reference/)에는 시작할 때 참고한 Stormlet ADR 원본을 따로 보관한다.
 

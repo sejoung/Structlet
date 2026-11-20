@@ -48,6 +48,8 @@ export const CONTAINER_KINDS = [
   'availability-zone',
   'vpc',
   'subnet',
+  'cluster',
+  'namespace',
   'custom',
 ] as const;
 export type ContainerKind = (typeof CONTAINER_KINDS)[number];
@@ -171,5 +173,7 @@ export const CONTAINER_PRESETS: Record<ContainerKind, ContainerStyle> = {
   'availability-zone': { color: 'blue', dashed: true, filled: false },
   vpc: { color: 'purple', dashed: false, filled: false },
   subnet: { color: 'green', dashed: false, filled: true },
+  cluster: { color: 'blue', dashed: false, filled: false },
+  namespace: { color: 'teal', dashed: true, filled: true },
   custom: { color: 'gray', dashed: true, filled: false },
 };
