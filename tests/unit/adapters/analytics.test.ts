@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { analyticsConfig } from '../../../src/adapters/analytics/config';
 import { CONSENT_KEY, GTAG_URL, MAX_ERROR_EVENTS } from '../../../src/adapters/analytics/google-analytics';
 import { usageEvent } from '../../../src/adapters/analytics/usage-events';
-import { contentSecurityPolicy } from '../../../scripts/csp';
+import { contentSecurityPolicy } from '../../../scripts/csp.ts';
 
 /** A fresh log and Analytics per test: each page has exactly one of each. */
 async function fresh() {
