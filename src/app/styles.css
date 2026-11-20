@@ -125,13 +125,17 @@ select:hover, input:hover, textarea:hover { border-color: var(--line-strong); }
 .topbar-divider { width: 1px; height: 18px; background: var(--line); margin: 0 6px; }
 .brand { display: grid; place-items: center; width: 32px; height: 32px; color: var(--accent); }
 .brand-mark { width: 20px; height: 20px; }
-.doc-title { display: flex; align-items: center; gap: 8px; min-width: 0; padding-left: 6px; margin-left: 2px; border-left: 1px solid var(--line); }
-.title-input { border: 1px solid transparent; background: transparent; height: var(--control-h); border-radius: var(--radius); padding: 0 8px; font-weight: 600; font-size: 14px; width: min(320px, 26vw); field-sizing: content; min-width: 120px; max-width: min(360px, 28vw); text-overflow: ellipsis; }
+.doc-title { display: flex; align-items: center; gap: 4px; min-width: 0; padding-left: 6px; margin-left: 2px; border-left: 1px solid var(--line); }
+/* The field grows with the title: a hidden copy in the same grid cell sets its width. */
+.title-field { display: inline-grid; min-width: 0; max-width: min(360px, 28vw); }
+.title-field::after { content: attr(data-value) ' '; grid-area: 1 / 1; visibility: hidden; height: 0; overflow: hidden; white-space: pre; padding: 0 9px; font-weight: 600; font-size: 14px; }
+.title-input { grid-area: 1 / 1; width: 100%; min-width: 96px; border: 1px solid transparent; background: transparent; height: var(--control-h); border-radius: var(--radius); padding: 0 8px; font-weight: 600; font-size: 14px; text-overflow: ellipsis; }
 .title-input:hover { border-color: var(--line); }
 .title-input:focus { border-color: var(--accent); outline: none; background: var(--surface); }
-.save-state { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; white-space: nowrap; }
-.save-dot { width: 6px; height: 6px; border-radius: 50%; background: #2f9e6b; }
-.save-state.saving .save-dot { background: var(--warn); }
+/* Where the diagram is saved: this browser, or Google Drive once linked. */
+.save-status { display: flex; align-items: center; gap: 4px; flex: none; }
+.save-state { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 6px; color: var(--muted); font-size: 12px; white-space: nowrap; cursor: default; }
+.save-state.saving svg { color: var(--warn); }
 
 /* Sidebar */
 .sidebar { display: grid; grid-template-columns: 56px 256px; border-right: 1px solid var(--line); background: var(--surface); min-height: 0; }
@@ -315,7 +319,8 @@ button.twisty:hover { background: var(--surface-3); color: var(--ink); }
 @media (max-width: 1100px) {
   .inspector { width: 260px; }
   .sidebar { grid-template-columns: 56px 220px; }
-  .save-state { display: none; }
+  .save-status .status-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .save-status .save-state, .save-status .drive-button { padding: 0 6px; }
 }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; }
@@ -338,13 +343,15 @@ button.twisty:hover { background: var(--surface-3); color: var(--ink); }
 .panel-toggles { display: flex; gap: 2px; }
 
 /* Google Drive */
-.drive-button { display: inline-flex; align-items: center; gap: 6px; height: var(--control-h); padding: 0 10px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); color: var(--ink-2); white-space: nowrap; font-size: 12.5px; }
+.drive-button { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 9px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--ink-2); white-space: nowrap; font-size: 12px; }
 .drive-button:hover { border-color: var(--line-strong); background: var(--surface-2); color: var(--ink); }
-.drive-button.synced { color: var(--ink); }
-.drive-button.synced svg:last-child { color: #2f9e6b; }
-.drive-button.attention { border-color: var(--warn); color: var(--warn); }
+.drive-button.linked { border-color: transparent; background: var(--surface-2); }
+.drive-button.linked:hover { border-color: var(--line); }
+.drive-button.synced { color: var(--ink-2); }
+.drive-button.synced .drive-mark { color: #2f9e6b; }
+.drive-button.attention { border-color: var(--warn); background: transparent; color: var(--warn); }
 .drive-button[aria-busy='true'] .drive-mark { animation: drive-pulse 1.2s ease-in-out infinite; }
-.drive-mark { width: 16px; height: 16px; flex: none; }
+.drive-mark { display: inline-grid; place-items: center; flex: none; }
 @keyframes drive-pulse { 50% { opacity: 0.35; } }
 .drive-facts { display: grid; grid-template-columns: auto 1fr; gap: 4px 16px; margin: 8px 0; }
 .drive-facts dt { color: var(--muted); }

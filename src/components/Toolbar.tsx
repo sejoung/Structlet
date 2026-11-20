@@ -57,7 +57,6 @@ interface ToolbarProps extends ToolbarActions {
 
 const mod = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl+';
 
-/** Top bar: document on the left, editing in the middle, output on the right. */
 function driveItems(t: Translate, drive: DriveBar | undefined): MenuItem[] {
   if (!drive) return [];
   if (drive.kind === 'web-only') return [{ id: 'drive-web-only', label: t('drive.webOnly'), disabled: true, separated: true, heading: t('drive.section'), onSelect: () => undefined }];
@@ -73,9 +72,13 @@ function driveItems(t: Translate, drive: DriveBar | undefined): MenuItem[] {
   return items;
 }
 
+/** Top bar: the document and where it is saved on the left, editing in the middle, layout, tools and output on the right. */
 export function Toolbar(props: ToolbarProps) {
   const { t } = props;
   const drive = props.drive?.kind === 'ready' ? props.drive : undefined;
+  // Linked to a Drive file, the Drive status is the save status; otherwise it is this browser.
+  const driveLinked = drive !== undefined && drive.view.state.status !== 'unlinked';
+  const both = t('panels.both', { key: `${mod}\\` });
   return (
     <header className="topbar" role="toolbar" aria-label="Structlet">
       <div className="topbar-start">
@@ -101,11 +104,23 @@ export function Toolbar(props: ToolbarProps) {
           ]}
         />
         <div className="doc-title">
-          <input className="title-input" aria-label={t('toolbar.title')} value={props.title} onChange={(e) => props.onTitle(e.target.value)} spellCheck={false} />
-          <span className={`save-state${props.dirty ? ' saving' : ''}`} data-testid="save-status" title={props.fileName ?? t('status.saved')}>
-            <span className="save-dot" aria-hidden="true" />
-            {props.dirty ? t('save.state.saving') : t('save.state.saved')}
+          {/* The hidden copy of the title sizes the field, so the save status sits right after it. */}
+          <span className="title-field" data-value={props.title}>
+            <input className="title-input" size={1} aria-label={t('toolbar.title')} value={props.title} onChange={(e) => props.onTitle(e.target.value)} spellCheck={false} />
           </span>
+          <div className="save-status">
+            {!driveLinked && (
+              <span
+                className={`save-state${props.dirty ? ' saving' : ''}`}
+                data-testid="save-status"
+                title={props.fileName ? `${t('status.saved')} · ${props.fileName}` : t('status.saved')}
+              >
+                <Icon name="local" size={14} />
+                <span className="status-label">{props.dirty ? t('save.state.saving') : t('save.state.saved')}</span>
+              </span>
+            )}
+            {drive && <DriveButton t={t} view={drive.view} actions={drive.actions} onDetails={drive.onDetails} onConflict={drive.onConflict} />}
+          </div>
         </div>
       </div>
       <div className="topbar-center">
@@ -128,24 +143,16 @@ export function Toolbar(props: ToolbarProps) {
             { value: 'isometric', label: t('toolbar.view.isometric') },
           ]}
         />
-        <IconButton icon="present" label={`${t('view.present')} (${mod}.)`} onClick={() => props.onPresent(true)} testId="tb-present" />
         </>
         )}
       </div>
       <div className="topbar-end">
-        {drive && <DriveButton t={t} view={drive.view} actions={drive.actions} onDetails={drive.onDetails} onConflict={drive.onConflict} />}
         <div className="panel-toggles" role="group" aria-label={t('panels.label')}>
-          <IconButton icon="panelLeft" label={props.leftOpen ? t('panels.left.hide') : t('panels.left.show')} pressed={props.leftOpen} disabled={props.presenting} onClick={() => props.onLeftPanel(!props.leftOpen)} testId="toggle-left" />
-          <IconButton icon="panelRight" label={props.rightOpen ? t('panels.right.hide') : t('panels.right.show')} pressed={props.rightOpen} disabled={props.presenting} onClick={() => props.onRightPanel(!props.rightOpen)} testId="toggle-right" />
-          <IconButton
-            icon={!props.leftOpen && !props.rightOpen ? 'unfocus' : 'focus'}
-            label={`${!props.leftOpen && !props.rightOpen ? t('panels.all.show') : t('panels.all.hide')} (${mod}\\)`}
-            disabled={props.presenting}
-            onClick={props.onTogglePanels}
-            testId="toggle-panels"
-          />
+          <IconButton icon="panelLeft" label={`${props.leftOpen ? t('panels.left.hide') : t('panels.left.show')} (${both})`} pressed={props.leftOpen} disabled={props.presenting} onClick={() => props.onLeftPanel(!props.leftOpen)} testId="toggle-left" />
+          <IconButton icon="panelRight" label={`${props.rightOpen ? t('panels.right.hide') : t('panels.right.show')} (${both})`} pressed={props.rightOpen} disabled={props.presenting} onClick={() => props.onRightPanel(!props.rightOpen)} testId="toggle-right" />
         </div>
         <span className="topbar-divider" aria-hidden="true" />
+        <IconButton icon="present" label={`${props.presenting ? t('view.exit') : t('view.present')} (${mod}.)`} pressed={props.presenting} onClick={() => props.onPresent(!props.presenting)} testId="tb-present" />
         <IconButton icon="keyboard" label={t('menu.shortcuts')} onClick={props.onShortcuts} testId="tb-shortcuts" />
         <Menu
           testId="menu-settings"
@@ -160,6 +167,7 @@ export function Toolbar(props: ToolbarProps) {
             ...(props.stats ? [{ id: 'tb-usage-stats', label: t('consent.setting'), checked: props.stats.granted, separated: true, onSelect: props.stats.toggle }] : []),
           ]}
         />
+        <span className="topbar-divider" aria-hidden="true" />
         <Menu
           testId="menu-export"
           align="end"

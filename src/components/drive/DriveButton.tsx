@@ -1,6 +1,6 @@
 import type { SyncState } from '../../application';
 import type { MessageKey, Translate } from '../../i18n/messages';
-import { Icon } from '../ui/Icon';
+import { Icon, type IconName } from '../ui/Icon';
 import type { DriveActions, DriveView } from './types';
 
 export const SHORT: Record<SyncState['status'], MessageKey> = {
@@ -13,11 +13,22 @@ export const SHORT: Record<SyncState['status'], MessageKey> = {
   failed: 'drive.short.failed',
 };
 
+const MARK: Record<SyncState['status'], IconName> = {
+  unlinked: 'cloud',
+  synced: 'cloudCheck',
+  pending: 'cloudUpload',
+  saving: 'cloudUpload',
+  paused: 'cloudOff',
+  conflict: 'cloudAlert',
+  failed: 'cloudAlert',
+};
+
 export const needsAttention = (s: SyncState) => s.status === 'paused' || s.status === 'conflict' || s.status === 'failed';
 
 /**
- * The Drive button: always in the same place, its label saying where the diagram is saved.
- * It connects, saves to Drive, renews access, or opens the details.
+ * The Drive part of the save status next to the title. Unlinked, it is a small action that
+ * connects or saves to Drive; linked, it replaces the browser status and says where the
+ * diagram is saved. It connects, saves to Drive, renews access, or opens the details.
  */
 export function DriveButton({ t, view, actions, onDetails, onConflict }: { t: Translate; view: DriveView; actions: DriveActions; onDetails(): void; onConflict(): void }) {
   const { state } = view;
@@ -29,26 +40,27 @@ export function DriveButton({ t, view, actions, onDetails, onConflict }: { t: Tr
     if (state.status === 'conflict') return onConflict();
     return onDetails();
   };
+  const linked = state.status !== 'unlinked';
   const tone = needsAttention(state) || view.expiring ? ' attention' : state.status === 'synced' ? ' synced' : '';
+  const where = linked ? `${t('drive.section')} · ${state.file.name}` : t('drive.section');
   return (
     <button
       type="button"
-      className={`drive-button${tone}`}
+      className={`drive-button${linked ? ' linked' : ''}${tone}`}
       data-testid="drive-button"
       data-status={state.status}
       data-drive-renew={view.expiring ? '' : undefined}
       aria-busy={view.busy || state.status === 'saving'}
+      aria-label={label}
       onPointerEnter={actions.prepare}
       onFocus={actions.prepare}
       onClick={onClick}
-      title={state.status !== 'unlinked' ? state.file.name : t('drive.section')}
+      title={label === where ? where : `${label} — ${where}`}
     >
-      <svg className="drive-mark" viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M8.3 3h7.4l5.8 10-3.7 6.4H6.2L2.5 13 8.3 3Z" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
-        <path d="M8.3 3l5.8 10h7.4M2.5 13h7.4l3.7 6.4" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
-      </svg>
-      <span>{label}</span>
-      {state.status === 'synced' && <Icon name="check" size={14} />}
+      <span className="drive-mark" aria-hidden="true">
+        <Icon name={view.expiring ? 'cloudAlert' : MARK[state.status]} size={15} />
+      </span>
+      <span className="status-label">{label}</span>
     </button>
   );
 }

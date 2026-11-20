@@ -100,7 +100,7 @@ test('view mode hides panels and editing, Esc returns', async ({ page }) => {
   await expect(page.getByTestId('tools')).toBeVisible();
 });
 
-test('one button hides both panels; the canvas takes all of the space and the diagram stays centered', async ({ page }) => {
+test('⌘\\ hides both panels; the canvas takes all of the space and the diagram stays centered', async ({ page }) => {
   await freshApp(page);
   await openSample(page);
   const canvasBox = async () => (await page.locator('.canvas').boundingBox())!;
@@ -111,7 +111,7 @@ test('one button hides both panels; the canvas takes all of the space and the di
   };
   const before = await offset();
 
-  await page.getByTestId('toggle-panels').click();
+  await page.locator('body').press('ControlOrMeta+Backslash');
   await expect(page.locator('#sidebar-panel')).toHaveCount(0);
   await expect(page.locator('.inspector')).toHaveCount(0);
   await expect(page.getByTestId('toggle-left')).toHaveAttribute('aria-pressed', 'false');
@@ -123,7 +123,7 @@ test('one button hides both panels; the canvas takes all of the space and the di
   expect(Math.abs(after.x - before.x)).toBeLessThan(2);
   expect(Math.abs(after.y - before.y)).toBeLessThan(2);
 
-  await page.getByTestId('toggle-panels').click();
+  await page.locator('body').press('ControlOrMeta+Backslash');
   await expect(page.locator('#sidebar-panel')).toBeVisible();
   await expect(page.locator('.inspector')).toBeVisible();
   const back = await offset();
@@ -133,11 +133,31 @@ test('one button hides both panels; the canvas takes all of the space and the di
 test('panel toggles keep their place in every state', async ({ page }) => {
   await freshApp(page);
   await openSample(page);
-  const ids = ['toggle-left', 'toggle-right', 'toggle-panels', 'tb-shortcuts', 'menu-settings', 'menu-export'];
+  const ids = ['toggle-left', 'toggle-right', 'tb-present', 'tb-shortcuts', 'menu-settings', 'menu-export'];
   const where = async () => Promise.all(ids.map(async (id) => Math.round((await page.getByTestId(id).boundingBox())!.x)));
   const start = await where();
-  for (const id of ['toggle-right', 'toggle-left', 'toggle-right', 'toggle-panels', 'toggle-panels']) {
-    await page.getByTestId(id).click();
+  const steps = [
+    () => page.getByTestId('toggle-right').click(),
+    () => page.getByTestId('toggle-left').click(),
+    () => page.getByTestId('toggle-right').click(),
+    () => page.locator('body').press('ControlOrMeta+Backslash'),
+    () => page.locator('body').press('ControlOrMeta+Backslash'),
+  ];
+  for (const step of steps) {
+    await step();
     expect(await where()).toEqual(start);
   }
+});
+
+test('the save status sits right after the title and follows its length', async ({ page }) => {
+  await freshApp(page);
+  await openSample(page);
+  const title = page.locator('.title-input');
+  const status = page.getByTestId('save-status');
+  const gap = async () => (await status.boundingBox())!.x - ((await title.boundingBox())!.x + (await title.boundingBox())!.width);
+  expect(await gap()).toBeLessThan(12);
+  const wide = (await title.boundingBox())!.width;
+  await title.fill('API');
+  await expect.poll(async () => (await title.boundingBox())!.width).toBeLessThan(wide);
+  expect(await gap()).toBeLessThan(12);
 });

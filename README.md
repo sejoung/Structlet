@@ -16,7 +16,7 @@ and export to SVG or PNG — no server, no account, no external AI calls.
 [![React](https://img.shields.io/badge/React_19-20232A?logo=react&logoColor=61DAFB)](package.json)
 [![Vite](https://img.shields.io/badge/Vite-646CFF?logo=vite&logoColor=white)](vite.config.ts)
 [![Vitest](https://img.shields.io/badge/unit_tests-125-6E9F18?logo=vitest&logoColor=white)](tests/unit)
-[![Playwright](https://img.shields.io/badge/e2e_tests-35-2EAD33?logo=playwright&logoColor=white)](tests/e2e)
+[![Playwright](https://img.shields.io/badge/e2e_tests-36-2EAD33?logo=playwright&logoColor=white)](tests/e2e)
 
 **English** · [한국어](README.ko.md)
 
@@ -71,7 +71,7 @@ The editor opens on an empty canvas. Choose **File → Sample** (or **Open sampl
 
 The screen has four parts:
 
-- **Top bar** — file menu, title and save status on the left; undo and 2D / isometric in the middle; shortcuts, settings (⚙) and **Export** on the right.
+- **Top bar** — on the left, the file menu, the title and, right after it, where the diagram is saved (this browser, or Google Drive once linked); undo and 2D / isometric in the middle; on the right, panel toggles, view mode, shortcuts, settings (⚙) and **Export**.
 - **Left** — an icon rail switches between the **Services / Areas / Notes / Layers** panels.
 - **Right inspector** — properties of the selected object.
 - **Canvas** — a toolbar floats at the top left; the zoom bar and minimap at the bottom right.
@@ -79,7 +79,7 @@ The screen has four parts:
 <details>
 <summary><b>Panels</b></summary>
 
-The panels can be hidden. Three toggles — **[left panel] [right panel] [both]** — always sit in the same place on the right of the top bar.
+The panels can be hidden. Two toggles — **[left panel] [right panel]** — always sit in the same place on the right of the top bar.
 
 - A toggle shows as pressed while its panel is visible.
 - `⌘\` toggles both at once. Clicking the open tab on the rail again also collapses the left panel.
@@ -95,7 +95,7 @@ The panels can be hidden. Three toggles — **[left panel] [right panel] [both]*
 - **Hand** (`H`) — dragging anywhere only pans; nothing is selected, moved or edited. Zoom still works. Holding Space gives a temporary hand in any tool.
 - **Connect** (`C`) — drag from box to box to connect, no handle needed. Dragging empty space pans; Esc returns to Select.
 
-**View mode** (`⌘.` or the screen button in the top bar) hides the panels, toolbar and edit handles, switches to the hand tool and fits the diagram to the screen — for walking through a diagram in a meeting. Leave with Esc or **Exit view mode**.
+**View mode** (`⌘.` or the screen button on the right of the top bar) hides the panels, toolbar and edit handles, switches to the hand tool and fits the diagram to the screen — for walking through a diagram in a meeting. Leave with Esc or **Exit view mode**.
 
 </details>
 
@@ -125,7 +125,7 @@ The panels can be hidden. Three toggles — **[left panel] [right panel] [both]*
 <details>
 <summary><b>Google Drive and usage statistics</b></summary>
 
-- **Google Drive** (in web deployments built with the settings) — connect from the Drive button in the top bar or **File → Google Drive**, pick a folder and save.
+- **Google Drive** (in web deployments built with the settings) — connect from **Connect Drive** next to the title or **File → Google Drive**, pick a folder and save. Once linked, the save status next to the title shows the Drive state (saved, saving, needs attention) and opens the details.
   - After that, edits autosave 2 seconds later (at most every 10 seconds while you keep editing), and ⌘S saves to Drive immediately.
   - Changes made on another device or tab merge automatically; you choose which side to keep only when the same thing was changed differently.
   - **Open from Drive**, **Save a copy to another folder**, **Stop syncing** and **Disconnect** are available. The token is kept only in memory, and Drive is off in the single HTML file (`file://`) ([setup and behavior](docs/google-drive.md)).
@@ -217,7 +217,7 @@ The layer rules are enforced by `tests/unit/architecture/layers.test.ts`. The re
 </details>
 
 <details>
-<summary><b>35 E2E tests</b> (<code>tests/e2e</code>, production builds)</summary>
+<summary><b>36 E2E tests</b> (<code>tests/e2e</code>, production builds)</summary>
 
 - **Basic flow** — two nodes → connect → save → open → reload → SVG (same paths as the screen), PNG, rejecting an invalid file
 - **Areas** — dragging a VPC then a single undo, dragging into another area, wrapping
@@ -229,7 +229,7 @@ The layer rules are enforced by `tests/unit/architecture/layers.test.ts`. The re
 - **Deployment** — single HTML opened from `file://` (import, export, autosave, Drive disabled); no CSP violations in the production build
 - **Drive** (mocked Google) — connect, folder save, autosave, ⌘S; reconnect after reload (never writes an empty document); remote change merge and conflict choice; open, stop syncing, disconnect
 - **Usage statistics** — nothing sent before consent; events and URL cleanup after allowing; turning off; refusing
-- **Panels and tools** — panel collapse and memory, `⌘\`, three panel toggles (fixed position, canvas to the window edge, center kept); hand tool (pans only, document unchanged, no edits); connect tool (consecutive connections, panning empty space, Esc); view mode
+- **Panels and tools** — panel collapse and memory, `⌘\` for both panels, top-bar buttons that keep their place, save status right after the title (fixed position, canvas to the window edge, center kept); hand tool (pans only, document unchanged, no edits); connect tool (consecutive connections, panning empty space, Esc); view mode
 - **Layout** — layer tree (hierarchy, selection sync with the canvas, keyboard, rename, drag to reparent and undo, collapse), recently used, shortcuts dialog, keyboard menu navigation
 
 </details>
