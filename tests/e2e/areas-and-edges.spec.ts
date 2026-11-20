@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { center, drag, freshApp, openSample } from './helpers';
+import { act, center, drag, freshApp, openSample } from './helpers';
 
 test('dragging an area moves its children and edges; one undo restores', async ({ page }) => {
   await freshApp(page);
@@ -94,7 +94,7 @@ test('reattaching an edge end to another node', async ({ page }) => {
   const end = await page.locator('[data-hit="endpoint"][data-which="target"]').boundingBox();
   const cache = await center(page, 'node-cache');
   await drag(page, { x: end!.x + end!.width / 2, y: end!.y + end!.height / 2 }, cache);
-  const [download] = await Promise.all([page.waitForEvent('download'), page.getByTestId('tb-save').click()]);
+  const [download] = await Promise.all([page.waitForEvent('download'), act(page, 'tb-save')]);
   const { readFileSync } = await import('node:fs');
   const doc = JSON.parse(readFileSync((await download.path())!, 'utf8'));
   expect(doc.edges.find((e: { id: string }) => e.id === 'e-api-db').target.objectId).toBe('cache');

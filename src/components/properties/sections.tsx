@@ -3,10 +3,9 @@ import {
   AREA_COLORS,
   CONTAINER_KINDS,
   CONTAINER_PRESETS,
-  descendants,
   depth,
+  descendants,
   NODE_SIZES,
-  NODE_VARIANTS,
   SIDES,
   type Annotation,
   type ArrowHeads,
@@ -24,8 +23,9 @@ import {
 } from '../../domain';
 import { AREA_STROKE } from '../../engine';
 import type { Translate } from '../../i18n/messages';
-import type { PaletteService } from '../Palette';
-import { Buttons, Check, Pair, Select, TextArea } from './fields';
+import type { PaletteService } from '../sidebar/types';
+import { Row, Section, Segmented, Switch } from '../ui/controls';
+import { Pair, Select, TextArea } from './fields';
 
 export type LayoutChoice = 'flow' | 'flow-down' | 'grid';
 
@@ -49,7 +49,7 @@ export function LayoutButtons({ t, onLayout, testId }: { t: Translate; onLayout(
   return (
     <div className="button-row">
       {(['flow', 'flow-down', 'grid'] as const).map((m) => (
-        <button type="button" key={m} data-testid={`${testId}-${m}`} onClick={() => onLayout(m)}>{t(`props.layout.${m}`)}</button>
+        <button type="button" className="chip-button" key={m} data-testid={`${testId}-${m}`} onClick={() => onLayout(m)}>{t(`props.layout.${m}`)}</button>
       ))}
     </div>
   );
@@ -63,51 +63,13 @@ function parentOptions(t: Translate, doc: Document, self: Id | null) {
   ];
 }
 
-function Geometry({ t, editor, id, rect, sized }: { t: Translate; editor: Editor; id: Id; rect: Rect | undefined; sized: boolean }) {
+function Geometry({ t, editor, id, rect }: { t: Translate; editor: Editor; id: Id; rect: Rect | undefined }) {
   if (!rect) return null;
   return (
-    <>
+    <Section title={t('section.geometry')} defaultOpen={false}>
       <Pair label={t('props.position')} names={['X', 'Y']} a={rect.x} b={rect.y} onA={(v) => editor.move([id], { x: v - rect.x, y: 0 })} onB={(v) => editor.move([id], { x: 0, y: v - rect.y })} />
-      {sized && <Pair label={t('props.size')} names={['W', 'H']} a={rect.width} b={rect.height} onA={(v) => editor.setBounds(id, { ...rect, width: v })} onB={(v) => editor.setBounds(id, { ...rect, height: v })} />}
-    </>
-  );
-}
-
-function Common({ t, editor, id, locked }: { t: Translate; editor: Editor; id: Id; locked: boolean }) {
-  return (
-    <>
-      <Check label={t('props.locked')} checked={locked} onChange={(v) => editor.setLocked([id], v)} testId="prop-locked" />
-      <Buttons>
-        <button type="button" onClick={() => editor.duplicate([id])}>{t('props.duplicate')}</button>
-        <button type="button" className="danger" onClick={() => editor.delete([id])}>{t('props.delete')}</button>
-      </Buttons>
-    </>
-  );
-}
-
-export function NodeSection({ node, services, ...p }: SectionProps & { node: Node; services: readonly PaletteService[] }) {
-  const { t, editor, doc } = p;
-  const known = services.some((s) => s.id === node.serviceId);
-  const options = [...(known ? [] : [{ value: node.serviceId, label: t('props.unknownService', { id: node.serviceId }) }]), ...services.map((s) => ({ value: s.id, label: s.name }))];
-  return (
-    <section>
-      <h2>{t('props.node')}</h2>
-      <TextArea label={t('props.label')} value={node.label} onChange={(v) => editor.rename(node.id, v)} testId="prop-label" />
-      <Select label={t('props.service')} value={node.serviceId} options={options} onChange={(v) => editor.update('nodes', node.id, { serviceId: v })} testId="prop-service" />
-      <div className="pair-row">
-        <Select label={t('props.variant')} value={node.variant} options={NODE_VARIANTS.map((v) => ({ value: v, label: t(`props.variant.${v}`) }))} onChange={(v: NodeVariant) => editor.setNodeStyle(node.id, v)} testId="prop-variant" />
-        <Select
-          label={t('props.sizePreset')}
-          value={sizeOf(node)}
-          options={[...(sizeOf(node) === 'custom' ? [{ value: 'custom' as const, label: '—' }] : []), ...(['s', 'm', 'l'] as const).map((k) => ({ value: k, label: k.toUpperCase() }))]}
-          onChange={(k) => k !== 'custom' && editor.setNodeStyle(node.id, node.variant, k)}
-          testId="prop-size"
-        />
-      </div>
-      <Select label={t('props.parent')} value={node.parentId ?? ''} options={parentOptions(t, doc, null)} onChange={(v) => editor.setParent([node.id], v || null)} testId="prop-parent" />
-      <Geometry t={t} editor={editor} id={node.id} rect={p.rect} sized />
-      <Common t={t} editor={editor} id={node.id} locked={node.locked} />
-    </section>
+      <Pair label={t('props.size')} names={['W', 'H']} a={rect.width} b={rect.height} onA={(v) => editor.setBounds(id, { ...rect, width: v })} onB={(v) => editor.setBounds(id, { ...rect, height: v })} />
+    </Section>
   );
 }
 
@@ -116,44 +78,63 @@ function sizeOf(node: Node): 's' | 'm' | 'l' | 'custom' {
   return (['s', 'm', 'l'] as const).find((k) => presets[k].width === node.width && presets[k].height === node.height) ?? 'custom';
 }
 
+export function NodeSection({ node, services, ...p }: SectionProps & { node: Node; services: readonly PaletteService[] }) {
+  const { t, editor, doc } = p;
+  const known = services.some((s) => s.id === node.serviceId);
+  const options = [...(known ? [] : [{ value: node.serviceId, label: t('props.unknownService', { id: node.serviceId }) }]), ...services.map((s) => ({ value: s.id, label: s.name }))];
+  return (
+    <>
+      <Section title={t('section.basics')}>
+        <TextArea label={t('props.label')} value={node.label} onChange={(v) => editor.rename(node.id, v)} testId="prop-label" />
+        <Select label={t('props.service')} value={node.serviceId} options={options} onChange={(v) => editor.update('nodes', node.id, { serviceId: v })} testId="prop-service" />
+      </Section>
+      <Section title={t('section.appearance')}>
+        <Row label={t('props.variant')}>
+          <Segmented label={t('props.variant')} testId="prop-variant" value={node.variant} onChange={(v: NodeVariant) => editor.setNodeStyle(node.id, v)} options={(['icon', 'box'] as const).map((v) => ({ value: v, label: t(`props.variant.${v}`) }))} />
+        </Row>
+        <Row label={t('props.sizePreset')}>
+          <Segmented label={t('props.sizePreset')} testId="prop-size" value={sizeOf(node)} onChange={(k) => k !== 'custom' && editor.setNodeStyle(node.id, node.variant, k)} options={(['s', 'm', 'l'] as const).map((k) => ({ value: k, label: k.toUpperCase() }))} />
+        </Row>
+      </Section>
+      <Section title={t('section.placement')}>
+        <Select label={t('props.parent')} value={node.parentId ?? ''} options={parentOptions(t, doc, null)} onChange={(v) => editor.setParent([node.id], v || null)} testId="prop-parent" />
+      </Section>
+      <Geometry t={t} editor={editor} id={node.id} rect={p.rect} />
+    </>
+  );
+}
+
 export function ContainerSection({ container: c, ...p }: SectionProps & { container: Container }) {
   const { t, editor, doc } = p;
   return (
-    <section>
-      <h2>{t('props.area')}</h2>
-      <TextArea label={t('props.label')} value={c.label} onChange={(v) => editor.rename(c.id, v)} testId="prop-label" />
-      <Select
-        label={t('props.kind')}
-        value={c.kind}
-        options={CONTAINER_KINDS.map((k) => ({ value: k, label: t(`area.${k}`) }))}
-        onChange={(kind: ContainerKind) => editor.update('containers', c.id, { kind, style: CONTAINER_PRESETS[kind] })}
-      />
-      <div className="field">
-        <span className="field-label">{t('props.color')}</span>
-        <div className="swatches">
-          {AREA_COLORS.map((color) => (
-            <button
-              type="button"
-              key={color}
-              aria-label={color}
-              aria-pressed={c.style.color === color}
-              className="swatch"
-              style={{ background: AREA_STROKE[color] }}
-              onClick={() => editor.update('containers', c.id, { style: { ...c.style, color } })}
-            />
-          ))}
-        </div>
-      </div>
-      <Check label={t('props.dashed')} checked={c.style.dashed} onChange={(dashed) => editor.update('containers', c.id, { style: { ...c.style, dashed } })} />
-      <Check label={t('props.filled')} checked={c.style.filled} onChange={(filled) => editor.update('containers', c.id, { style: { ...c.style, filled } })} />
-      <Select label={t('props.parent')} value={c.parentId ?? ''} options={parentOptions(t, doc, c.id)} onChange={(v) => editor.setParent([c.id], v || null)} testId="prop-parent" />
-      <Geometry t={t} editor={editor} id={c.id} rect={p.rect} sized />
-      <div className="field">
-        <span className="field-label">{t('props.layoutContents')}</span>
-        <LayoutButtons t={t} testId="layout-contents" onLayout={(m) => p.actions.layoutContents(c.id, m)} />
-      </div>
-      <Common t={t} editor={editor} id={c.id} locked={c.locked} />
-    </section>
+    <>
+      <Section title={t('section.basics')}>
+        <TextArea label={t('props.label')} value={c.label} onChange={(v) => editor.rename(c.id, v)} testId="prop-label" />
+        <Select label={t('props.kind')} value={c.kind} options={CONTAINER_KINDS.map((k) => ({ value: k, label: t(`area.${k}`) }))} onChange={(kind: ContainerKind) => editor.update('containers', c.id, { kind, style: CONTAINER_PRESETS[kind] })} />
+      </Section>
+      <Section title={t('section.appearance')}>
+        <Row label={t('props.color')}>
+          <div className="swatches" role="radiogroup" aria-label={t('props.color')}>
+            {AREA_COLORS.map((color) => (
+              <button type="button" key={color} role="radio" aria-label={color} aria-checked={c.style.color === color} className="swatch" style={{ background: AREA_STROKE[color] }} onClick={() => editor.update('containers', c.id, { style: { ...c.style, color } })} />
+            ))}
+          </div>
+        </Row>
+        <Row label="">
+          <div className="switch-stack">
+            <Switch label={t('props.dashed')} checked={c.style.dashed} onChange={(dashed) => editor.update('containers', c.id, { style: { ...c.style, dashed } })} />
+            <Switch label={t('props.filled')} checked={c.style.filled} onChange={(filled) => editor.update('containers', c.id, { style: { ...c.style, filled } })} />
+          </div>
+        </Row>
+      </Section>
+      <Section title={t('section.placement')}>
+        <Select label={t('props.parent')} value={c.parentId ?? ''} options={parentOptions(t, doc, c.id)} onChange={(v) => editor.setParent([c.id], v || null)} testId="prop-parent" />
+        <Row label={t('props.layoutContents')} stacked>
+          <LayoutButtons t={t} testId="layout-contents" onLayout={(m) => p.actions.layoutContents(c.id, m)} />
+        </Row>
+      </Section>
+      <Geometry t={t} editor={editor} id={c.id} rect={p.rect} />
+    </>
   );
 }
 
@@ -174,43 +155,41 @@ export function EdgeSection({ edge, ...p }: SectionProps & { edge: Edge }) {
     editor.update('edges', edge.id, { [which]: { ...end, side, offset: side === 'auto' ? null : end.side === side ? end.offset : null } });
   };
   return (
-    <section>
-      <h2>{t('props.edge')}</h2>
-      <TextArea label={t('props.label')} value={edge.label} onChange={(v) => editor.rename(edge.id, v)} testId="prop-label" />
-      <Select
-        label={t('props.arrow')}
-        value={edge.style.arrow}
-        options={(['end', 'start', 'both', 'none'] as ArrowHeads[]).map((a) => ({ value: a, label: t(`props.arrow.${a}`) }))}
-        onChange={(arrow) => editor.update('edges', edge.id, { style: { ...edge.style, arrow } })}
-      />
-      <Select
-        label={t('props.shape')}
-        value={edge.style.shape}
-        options={(['orthogonal', 'straight'] as EdgeShape[]).map((s) => ({ value: s, label: t(`props.shape.${s}`) }))}
-        onChange={(shape) => editor.update('edges', edge.id, { style: { ...edge.style, shape }, routingMode: 'auto', waypoints: [] })}
-      />
-      <Check label={t('props.dashed')} checked={edge.style.dashed} onChange={(dashed) => editor.update('edges', edge.id, { style: { ...edge.style, dashed } })} testId="prop-dashed" />
-      <Select label={t('props.sourceSide')} value={sideValue(edge.source)} options={sideOptions(edge.source)} onChange={(v) => setSide('source', v)} />
-      <Select label={t('props.targetSide')} value={sideValue(edge.target)} options={sideOptions(edge.target)} onChange={(v) => setSide('target', v)} />
-      <div className="field">
-        <span className="field-label">{t('props.routing')}</span>
-        <span data-testid="prop-routing">{edge.routingMode === 'manual' ? t('props.routing.manual', { count: edge.waypoints.length }) : t('props.routing.auto')}</span>
-      </div>
-      <p className="hint">{t('props.editHint')}</p>
-      <Buttons>
-        <button type="button" disabled={edge.routingMode === 'auto'} onClick={() => editor.resetRoute(edge.id)}>{t('props.resetRoute')}</button>
-        <button type="button" onClick={() => editor.update('edges', edge.id, { source: edge.target, target: edge.source, waypoints: [...edge.waypoints].reverse() })}>⇄</button>
-        <button type="button" className="danger" onClick={() => editor.delete([edge.id])}>{t('props.delete')}</button>
-      </Buttons>
-    </section>
+    <>
+      <Section title={t('section.basics')}>
+        <TextArea label={t('props.label')} value={edge.label} onChange={(v) => editor.rename(edge.id, v)} testId="prop-label" />
+      </Section>
+      <Section title={t('section.appearance')}>
+        <Row label={t('props.arrow')}>
+          <Segmented label={t('props.arrow')} value={edge.style.arrow} onChange={(arrow: ArrowHeads) => editor.update('edges', edge.id, { style: { ...edge.style, arrow } })} options={(['end', 'start', 'both', 'none'] as const).map((a) => ({ value: a, label: t(`props.arrow.${a}`) }))} />
+        </Row>
+        <Row label={t('props.shape')}>
+          <Segmented label={t('props.shape')} value={edge.style.shape} onChange={(shape: EdgeShape) => editor.update('edges', edge.id, { style: { ...edge.style, shape }, routingMode: 'auto', waypoints: [] })} options={(['orthogonal', 'straight'] as const).map((s) => ({ value: s, label: t(`props.shape.${s}`) }))} />
+        </Row>
+        <Row label="">
+          <Switch label={t('props.dashed')} checked={edge.style.dashed} onChange={(dashed) => editor.update('edges', edge.id, { style: { ...edge.style, dashed } })} testId="prop-dashed" />
+        </Row>
+      </Section>
+      <Section title={t('section.ends')}>
+        <Select label={t('props.sourceSide')} value={sideValue(edge.source)} options={sideOptions(edge.source)} onChange={(v) => setSide('source', v)} />
+        <Select label={t('props.targetSide')} value={sideValue(edge.target)} options={sideOptions(edge.target)} onChange={(v) => setSide('target', v)} />
+        <Row label={t('props.routing')}>
+          <span className="value-text" data-testid="prop-routing">{edge.routingMode === 'manual' ? t('props.routing.manual', { count: edge.waypoints.length }) : t('props.routing.auto')}</span>
+        </Row>
+        <div className="button-row">
+          <button type="button" className="chip-button" disabled={edge.routingMode === 'auto'} onClick={() => editor.resetRoute(edge.id)}>{t('props.resetRoute')}</button>
+          <button type="button" className="chip-button" onClick={() => editor.update('edges', edge.id, { source: edge.target, target: edge.source, waypoints: [...edge.waypoints].reverse() })}>{t('props.swap')}</button>
+        </div>
+        <p className="section-hint">{t('props.editHint')}</p>
+      </Section>
+    </>
   );
 }
 
 export function AnnotationSection({ annotation: a, ...p }: SectionProps & { annotation: Annotation }) {
   const { t, editor } = p;
   return (
-    <section>
-      <h2>{t('props.annotation')} · {t(`note.${a.kind}`)}</h2>
+    <Section title={t('section.basics')}>
       <TextArea label={t('props.text')} value={a.text} onChange={(v) => editor.rename(a.id, v)} testId="prop-label" />
       <Select
         label={t('props.target')}
@@ -220,14 +199,10 @@ export function AnnotationSection({ annotation: a, ...p }: SectionProps & { anno
         testId="prop-target"
       />
       {a.kind === 'legend' && (
-        <Buttons>
-          <button type="button" data-testid="regenerate-legend" onClick={() => p.actions.regenerateLegend(a.id)}>{t('props.regenerateLegend')}</button>
-        </Buttons>
+        <div className="button-row">
+          <button type="button" className="chip-button" data-testid="regenerate-legend" onClick={() => p.actions.regenerateLegend(a.id)}>{t('props.regenerateLegend')}</button>
+        </div>
       )}
-      <Buttons>
-        <button type="button" onClick={() => editor.duplicate([a.id])}>{t('props.duplicate')}</button>
-        <button type="button" className="danger" onClick={() => editor.delete([a.id])}>{t('props.delete')}</button>
-      </Buttons>
-    </section>
+    </Section>
   );
 }

@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
-import { center, drag, freshApp, nodeIds } from './helpers';
+import { act, center, drag, freshApp, nodeIds } from './helpers';
 
 test('two nodes → connect → save → reopen → SVG export', async ({ page }) => {
   await freshApp(page);
@@ -32,7 +32,7 @@ test('two nodes → connect → save → reopen → SVG export', async ({ page }
   await expect(page.locator('.diagram')).toContainText('SQL');
 
   // Save to a .structlet file.
-  const [download] = await Promise.all([page.waitForEvent('download'), page.getByTestId('tb-save').click()]);
+  const [download] = await Promise.all([page.waitForEvent('download'), act(page, 'tb-save')]);
   expect(download.suggestedFilename()).toMatch(/\.structlet$/);
   const savedPath = await download.path();
   const saved = JSON.parse(readFileSync(savedPath!, 'utf8'));
@@ -43,9 +43,9 @@ test('two nodes → connect → save → reopen → SVG export', async ({ page }
 
   // Start over, then reopen the saved file.
   page.once('dialog', (d) => d.accept());
-  await page.getByTestId('tb-new').click();
+  await act(page, 'tb-new');
   await expect(page.locator('[data-testid^="node-"]')).toHaveCount(0);
-  const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByTestId('tb-open').click()]);
+  const [chooser] = await Promise.all([page.waitForEvent('filechooser'), act(page, 'tb-open')]);
   await chooser.setFiles(savedPath!);
   await expect(page.locator('[data-testid^="node-"]')).toHaveCount(2);
   expect(await nodeIds(page)).toEqual([a, b]);
@@ -58,7 +58,7 @@ test('two nodes → connect → save → reopen → SVG export', async ({ page }
 
   // Export SVG with the same path and labels as the canvas.
   const canvasPath = await page.locator('.diagram path[data-edge]').getAttribute('d');
-  const [svgDownload] = await Promise.all([page.waitForEvent('download'), page.getByTestId('tb-svg').click()]);
+  const [svgDownload] = await Promise.all([page.waitForEvent('download'), act(page, 'tb-svg')]);
   const svg = readFileSync((await svgDownload.path())!, 'utf8');
   expect(svg).toContain('<svg');
   expect(svg).toContain(`d="${canvasPath}"`);
@@ -66,15 +66,15 @@ test('two nodes → connect → save → reopen → SVG export', async ({ page }
   expect(svg).toContain('>Server<');
 
   // Re-saving gives the same positions.
-  const [again] = await Promise.all([page.waitForEvent('download'), page.getByTestId('tb-save').click()]);
+  const [again] = await Promise.all([page.waitForEvent('download'), act(page, 'tb-save')]);
   const resaved = JSON.parse(readFileSync((await again.path())!, 'utf8'));
   expect(resaved.nodes.map((n: { x: number; y: number }) => [n.x, n.y])).toEqual(positions);
 });
 
 test('PNG export produces an image', async ({ page }) => {
   await freshApp(page);
-  await page.getByTestId('tb-sample').click();
-  const [png] = await Promise.all([page.waitForEvent('download'), page.getByTestId('tb-png').click()]);
+  await act(page, 'tb-sample');
+  const [png] = await Promise.all([page.waitForEvent('download'), act(page, 'tb-png')]);
   const bytes = readFileSync((await png.path())!);
   expect(bytes.subarray(1, 4).toString()).toBe('PNG');
   expect(bytes.length).toBeGreaterThan(20_000);
@@ -82,11 +82,11 @@ test('PNG export produces an image', async ({ page }) => {
 
 test('rejects an invalid file without touching the open document', async ({ page }, info) => {
   await freshApp(page);
-  await page.getByTestId('tb-sample').click();
+  await act(page, 'tb-sample');
   const bad = info.outputPath('bad.structlet');
   const { writeFileSync } = await import('node:fs');
   writeFileSync(bad, JSON.stringify({ format: 'structlet', formatVersion: 1, id: 'x', containers: [{ id: 'a', kind: 'vpc', parentId: 'b', x: 0, y: 0, width: 10, height: 10 }, { id: 'b', kind: 'vpc', parentId: 'a', x: 0, y: 0, width: 10, height: 10 }] }));
-  const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByTestId('tb-open').click()]);
+  const [chooser] = await Promise.all([page.waitForEvent('filechooser'), act(page, 'tb-open')]);
   await chooser.setFiles(bad);
   await expect(page.getByRole('alert')).toContainText('cycle');
   await expect(page.locator('[data-testid^="node-"]')).toHaveCount(11);

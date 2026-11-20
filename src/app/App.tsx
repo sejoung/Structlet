@@ -11,9 +11,10 @@ import { AREA_STROKE, computeScene, containerAt, fitView, onSurface, screenToWor
 import { createTranslator, type Language } from '../i18n/messages';
 import { Canvas } from '../components/canvas/Canvas';
 import { IconPacksDialog } from '../components/IconPacksDialog';
-import { Palette, type PaletteService } from '../components/Palette';
+import { ShortcutsDialog, Toast } from '../components/Overlays';
+import { Sidebar, type SidebarTab } from '../components/sidebar/Sidebar';
+import type { PaletteService } from '../components/sidebar/types';
 import { PropertiesPanel, type PanelFinding } from '../components/properties/PropertiesPanel';
-import { StatusBar } from '../components/StatusBar';
 import { Toolbar, type ViewMode } from '../components/Toolbar';
 import { useSession } from '../components/use-session';
 import { createDocumentActions } from './document-actions';
@@ -22,6 +23,10 @@ import { createPanelActions } from './panel-actions';
 import { useClipboard } from './use-clipboard';
 import { useShortcuts } from './use-shortcuts';
 import { useTheme } from './use-theme';
+
+/** Canvas surface colors; keep in sync with --canvas in styles.css. */
+const CANVAS_LIGHT = '#eef0f4';
+const CANVAS_DARK = '#101318';
 
 interface AppProps {
   editor: Editor;
@@ -33,7 +38,17 @@ interface AppProps {
   onLanguage(language: Language): void;
 }
 
-const toPalette = (language: Language, look: ReturnType<typeof createAppearance>) => (s: ServiceDefinition): PaletteService => ({ id: s.id, name: s.name[language], provider: s.provider, glyph: s.glyph, color: s.color, image: look.service(s.id)?.image });
+const toPalette = (language: Language, look: ReturnType<typeof createAppearance>) => (s: ServiceDefinition): PaletteService => ({ id: s.id, name: s.name[language], provider: s.provider, role: s.role, glyph: s.glyph, color: s.color, image: look.service(s.id)?.image });
+
+const RECENT_KEY = 'structlet:recent-services';
+function storedRecent(): string[] {
+  try {
+    const v = JSON.parse(localStorage.getItem(RECENT_KEY) ?? '[]');
+    return Array.isArray(v) ? v.filter((x) => typeof x === 'string').slice(0, 8) : [];
+  } catch {
+    return [];
+  }
+}
 
 export function App({ editor, store, files, packStore, newId, initialLanguage, onLanguage }: AppProps) {
   const [language, setLanguage] = useState<Language>(initialLanguage);
@@ -42,9 +57,13 @@ export function App({ editor, store, files, packStore, newId, initialLanguage, o
   const [editing, setEditing] = useState<Id | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [view, setView] = useState<ViewMode>('2d');
+  const [tab, setTab] = useState<SidebarTab>('services');
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [recent, setRecent] = useState<string[]>(storedRecent);
+  const dismissNotice = useCallback(() => setNotice(null), []);
   const theme = useTheme();
   // The canvas is not white: edge label boxes take the canvas color (keep in sync with --canvas in styles.css).
-  const canvasTheme = useMemo(() => onSurface(theme.diagram, theme.resolved === 'dark' ? '#14171d' : '#f6f7f9'), [theme.diagram, theme.resolved]);
+  const canvasTheme = useMemo(() => onSurface(theme.diagram, theme.resolved === 'dark' ? CANVAS_DARK : CANVAS_LIGHT), [theme.diagram, theme.resolved]);
   const snapshot = useSession(editor.session);
   const t = useMemo(() => createTranslator(language), [language]);
   const [packs, setPacks] = useState<IconPack[]>([]);
@@ -119,6 +138,13 @@ export function App({ editor, store, files, packStore, newId, initialLanguage, o
     const name = appearance.service(serviceId)?.name ?? serviceId;
     const center = at ?? freeSpot(viewCenter());
     editor.addService(serviceId, name, center, containerAt(scene, center));
+    const next = [serviceId, ...recent.filter((x) => x !== serviceId)].slice(0, 8);
+    setRecent(next);
+    try {
+      localStorage.setItem(RECENT_KEY, JSON.stringify(next));
+    } catch {
+      // per-browser convenience only
+    }
   };
 
   const addArea = (kind: ContainerKind) => {
@@ -157,6 +183,8 @@ export function App({ editor, store, files, packStore, newId, initialLanguage, o
     onImportText: (text) => void actions.importText(text),
   });
 
+  const fit = () => fitTo(editor.session.committedDocument);
+
   return (
     <div className="app">
       <Toolbar
@@ -164,6 +192,7 @@ export function App({ editor, store, files, packStore, newId, initialLanguage, o
         title={snapshot.document.title}
         canUndo={snapshot.canUndo}
         canRedo={snapshot.canRedo}
+        dirty={snapshot.dirty}
         language={language}
         view={view}
         theme={theme.choice}
@@ -177,48 +206,60 @@ export function App({ editor, store, files, packStore, newId, initialLanguage, o
         onExportPng={() => void actions.exportPng()}
         onUndo={() => editor.undo()}
         onRedo={() => editor.redo()}
-        onFit={() => fitTo(editor.session.committedDocument)}
         onSample={actions.openSample}
         onTitle={(title) => editor.setTitle(title)}
         onView={setView}
         onTheme={theme.setChoice}
         onIconPacks={() => setPacksOpen(true)}
+        onShortcuts={() => setShortcutsOpen(true)}
         onLanguage={(l) => {
           setLanguage(l);
           onLanguage(l);
         }}
       />
       <div className="workspace">
-        <Palette
+        <Sidebar
           t={t}
+          tab={tab}
+          onTab={setTab}
+          editor={editor}
+          doc={snapshot.document}
+          selection={snapshot.selection}
+          appearance={appearance}
+          services={services}
           search={search}
-          containerGlyph={appearance.containerGlyph}
+          recent={recent}
+          wrapping={snapshot.selection.filter((id) => getBox(snapshot.document, id)).length}
           areaColor={(k) => AREA_STROKE[CONTAINER_PRESETS[k].color]!}
-          wrapping={snapshot.selection.some((id) => getBox(snapshot.document, id))}
           onAddService={(id) => addService(id)}
           onAddArea={addArea}
           onAddNote={addNote}
         />
-        <Canvas
-          t={t}
-          editor={editor}
-          snapshot={snapshot}
-          scene={scene}
-          viewport={viewport}
-          setViewport={setViewport}
-          onResize={setSize}
-          onDropService={(id, world) => addService(id, world)}
-          onOpenSample={actions.openSample}
-          editing={editing}
-          setEditing={setEditing}
-          theme={canvasTheme}
-          view={view}
-        />
+        <main className="stage">
+          <Canvas
+            t={t}
+            editor={editor}
+            snapshot={snapshot}
+            scene={scene}
+            viewport={viewport}
+            setViewport={setViewport}
+            onResize={setSize}
+            onDropService={(id, world) => addService(id, world)}
+            onOpenSample={actions.openSample}
+            editing={editing}
+            setEditing={setEditing}
+            theme={canvasTheme}
+            view={view}
+            onFit={fit}
+          />
+          <Toast t={t} message={notice} onDismiss={dismissNotice} />
+        </main>
         <PropertiesPanel
           t={t}
           editor={editor}
           snapshot={snapshot}
           scene={scene}
+          appearance={appearance}
           services={services}
           findings={findings}
           actions={panelActions}
@@ -237,7 +278,7 @@ export function App({ editor, store, files, packStore, newId, initialLanguage, o
           onClose={() => setPacksOpen(false)}
         />
       )}
-      <StatusBar t={t} zoom={viewport.zoom} dirty={snapshot.dirty} notice={notice} onDismiss={() => setNotice(null)} />
+      {shortcutsOpen && <ShortcutsDialog t={t} onClose={() => setShortcutsOpen(false)} />}
     </div>
   );
 }

@@ -1,4 +1,7 @@
 import type { Language, Translate } from '../i18n/messages';
+import { Icon } from './ui/Icon';
+import { Menu } from './ui/Menu';
+import { IconButton, Segmented } from './ui/controls';
 
 export type ViewMode = '2d' | 'isometric';
 export type ThemeChoice = 'system' | 'light' | 'dark';
@@ -13,13 +16,13 @@ export interface ToolbarActions {
   onExportPng(): void;
   onUndo(): void;
   onRedo(): void;
-  onFit(): void;
   onSample(): void;
   onTitle(title: string): void;
   onLanguage(language: Language): void;
   onView(view: ViewMode): void;
   onTheme(theme: ThemeChoice): void;
   onIconPacks(): void;
+  onShortcuts(): void;
 }
 
 interface ToolbarProps extends ToolbarActions {
@@ -27,57 +30,88 @@ interface ToolbarProps extends ToolbarActions {
   title: string;
   canUndo: boolean;
   canRedo: boolean;
+  dirty: boolean;
   language: Language;
   view: ViewMode;
   theme: ThemeChoice;
   fileName: string | null;
 }
 
+const mod = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl+';
+
+/** Top bar: document on the left, editing in the middle, output on the right. */
 export function Toolbar(props: ToolbarProps) {
   const { t } = props;
   return (
-    <header className="toolbar" role="toolbar" aria-label="Structlet">
-      <div className="brand" aria-hidden="true">
-        <span className="brand-mark" />
-        Structlet
+    <header className="topbar" role="toolbar" aria-label="Structlet">
+      <div className="topbar-start">
+        <div className="brand" aria-label="Structlet">
+          <svg className="brand-mark" viewBox="0 0 20 20" aria-hidden="true">
+            <rect x="1.5" y="1.5" width="17" height="17" rx="4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeDasharray="3 2" />
+            <rect x="5" y="5" width="5" height="5" rx="1.2" fill="currentColor" />
+            <rect x="11" y="10.5" width="4.5" height="4.5" rx="1.2" fill="currentColor" opacity="0.55" />
+          </svg>
+        </div>
+        <Menu
+          testId="menu-file"
+          label={<>{t('menu.file')}<Icon name="chevronDown" size={14} /></>}
+          items={[
+            { id: 'tb-new', label: t('toolbar.new'), icon: 'newFile', onSelect: props.onNew },
+            { id: 'tb-open', label: t('toolbar.open'), icon: 'open', shortcut: `${mod}O`, onSelect: props.onOpen },
+            { id: 'tb-import', label: t('toolbar.import'), icon: 'import', onSelect: props.onImport },
+            { id: 'tb-save', label: t('toolbar.save'), icon: 'save', shortcut: `${mod}S`, separated: true, onSelect: props.onSave },
+            { id: 'tb-save-as', label: t('toolbar.saveAs'), shortcut: `⇧${mod}S`, onSelect: props.onSaveAs },
+            { id: 'tb-sample', label: t('toolbar.sample'), separated: true, onSelect: props.onSample },
+          ]}
+        />
+        <div className="doc-title">
+          <input className="title-input" aria-label={t('toolbar.title')} value={props.title} onChange={(e) => props.onTitle(e.target.value)} spellCheck={false} />
+          <span className={`save-state${props.dirty ? ' saving' : ''}`} data-testid="save-status" title={props.fileName ?? t('status.saved')}>
+            <span className="save-dot" aria-hidden="true" />
+            {props.dirty ? t('save.state.saving') : t('save.state.saved')}
+          </span>
+        </div>
       </div>
-      <input className="title-input" aria-label={t('toolbar.title')} value={props.title} onChange={(e) => props.onTitle(e.target.value)} spellCheck={false} title={props.fileName ?? undefined} />
-      <div className="toolbar-group">
-        <button type="button" data-testid="tb-new" onClick={props.onNew}>{t('toolbar.new')}</button>
-        <button type="button" data-testid="tb-open" onClick={props.onOpen} title="⌘O">{t('toolbar.open')}</button>
-        <button type="button" data-testid="tb-import" onClick={props.onImport} title={t('toolbar.importHint')}>{t('toolbar.import')}</button>
-        <button type="button" data-testid="tb-save" onClick={props.onSave} title={props.fileName ? `⌘S → ${props.fileName}` : '⌘S'}>{t('toolbar.save')}</button>
-        <button type="button" data-testid="tb-save-as" onClick={props.onSaveAs} title="⇧⌘S">{t('toolbar.saveAs')}</button>
+      <div className="topbar-center">
+        <IconButton icon="undo" label={`${t('toolbar.undo')} (${mod}Z)`} onClick={props.onUndo} disabled={!props.canUndo} testId="tb-undo" />
+        <IconButton icon="redo" label={`${t('toolbar.redo')} (⇧${mod}Z)`} onClick={props.onRedo} disabled={!props.canRedo} testId="tb-redo" />
+        <span className="topbar-divider" aria-hidden="true" />
+        <Segmented
+          label={t('toolbar.view')}
+          value={props.view}
+          onChange={props.onView}
+          testId="tb-view"
+          options={[
+            { value: '2d', label: t('toolbar.view.2d') },
+            { value: 'isometric', label: t('toolbar.view.isometric') },
+          ]}
+        />
       </div>
-      <div className="toolbar-group" aria-label={t('toolbar.export')}>
-        <span className="toolbar-label">{t('toolbar.export')}</span>
-        <button type="button" data-testid="tb-svg" onClick={props.onExportSvg}>{t('toolbar.exportSvg')}</button>
-        <button type="button" data-testid="tb-png" onClick={props.onExportPng}>{t('toolbar.exportPng')}</button>
+      <div className="topbar-end">
+        <IconButton icon="keyboard" label={t('menu.shortcuts')} onClick={props.onShortcuts} testId="tb-shortcuts" />
+        <Menu
+          testId="menu-settings"
+          align="end"
+          ariaLabel={t('menu.settings')}
+          className="icon-menu"
+          label={<Icon name="settings" />}
+          items={[
+            { id: 'tb-icon-packs', label: t('toolbar.iconPacks'), icon: 'pack', onSelect: props.onIconPacks },
+            ...(['system', 'light', 'dark'] as const).map((v, i) => ({ id: `tb-theme-${v}`, label: t(`toolbar.theme.${v}`), checked: props.theme === v, heading: i === 0 ? t('menu.theme') : undefined, separated: i === 0, onSelect: () => props.onTheme(v) })),
+            ...(['ko', 'en'] as const).map((l, i) => ({ id: `tb-lang-${l}`, label: l === 'ko' ? '한국어' : 'English', checked: props.language === l, heading: i === 0 ? t('menu.language') : undefined, separated: i === 0, onSelect: () => props.onLanguage(l) })),
+          ]}
+        />
+        <Menu
+          testId="menu-export"
+          align="end"
+          className="primary-menu"
+          label={<><Icon name="download" />{t('menu.export')}</>}
+          items={[
+            { id: 'tb-svg', label: t('menu.exportSvg'), onSelect: props.onExportSvg },
+            { id: 'tb-png', label: t('menu.exportPng'), onSelect: props.onExportPng },
+          ]}
+        />
       </div>
-      <div className="toolbar-group">
-        <button type="button" onClick={props.onUndo} disabled={!props.canUndo} title="⌘Z" aria-label={t('toolbar.undo')}>↶</button>
-        <button type="button" onClick={props.onRedo} disabled={!props.canRedo} title="⇧⌘Z" aria-label={t('toolbar.redo')}>↷</button>
-        <button type="button" data-testid="tb-fit" onClick={props.onFit} title="⌘0">{t('toolbar.fit')}</button>
-      </div>
-      <div className="toolbar-group segmented" role="group" aria-label={t('toolbar.view')}>
-        {(['2d', 'isometric'] as const).map((v) => (
-          <button type="button" key={v} data-testid={`tb-view-${v}`} aria-pressed={props.view === v} onClick={() => props.onView(v)}>
-            {t(`toolbar.view.${v}`)}
-          </button>
-        ))}
-      </div>
-      <div className="toolbar-spacer" />
-      <button type="button" className="ghost" data-testid="tb-sample" onClick={props.onSample}>{t('toolbar.sample')}</button>
-      <button type="button" className="ghost" data-testid="tb-icon-packs" onClick={props.onIconPacks}>{t('toolbar.iconPacks')}</button>
-      <select aria-label={t('toolbar.theme')} data-testid="tb-theme" value={props.theme} onChange={(e) => props.onTheme(e.target.value as ThemeChoice)}>
-        {(['system', 'light', 'dark'] as const).map((v) => (
-          <option key={v} value={v}>{t(`toolbar.theme.${v}`)}</option>
-        ))}
-      </select>
-      <select aria-label={t('toolbar.language')} value={props.language} onChange={(e) => props.onLanguage(e.target.value as Language)}>
-        <option value="ko">한국어</option>
-        <option value="en">English</option>
-      </select>
     </header>
   );
 }

@@ -18,6 +18,7 @@ Structlet의 구조와 동작에 대한 결정이다. 결정을 바꾸면 해당
 | [0012](0012-local-architecture-checks.md) | 로컬 구성 점검 | 채택 |
 | [0013](0013-icon-packs.md) | 사용자가 불러오는 아이콘 팩 | 채택 |
 | [0014](0014-static-deployment.md) | 정적 HTML 배포 | 채택 |
+| [0015](0015-editor-layout.md) | 편집기 화면 구성 | 채택 |
 
 [stormlet-reference/](stormlet-reference/)에는 시작할 때 참고한 Stormlet ADR 원본을 따로 보관한다.
 

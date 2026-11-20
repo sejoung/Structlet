@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
-import { center, drag, freshApp, openSample } from './helpers';
+import { act, center, drag, freshApp, openSample } from './helpers';
 
 const click = (page: import('@playwright/test').Page, id: string, shift = false) => page.locator(`[data-testid="node-${id}"] rect`).first().click(shift ? { modifiers: ['Shift'] } : {});
 const autosaved = async (page: import('@playwright/test').Page) => {
@@ -30,7 +30,7 @@ test('importing a draft keeps existing positions and adds new objects; a broken 
   const base = await autosaved(page);
   const draft = info.outputPath('change.json');
   writeFileSync(draft, JSON.stringify({ format: 'structlet-draft', nodes: [{ id: 'cdn', service: 'cdn', label: 'CDN' }, { id: 'api', label: 'Orders API v2' }], edges: [{ from: 'user', to: 'cdn', label: 'static' }] }));
-  const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByTestId('tb-import').click()]);
+  const [chooser] = await Promise.all([page.waitForEvent('filechooser'), act(page, 'tb-import')]);
   await chooser.setFiles(draft);
   await expect(page.getByRole('alert')).toContainText('Imported 2 new objects');
   await expect(page.locator('[data-testid="node-cdn"]')).toHaveCount(1);
@@ -46,7 +46,7 @@ test('importing a draft keeps existing positions and adds new objects; a broken 
 
   const bad = info.outputPath('bad.json');
   writeFileSync(bad, JSON.stringify({ edges: [{ from: 'api', to: 'nowhere' }] }));
-  const [c2] = await Promise.all([page.waitForEvent('filechooser'), page.getByTestId('tb-import').click()]);
+  const [c2] = await Promise.all([page.waitForEvent('filechooser'), act(page, 'tb-import')]);
   await c2.setFiles(bad);
   await expect(page.getByRole('alert')).toContainText('nowhere');
   expect((await autosaved(page)).edges).toHaveLength(base.edges.length);
@@ -54,7 +54,7 @@ test('importing a draft keeps existing positions and adds new objects; a broken 
 
 test('importing docker-compose into an empty diagram', async ({ page }) => {
   await freshApp(page);
-  const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByTestId('tb-import').click()]);
+  const [chooser] = await Promise.all([page.waitForEvent('filechooser'), act(page, 'tb-import')]);
   await chooser.setFiles('tests/unit/adapters/fixtures/docker-compose.yml');
   await expect(page.locator('[data-testid="node-svc-api"]')).toHaveCount(1);
   await expect(page.locator('.diagram [data-container]')).toHaveCount(3);
@@ -77,27 +77,28 @@ test('copy and paste through the clipboard', async ({ page, context }) => {
 test('isometric view and export', async ({ page }) => {
   await freshApp(page);
   await openSample(page);
-  await page.getByTestId('tb-view-isometric').click();
+  await page.locator('[data-testid="tb-view"] [data-value="isometric"]').click();
   await expect(page.getByTestId('isometric').locator('polygon').first()).toBeVisible();
-  const [svg] = await Promise.all([page.waitForEvent('download'), page.getByTestId('tb-svg').click()]);
+  const [svg] = await Promise.all([page.waitForEvent('download'), act(page, 'tb-svg')]);
   expect(svg.suggestedFilename()).toContain('isometric');
   expect(readFileSync((await svg.path())!, 'utf8')).toContain('<polygon');
-  await page.getByTestId('tb-view-2d').click();
+  await page.locator('[data-testid="tb-view"] [data-value="2d"]').click();
   await expect(page.getByTestId('canvas')).toBeVisible();
 });
 
 test('dark theme, box nodes, legend, checks, minimap and keyboard navigation', async ({ page }) => {
   await freshApp(page);
   await openSample(page);
-  await page.getByTestId('tb-theme').selectOption('dark');
+  await act(page, 'tb-theme-dark');
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   expect(await page.locator('.diagram').innerHTML()).toContain('#9aa4b2');
 
   await click(page, 'api');
-  await page.getByTestId('prop-variant').selectOption('box');
+  await page.locator('[data-testid="prop-variant"] [data-value="box"]').click();
   await expect(page.locator('.diagram [data-node="api"] rect').first()).toHaveAttribute('width', '184');
 
   await page.keyboard.press('Escape');
+  await page.getByTestId('rail-notes').click();
   await page.locator('[data-note="legend"]').click();
   await expect(page.locator('.diagram')).toContainText('Compute');
 
@@ -119,7 +120,7 @@ test('touch: one finger pans, two fingers zoom', async ({ page }) => {
   await freshApp(page);
   await openSample(page);
   const box = (await page.getByTestId('canvas').boundingBox())!;
-  const zoomText = () => page.locator('.statusbar span').first().textContent();
+  const zoomText = () => page.getByTestId('zoom-level').textContent();
   const before = await zoomText();
   const fire = (type: string, id: number, x: number, y: number) =>
     page.getByTestId('canvas').dispatchEvent(type, { pointerId: id, pointerType: 'touch', isPrimary: id === 1, clientX: box.x + x, clientY: box.y + y, button: 0, buttons: type === 'pointerup' ? 0 : 1 });

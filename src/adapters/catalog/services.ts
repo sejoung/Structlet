@@ -29,7 +29,7 @@ export function findService(id: string): ServiceDefinition | undefined {
 export function packServices(packs: readonly IconPack[]): ServiceDefinition[] {
   return packs
     .filter((p) => p.enabled)
-    .flatMap((p) => p.extras.map((x): ServiceDefinition => ({ id: x.id, provider: p.provider, name: { en: x.name, ko: x.name }, keywords: x.id.split(/[.-]/), glyph: Box, color: ROLE_COLORS.external })));
+    .flatMap((p) => p.extras.map((x): ServiceDefinition => ({ id: x.id, provider: p.provider, name: { en: x.name, ko: x.name }, keywords: x.id.split(/[.-]/), glyph: Box, color: ROLE_COLORS.external, role: 'external' })));
 }
 
 /** Case-insensitive search over names (both languages), ids and keywords. */

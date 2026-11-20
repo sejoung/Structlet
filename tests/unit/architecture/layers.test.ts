@@ -15,7 +15,7 @@ const LAYERS = {
   application: { layers: ['domain', 'application'], packages: [] },
   adapters: { layers: ['domain', 'engine', 'application', 'adapters'], packages: ['lucide', 'yaml', 'fflate'] },
   i18n: { layers: ['i18n'], packages: [] },
-  components: { layers: ['domain', 'engine', 'application', 'i18n', 'components'], packages: ['react', 'react/jsx-runtime'] },
+  components: { layers: ['domain', 'engine', 'application', 'i18n', 'components'], packages: ['react', 'react/jsx-runtime', 'lucide'] },
   app: { layers: ['domain', 'engine', 'application', 'adapters', 'i18n', 'components', 'app'], packages: ['react', 'react-dom/client', 'react/jsx-runtime'] },
 } as const;
 type Layer = keyof typeof LAYERS;

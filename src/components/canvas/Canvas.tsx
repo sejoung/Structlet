@@ -3,11 +3,12 @@ import type { Editor, SessionSnapshot } from '../../application';
 import { indexDocument, type Id, type Point } from '../../domain';
 import { polylineMidpoint, renderSceneBody, screenToWorld, worldToScreen, zoomAt, type DiagramTheme, type Scene, type Viewport } from '../../engine';
 import type { Translate } from '../../i18n/messages';
-import { SERVICE_DRAG_TYPE } from '../Palette';
+import { SERVICE_DRAG_TYPE } from '../sidebar/types';
 import type { ViewMode } from '../Toolbar';
 import { Handles } from './Handles';
 import { IsometricView } from './IsometricView';
 import { Minimap } from './Minimap';
+import { ZoomBar } from './ZoomBar';
 import { useGestures } from './use-gestures';
 
 interface CanvasProps {
@@ -24,6 +25,7 @@ interface CanvasProps {
   setEditing(id: Id | null): void;
   theme: DiagramTheme;
   view: ViewMode;
+  onFit(): void;
 }
 
 /** Objects in reading order for keyboard navigation. */
@@ -121,6 +123,8 @@ export function Canvas(props: CanvasProps) {
   };
 
   const onKeyDown = (e: ReactKeyboardEvent<SVGSVGElement>) => {
+    // Show the focus ring only for keyboard use; pointer use clears it.
+    e.currentTarget.dataset.keyboard = 'true';
     if (e.key !== 'Tab') return;
     const order = tabOrder(scene);
     if (order.length === 0) return;
@@ -178,7 +182,10 @@ export function Canvas(props: CanvasProps) {
         role="application"
         aria-label={t('canvas.label')}
         onKeyDown={onKeyDown}
-        onPointerDown={gestures.onPointerDown}
+        onPointerDown={(e) => {
+          delete e.currentTarget.dataset.keyboard;
+          gestures.onPointerDown(e);
+        }}
         onPointerMove={gestures.onPointerMove}
         onPointerUp={gestures.onPointerUp}
         onPointerCancel={gestures.onPointerCancel}
@@ -210,7 +217,10 @@ export function Canvas(props: CanvasProps) {
           <Handles scene={scene} selection={snapshot.selection} hover={gestures.hover} zoom={z} overlay={gestures.overlay} connecting={!!gestures.overlay.connect} />
         </g>
       </svg>
-      <Minimap scene={scene} viewport={viewport} size={size} setViewport={setViewport} label={t('minimap')} />
+      <div className="canvas-corner">
+        <ZoomBar t={t} viewport={viewport} size={size} setViewport={setViewport} onFit={props.onFit} />
+        <Minimap scene={scene} viewport={viewport} size={size} setViewport={setViewport} label={t('minimap')} />
+      </div>
       <div className="sr-only" aria-live="polite" data-testid="announcer">{announcement}</div>
       {props.editing && <InlineEditor key={props.editing} id={props.editing} {...props} />}
       {empty && (

@@ -2,7 +2,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { zipSync } from 'fflate';
 import { expect, test } from '@playwright/test';
-import { freshApp, openSample } from './helpers';
+import { act, freshApp, openSample } from './helpers';
 
 const icon = (color: string) => new TextEncoder().encode(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect width="48" height="48" fill="${color}"/></svg>`);
 
@@ -19,7 +19,7 @@ test('loading an AWS icon pack from a zip changes icons everywhere and survives 
   );
   await freshApp(page);
   await openSample(page);
-  await page.getByTestId('tb-icon-packs').click();
+  await act(page, 'tb-icon-packs');
   await expect(page.getByTestId('icon-packs')).toBeVisible();
   const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByTestId('pack-zip').click()]);
   await chooser.setFiles(zip);
@@ -38,7 +38,7 @@ test('loading an AWS icon pack from a zip changes icons everywhere and survives 
   await page.getByLabel('Search services').fill('');
 
   // Export embeds each icon once.
-  const [svg] = await Promise.all([page.waitForEvent('download'), page.getByTestId('tb-svg').click()]);
+  const [svg] = await Promise.all([page.waitForEvent('download'), act(page, 'tb-svg')]);
   const text = readFileSync((await svg.path())!, 'utf8');
   expect(text.match(/<symbol /g)).toHaveLength(3);
   // The document itself keeps only service ids.
@@ -48,7 +48,7 @@ test('loading an AWS icon pack from a zip changes icons everywhere and survives 
   // Stored in IndexedDB: still there after a reload; turning it off restores generic symbols.
   await page.reload();
   await expect(page.locator('.diagram [data-node="queue"] use')).toHaveCount(1);
-  await page.getByTestId('tb-icon-packs').click();
+  await act(page, 'tb-icon-packs');
   await page.locator('[data-testid^="pack-pack-"] input[type="checkbox"]').uncheck();
   await page.getByTestId('packs-close').click();
   await expect(page.locator('.diagram [data-node="queue"] use')).toHaveCount(0);
@@ -59,13 +59,13 @@ test('loading a Kubernetes icon folder', async ({ page }, info) => {
   mkdirSync(join(dir, 'svg/resources/unlabeled'), { recursive: true });
   for (const name of ['deploy', 'svc', 'ing', 'ns']) writeFileSync(join(dir, `svg/resources/unlabeled/${name}.svg`), icon('#326ce5'));
   await freshApp(page);
-  await page.getByTestId('tb-icon-packs').click();
+  await act(page, 'tb-icon-packs');
   const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByTestId('pack-folder').click()]);
   await chooser.setFiles(dir);
   await expect(page.locator('[data-testid^="pack-pack-"]')).toContainText('Kubernetes');
   await page.getByTestId('packs-close').click();
 
-  const [c] = await Promise.all([page.waitForEvent('filechooser'), page.getByTestId('tb-import').click()]);
+  const [c] = await Promise.all([page.waitForEvent('filechooser'), act(page, 'tb-import')]);
   await c.setFiles('tests/unit/adapters/fixtures/k8s.yaml');
   await expect(page.locator('[data-testid="node-k8s-shop-deployment-api"]')).toHaveCount(1);
   await expect(page.locator('.diagram [data-node="k8s-shop-deployment-api"] use')).toHaveCount(1);

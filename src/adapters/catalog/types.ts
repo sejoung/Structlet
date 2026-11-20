@@ -13,6 +13,7 @@ export interface ServiceDefinition {
   /** Generic symbol (Lucide), used when no icon pack provides an image. */
   readonly glyph: Glyph;
   readonly color: string;
+  readonly role: Role;
 }
 
 export const ROLE_COLORS = {
@@ -41,5 +42,6 @@ export function define(provider: Provider, rows: readonly Row[]): ServiceDefinit
     keywords: (keywords ?? '').split(' ').filter(Boolean),
     glyph,
     color: ROLE_COLORS[role],
+    role,
   }));
 }
