@@ -323,8 +323,6 @@ button.twisty:hover { background: var(--surface-3); color: var(--ink); }
 
 /* Collapsible panels */
 .sidebar.collapsed { grid-template-columns: 56px; }
-.rail-spacer { flex: 1; }
-.rail .icon-button { justify-self: center; align-self: center; }
 .app.presenting .sidebar { display: none; }
 
 /* Tools */
@@ -337,3 +335,4 @@ button.twisty:hover { background: var(--surface-3); color: var(--ink); }
 .present-exit kbd { background: transparent; border-color: currentColor; color: inherit; }
 .tool-hint { position: absolute; left: 12px; top: 56px; z-index: 4; max-width: 320px; padding: 5px 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--float); color: var(--ink-2); font-size: 12px; }
 .tool-hint.present { top: 12px; }
+.panel-toggles { display: flex; gap: 2px; }

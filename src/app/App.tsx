@@ -226,11 +226,7 @@ export function App({ editor, store, files, packStore, newId, initialLanguage, o
     zoom: (f) => setViewport((v) => zoomAt(v, { x: size.width / 2, y: size.height / 2 }, f)),
     edit: setEditing,
     setTool,
-    togglePanels: () => {
-      const p = panelsRef.current;
-      const show = !(p.left || p.right);
-      setPanels({ left: show, right: show });
-    },
+    togglePanels: () => togglePanels(),
     presenting: () => presentingRef.current,
     setPresenting,
     tool: () => toolRef.current,
@@ -248,6 +244,21 @@ export function App({ editor, store, files, packStore, newId, initialLanguage, o
   });
 
   const fit = () => fitTo(editor.session.committedDocument);
+  function togglePanels() {
+    const p = panelsRef.current;
+    const show = !(p.left || p.right);
+    setPanels({ left: show, right: show });
+  }
+
+  /** Keeps the diagram centered when the canvas changes size (panels open or close, window resizes). */
+  const onCanvasResize = (next: { width: number; height: number }) => {
+    const prev = sizeRef.current;
+    if (prev.width > 0 && prev.height > 0 && (prev.width !== next.width || prev.height !== next.height)) {
+      setViewport((v) => ({ ...v, panX: v.panX + (next.width - prev.width) / 2, panY: v.panY + (next.height - prev.height) / 2 }));
+    }
+    sizeRef.current = next;
+    setSize(next);
+  };
 
   return (
     <div className={presenting ? 'app presenting' : 'app'}>
@@ -276,8 +287,11 @@ export function App({ editor, store, files, packStore, newId, initialLanguage, o
         onTheme={theme.setChoice}
         onIconPacks={() => setPacksOpen(true)}
         onShortcuts={() => setShortcutsOpen(true)}
-        inspectorOpen={panels.right}
-        onInspector={(right) => setPanels({ ...panels, right })}
+        leftOpen={panels.left}
+        rightOpen={panels.right}
+        onLeftPanel={(left) => setPanels({ ...panels, left })}
+        onRightPanel={(right) => setPanels({ ...panels, right })}
+        onTogglePanels={togglePanels}
         presenting={presenting}
         onPresent={setPresenting}
         onLanguage={(l) => {
@@ -313,7 +327,7 @@ export function App({ editor, store, files, packStore, newId, initialLanguage, o
             scene={scene}
             viewport={viewport}
             setViewport={setViewport}
-            onResize={setSize}
+            onResize={onCanvasResize}
             onDropService={(id, world) => addService(id, world)}
             onOpenSample={actions.openSample}
             editing={editing}
@@ -330,7 +344,6 @@ export function App({ editor, store, files, packStore, newId, initialLanguage, o
         {panels.right && !presenting && (
         <PropertiesPanel
           t={t}
-          onHide={() => setPanels({ ...panels, right: false })}
           editor={editor}
           snapshot={snapshot}
           scene={scene}

@@ -3,7 +3,7 @@ import {
   AlignStartVertical, AlignVerticalSpaceAround, ArrowLeftRight, Check, ChevronDown, ChevronRight, CircleHelp, Copy, Download, FileInput,
   FilePlus, FolderOpen, Keyboard, Languages, Layers, LayoutGrid, Link, Lock, LockOpen, Maximize, Minus, Monitor, Moon, Package, Plus,
   Redo2, RotateCcw, Save, Search, Settings, Shapes, SquareDashed, StickyNote, Sun, Trash2, TriangleAlert, Info, Undo2, X, Group, Workflow,
-  PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Hand, MousePointer2, Spline, Presentation,
+  PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Hand, MousePointer2, Spline, Presentation, Maximize2, Minimize2, PanelLeft, PanelRight,
 } from 'lucide';
 import { GlyphIcon } from '../GlyphIcon';
 
@@ -18,7 +18,7 @@ export const ICONS = {
   reset: RotateCcw, save: Save, search: Search, settings: Settings, services: Shapes, areas: SquareDashed, notes: StickyNote,
   sun: Sun, trash: Trash2, warning: TriangleAlert, info: Info, undo: Undo2, close: X, group: Group, flow: Workflow,
   leftClose: PanelLeftClose, leftOpen: PanelLeftOpen, rightClose: PanelRightClose, rightOpen: PanelRightOpen,
-  hand: Hand, pointer: MousePointer2, connector: Spline, present: Presentation,
+  hand: Hand, pointer: MousePointer2, connector: Spline, present: Presentation, focus: Maximize2, unfocus: Minimize2, panelLeft: PanelLeft, panelRight: PanelRight,
 } as const;
 
 export type IconName = keyof typeof ICONS;

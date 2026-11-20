@@ -261,6 +261,9 @@ export const en = {
   'sc.panels': 'Hide or show panels',
   'sc.present': 'View mode',
   'tool.connectHint': 'Drag from one box to another to connect them. Press Esc to stop.',
+  'panels.all.hide': 'Hide both panels',
+  'panels.all.show': 'Show both panels',
+  'panels.label': 'Panels',
   'toast.dismiss': 'Dismiss',
 } as const;
 

@@ -23,7 +23,10 @@ export interface ToolbarActions {
   onTheme(theme: ThemeChoice): void;
   onIconPacks(): void;
   onShortcuts(): void;
-  onInspector(open: boolean): void;
+  onLeftPanel(open: boolean): void;
+  onRightPanel(open: boolean): void;
+  /** Hides both side panels, or shows both when they are hidden. */
+  onTogglePanels(): void;
   onPresent(on: boolean): void;
 }
 
@@ -37,7 +40,8 @@ interface ToolbarProps extends ToolbarActions {
   view: ViewMode;
   theme: ThemeChoice;
   fileName: string | null;
-  inspectorOpen: boolean;
+  leftOpen: boolean;
+  rightOpen: boolean;
   presenting: boolean;
 }
 
@@ -101,8 +105,19 @@ export function Toolbar(props: ToolbarProps) {
         )}
       </div>
       <div className="topbar-end">
+        <div className="panel-toggles" role="group" aria-label={t('panels.label')}>
+          <IconButton icon="panelLeft" label={props.leftOpen ? t('panels.left.hide') : t('panels.left.show')} pressed={props.leftOpen} disabled={props.presenting} onClick={() => props.onLeftPanel(!props.leftOpen)} testId="toggle-left" />
+          <IconButton icon="panelRight" label={props.rightOpen ? t('panels.right.hide') : t('panels.right.show')} pressed={props.rightOpen} disabled={props.presenting} onClick={() => props.onRightPanel(!props.rightOpen)} testId="toggle-right" />
+          <IconButton
+            icon={!props.leftOpen && !props.rightOpen ? 'unfocus' : 'focus'}
+            label={`${!props.leftOpen && !props.rightOpen ? t('panels.all.show') : t('panels.all.hide')} (${mod}\\)`}
+            disabled={props.presenting}
+            onClick={props.onTogglePanels}
+            testId="toggle-panels"
+          />
+        </div>
+        <span className="topbar-divider" aria-hidden="true" />
         <IconButton icon="keyboard" label={t('menu.shortcuts')} onClick={props.onShortcuts} testId="tb-shortcuts" />
-        {!props.inspectorOpen && !props.presenting && <IconButton icon="rightOpen" label={t('panels.right.show')} onClick={() => props.onInspector(true)} testId="show-right" />}
         <Menu
           testId="menu-settings"
           align="end"

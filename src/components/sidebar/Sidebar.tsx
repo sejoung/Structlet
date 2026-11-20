@@ -3,7 +3,6 @@ import type { AnnotationKind, ContainerKind, Document, Id } from '../../domain';
 import type { Appearance } from '../../engine';
 import type { Translate } from '../../i18n/messages';
 import { Icon, type IconName } from '../ui/Icon';
-import { IconButton } from '../ui/controls';
 import { AreasPanel, NotesPanel } from './InsertPanels';
 import { LayersPanel } from './LayersPanel';
 import { ServicesPanel } from './ServicesPanel';
@@ -67,8 +66,6 @@ export function Sidebar(props: Props) {
             <span>{t(`rail.${x.id}`)}</span>
           </button>
         ))}
-        <span className="rail-spacer" />
-        <IconButton icon={props.open ? 'leftClose' : 'leftOpen'} label={props.open ? t('panels.left.hide') : t('panels.left.show')} onClick={() => props.onOpen(!props.open)} testId="toggle-left" />
       </nav>
       {props.open && (
       <div className="panel" id="sidebar-panel" role="tabpanel" aria-label={t(`rail.${tab}`)}>

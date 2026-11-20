@@ -25,11 +25,6 @@ interface PropertiesProps {
   findings: readonly PanelFinding[];
   actions: PanelActions;
   onWrap(ids: readonly Id[], kind: ContainerKind): void;
-  onHide(): void;
-}
-
-function HideButton({ t, onHide }: { t: Translate; onHide(): void }) {
-  return <IconButton icon="rightClose" label={t('panels.right.hide')} onClick={onHide} testId="toggle-right" />;
 }
 
 const ALIGN: { mode: AlignMode; icon: IconName; key: string }[] = [
@@ -82,7 +77,6 @@ export function PropertiesPanel(props: PropertiesProps) {
           <IconButton icon="copy" label={t('props.duplicate')} onClick={() => editor.duplicate([id])} disabled={!!edge} />
           {box && <IconButton icon={box.locked ? 'lock' : 'unlock'} label={box.locked ? t('props.unlock') : t('props.lock')} pressed={box.locked} onClick={() => editor.setLocked([id], !box.locked)} testId="prop-lock" />}
           <IconButton icon="trash" label={t('props.delete')} tone="danger" onClick={() => editor.delete([id])} testId="prop-delete" />
-          <HideButton t={t} onHide={props.onHide} />
         </div>
       </header>
       <div className="inspector-body">
@@ -95,7 +89,7 @@ export function PropertiesPanel(props: PropertiesProps) {
   );
 }
 
-function DocumentView({ t, editor, snapshot, findings, onHide }: PropertiesProps) {
+function DocumentView({ t, editor, snapshot, findings }: PropertiesProps) {
   const doc = snapshot.document;
   const index = indexDocument(doc);
   return (
@@ -104,9 +98,6 @@ function DocumentView({ t, editor, snapshot, findings, onHide }: PropertiesProps
         <div className="inspector-title">
           <strong>{doc.title}</strong>
           <span data-testid="doc-stats">{t('props.stats', { nodes: doc.nodes.length, areas: doc.containers.length, edges: doc.edges.length })}</span>
-        </div>
-        <div className="inspector-actions">
-          <HideButton t={t} onHide={onHide} />
         </div>
       </header>
       <div className="inspector-body">
@@ -132,7 +123,7 @@ function DocumentView({ t, editor, snapshot, findings, onHide }: PropertiesProps
   );
 }
 
-function MultiView({ t, editor, snapshot, scene, onWrap, actions, onHide }: PropertiesProps) {
+function MultiView({ t, editor, snapshot, scene, onWrap, actions }: PropertiesProps) {
   const doc = snapshot.document;
   const selection = snapshot.selection;
   const [kind, setKind] = useState<ContainerKind>('custom');
@@ -152,7 +143,6 @@ function MultiView({ t, editor, snapshot, scene, onWrap, actions, onHide }: Prop
           <IconButton icon="copy" label={t('props.duplicate')} onClick={() => editor.duplicate(selection)} />
           {boxes.length > 0 && <IconButton icon={allLocked ? 'lock' : 'unlock'} label={allLocked ? t('props.unlockAll') : t('props.lockAll')} pressed={allLocked} onClick={() => editor.setLocked(boxes, !allLocked)} />}
           <IconButton icon="trash" label={t('props.delete')} tone="danger" onClick={() => editor.delete(selection)} />
-          <HideButton t={t} onHide={onHide} />
         </div>
       </header>
       <div className="inspector-body">
