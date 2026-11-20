@@ -213,6 +213,7 @@ export function App({ editor, store, files, packStore, drive: driveServices, dri
     edit: setEditing,
     setTool,
     togglePanels: () => togglePanels(),
+    toggleInspector: () => setPanels({ ...panelsRef.current, right: !panelsRef.current.right }),
     presenting: () => presentingRef.current,
     setPresenting,
     tool: () => toolRef.current,
@@ -280,6 +281,7 @@ export function App({ editor, store, files, packStore, drive: driveServices, dri
         onShortcuts={() => setShortcutsOpen(true)}
         leftOpen={panels.left}
         rightOpen={panels.right}
+        findingCount={findings.length}
         onLeftPanel={(left) => setPanels({ ...panels, left })}
         onRightPanel={(right) => setPanels({ ...panels, right })}
         onTogglePanels={togglePanels}

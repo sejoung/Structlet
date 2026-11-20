@@ -1,11 +1,16 @@
 import { expect, type Page } from '@playwright/test';
 
-export async function freshApp(page: Page, language: 'ko' | 'en' = 'en') {
+/**
+ * A first visit, except that the inspector starts open: most tests edit through it.
+ * Pass `{ inspector: false }` for the real first-visit layout (inspector folded).
+ */
+export async function freshApp(page: Page, language: 'ko' | 'en' = 'en', { inspector = true }: { inspector?: boolean } = {}) {
   await page.goto('/');
-  await page.evaluate((l) => {
+  await page.evaluate(([l, open]) => {
     localStorage.clear();
     localStorage.setItem('structlet:language', l);
-  }, language);
+    if (open) localStorage.setItem('structlet:panels', JSON.stringify({ left: true, right: true }));
+  }, [language, inspector] as const);
   await page.reload();
   await expect(page.getByTestId('canvas')).toBeVisible();
 }

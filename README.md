@@ -9,14 +9,17 @@ and export to SVG or PNG — no server, no account, no external AI calls.
 
 [![CI](https://github.com/sejoung/Structlet/actions/workflows/ci.yml/badge.svg)](https://github.com/sejoung/Structlet/actions/workflows/ci.yml)
 [![Pages](https://github.com/sejoung/Structlet/actions/workflows/pages.yml/badge.svg)](https://github.com/sejoung/Structlet/actions/workflows/pages.yml)
-[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
-[![Node](https://img.shields.io/badge/node-%3E%3D22-339933?logo=node.js&logoColor=white)](.nvmrc)
+[![License](https://img.shields.io/github/license/sejoung/Structlet)](LICENSE)
+[![Node](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fsejoung%2FStructlet%2Fmain%2Fpackage.json&query=%24.engines.node&label=node&logo=node.js&logoColor=white&color=339933)](package.json)
 <br>
-[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)](tsconfig.json)
-[![React](https://img.shields.io/badge/React_19-20232A?logo=react&logoColor=61DAFB)](package.json)
-[![Vite](https://img.shields.io/badge/Vite-646CFF?logo=vite&logoColor=white)](vite.config.ts)
-[![Vitest](https://img.shields.io/badge/unit_tests-122-6E9F18?logo=vitest&logoColor=white)](tests/unit)
-[![Playwright](https://img.shields.io/badge/e2e_tests-36-2EAD33?logo=playwright&logoColor=white)](tests/e2e)
+[![TypeScript](https://img.shields.io/github/package-json/dependency-version/sejoung/Structlet/dev/typescript?logo=typescript&logoColor=white&color=3178C6&label=typescript)](tsconfig.json)
+[![React](https://img.shields.io/github/package-json/dependency-version/sejoung/Structlet/react?logo=react&logoColor=61DAFB&color=20232A&label=react)](package.json)
+[![Vite](https://img.shields.io/github/package-json/dependency-version/sejoung/Structlet/dev/vite?logo=vite&logoColor=white&color=646CFF&label=vite)](vite.config.ts)
+<br>
+[![Vitest](https://img.shields.io/badge/unit-Vitest-6E9F18?logo=vitest&logoColor=white)](tests/unit)
+[![Playwright](https://img.shields.io/badge/e2e-Playwright-2EAD33?logo=playwright&logoColor=white)](tests/e2e)
+[![oxlint](https://img.shields.io/badge/lint-oxlint-32F3E9)](.oxlintrc.json)
+[![dependency-cruiser](https://img.shields.io/badge/architecture-dependency--cruiser-4B32C3)](.dependency-cruiser.cjs)
 
 **English** · [한국어](README.ko.md)
 
@@ -40,7 +43,7 @@ and export to SVG or PNG — no server, no account, no external AI calls.
 
 ## Getting started
 
-Requires Node.js 22 or later (developed on Node 24, npm 11).
+Requires Node.js 22 or later (CI and development use Node 24 from [`.nvmrc`](.nvmrc), npm 11).
 
 ```bash
 npm install
@@ -52,10 +55,11 @@ The editor opens on an empty canvas. Choose **File → Sample** (or **Open sampl
 | Command | What it does |
 | --- | --- |
 | `npm run dev` | Dev server (`127.0.0.1:5183`). Drive works; usage statistics are not sent |
+| `npm run typecheck` | Type check only (`tsc --noEmit`) |
 | `npm run build` | Type check + static build (`dist/`). Uses relative paths, so any static host works, at the domain root or a sub-path |
 | `npm run build:single` | One HTML file (`dist-single/structlet.html`, about 0.5 MB) that opens by double-click (`file://`) |
 | `npm run preview` | Preview the build (`127.0.0.1:5184`, with CSP) |
-| `npm test` | Unit tests (Vitest, `tests/unit`) |
+| `npm test` | Unit tests (Vitest, `tests/unit`); `npm run test:watch` reruns them on change |
 | `npm run e2e` | Builds the single file, then runs E2E (Playwright, `tests/e2e`) against two production builds served by `vite preview`, with Google mocked. Run `npx playwright install chromium` once first |
 | `npm run lint` | oxlint: at most 400 lines per file, no `console` in `src/`, correctness rules (`.oxlintrc.json`) |
 | `npm run deps` | dependency-cruiser: layer direction, allowed packages, cycles, unresolvable or undeclared imports (`.dependency-cruiser.cjs`) |
@@ -75,7 +79,7 @@ The screen has four parts:
 
 - **Top bar** — on the left, the file menu, the title and, right after it, where the diagram is saved (this browser, or Google Drive once linked); undo and 2D / isometric in the middle; on the right, panel toggles, view mode, shortcuts, settings (⚙) and **Export**.
 - **Left** — an icon rail switches between the **Services / Areas / Notes / Layers** panels.
-- **Right inspector** — properties of the selected object.
+- **Right inspector** — properties of the selected object. Folded on the first visit; open it with its top-bar toggle or `I` when you need it.
 - **Canvas** — a toolbar floats at the top left; the zoom bar and minimap at the bottom right.
 
 <details>
@@ -84,7 +88,8 @@ The screen has four parts:
 The panels can be hidden. Two toggles — **[left panel] [right panel]** — always sit in the same place on the right of the top bar.
 
 - A toggle shows as pressed while its panel is visible.
-- `⌘\` toggles both at once. Clicking the open tab on the rail again also collapses the left panel.
+- `⌘\` toggles both at once, and `I` toggles the inspector. Clicking the open tab on the rail again also collapses the left panel.
+- The inspector starts folded: an empty canvas has nothing to inspect. While it is folded, its toggle shows how many checks found something.
 - The hidden state is remembered in this browser. The right panel collapses automatically when the window is narrower than 1100 px.
 - Opening and closing panels keeps the diagram's on-screen center in place.
 
@@ -153,10 +158,15 @@ The panels can be hidden. Two toggles — **[left panel] [right panel]** — alw
 | ⌘D, Delete/Backspace | Duplicate, delete |
 | ⌘A, Esc | Select all, deselect |
 | Arrows, ⇧+arrows | Move 1 px, 8 px |
+| Enter / F2, ⇧+Enter | Rename, line break while renaming |
+| Tab, ⇧+Tab | Next, previous object on the canvas |
+| ⌘0, ⌘+, ⌘− | Fit to screen, zoom in, zoom out |
+| Space+drag | Pan with any tool |
 | Alt+drag on an area | Marquee select over an area |
 | V, H, C | Select, hand, connect tools |
 | ⌘\ | Hide / show panels |
-| ⌘. | View mode |
+| I | Hide / show the inspector |
+| ⌘., Esc | View mode, leave view mode |
 
 ### Saving
 
@@ -166,21 +176,23 @@ Changes autosave to this browser's `localStorage` and survive a reload. To keep 
 
 ```text
 src/
-  domain/       document, node, area, connector and note models; hierarchy, commands, patches, validation   (no dependencies)
-  application/  editing session (preview, undo/redo, selection), editing use cases                         (domain)
-  engine/       world coordinates, scene, ports and routing, auto-layout, snapping and alignment,
-                hit testing, SVG and isometric markup                                                       (domain)
-  adapters/     .structlet format; draft, compose, Kubernetes and Terraform import; autosave, file I/O,
-                SVG/PNG; per-provider catalogs, icon packs, legend, checks
-  components/   top bar, sidebar (services, areas, notes, layers), canvas, inspector, shared UI (ui/)
-  app/          wiring, autosave, shortcuts
-  i18n/         Korean and English messages
+  domain/       models, hierarchy, commands, patches, validation, three-way merge (sync/)        uses: nothing
+  application/  editing session (preview, undo/redo, selection), Drive sync, storage ports        uses: domain
+  engine/       coordinates, scene, ports and routing, auto-layout, snapping, alignment,
+                hit testing, SVG and isometric markup                                             uses: domain
+  adapters/     .structlet format, draft / compose / Kubernetes / Terraform import, storage,
+                files, SVG/PNG export, catalogs, icon packs, checks, Google Drive, analytics      uses: domain, engine, application
+  components/   top bar, Drive status, sidebar, canvas, inspector, shared UI (ui/)                uses: domain, engine, application, i18n
+  app/          wiring, autosave, shortcuts, clipboard, theme, Drive and statistics hooks         uses: everything
+  i18n/         Korean and English messages                                                       uses: nothing
 tests/
   unit/         domain · application · engine · adapters · architecture (Vitest)
-  e2e/          runs the real app (Playwright)
+  e2e/          the real app on production builds, Google mocked (Playwright)
+scripts/        CSP for the web build, single-file rename, Playwright image check
 samples/        sample .structlet, draft JSON example
-docs/draft-format.md  draft JSON format
+docs/           ci.md, google-drive.md, draft-format.md, images/
 docs/adr/       design records; stormlet-reference/ holds the Stormlet ADRs used as reference
+.dependency-cruiser.cjs   layer and import rules       .oxlintrc.json   lint rules (400 lines per file)
 ```
 
 The layer rules are enforced in three places, all part of `npm run check` and CI: [`.dependency-cruiser.cjs`](.dependency-cruiser.cjs) checks import direction, allowed packages per layer and cycles; [`.oxlintrc.json`](.oxlintrc.json) caps files at 400 lines so no single file takes on too much; `tests/unit/architecture/layers.test.ts` checks what an import graph cannot (browser globals in pure layers, where stateful adapters are created, matching Korean / English keys). The reasoning behind each decision is in [docs/adr](docs/adr/README.md).
@@ -192,6 +204,15 @@ The layer rules are enforced in three places, all part of `npm run check` and CI
 - **Catalog vs. icons** — service definitions (catalog) are separate from their look (icon packs). Official icons are loaded by the user ([ADR 0006](docs/adr/0006-service-catalog-and-icons.md), [ADR 0013](docs/adr/0013-icon-packs.md)).
 - **Deployment** — a static site (with CSP) or a single HTML file ([ADR 0014](docs/adr/0014-static-deployment.md)).
 - **Sync and statistics** — Drive sync wraps the session with a three-way merge whose result keeps the hierarchy rules ([ADR 0016](docs/adr/0016-google-drive-sync.md)). Usage statistics send only listed events, after consent ([ADR 0017](docs/adr/0017-usage-statistics.md)). Both were ported from Stormlet (MIT) by the same author.
+
+## Development rules
+
+- **Layers** — put code in the layer that owns it ([ADR 0001](docs/adr/0001-layered-local-first.md)). `npm run deps` fails when an import crosses a layer the wrong way, uses a package the layer may not use, forms a cycle, or does not resolve.
+- **400 lines per file** — `npm run lint` fails past 400 lines. Split a file by responsibility before it gets there, rather than raising the limit.
+- **No `console` in `src/`** — report through the diagnostics log (`adapters/diagnostics`).
+- **Both languages** — every message key exists in `src/i18n/ko.ts` and `en.ts` (a unit test checks).
+- **Before pushing** — `npm run check` runs everything CI's `checks` job runs; `npm run verify` adds the E2E tests.
+- **Changing a rule** — update the ADR together with `.dependency-cruiser.cjs`, `.oxlintrc.json` or `tests/unit/architecture/layers.test.ts`.
 
 ## Tests
 
@@ -219,7 +240,7 @@ The layer rules are enforced in three places, all part of `npm run check` and CI
 </details>
 
 <details>
-<summary><b>36 E2E tests</b> (<code>tests/e2e</code>, production builds)</summary>
+<summary><b>37 E2E tests</b> (<code>tests/e2e</code>, production builds)</summary>
 
 - **Basic flow** — two nodes → connect → save → open → reload → SVG (same paths as the screen), PNG, rejecting an invalid file
 - **Areas** — dragging a VPC then a single undo, dragging into another area, wrapping
@@ -231,7 +252,7 @@ The layer rules are enforced in three places, all part of `npm run check` and CI
 - **Deployment** — single HTML opened from `file://` (import, export, autosave, Drive disabled); no CSP violations in the production build
 - **Drive** (mocked Google) — connect, folder save, autosave, ⌘S; reconnect after reload (never writes an empty document); remote change merge and conflict choice; open, stop syncing, disconnect
 - **Usage statistics** — nothing sent before consent; events and URL cleanup after allowing; turning off; refusing
-- **Panels and tools** — panel collapse and memory, `⌘\` for both panels, top-bar buttons that keep their place, save status right after the title (fixed position, canvas to the window edge, center kept); hand tool (pans only, document unchanged, no edits); connect tool (consecutive connections, panning empty space, Esc); view mode
+- **Panels and tools** — panel collapse and memory, `⌘\` for both panels, inspector folded on the first visit with `I` and a findings badge, top-bar buttons that keep their place, save status right after the title (fixed position, canvas to the window edge, center kept); hand tool (pans only, document unchanged, no edits); connect tool (consecutive connections, panning empty space, Esc); view mode
 - **Layout** — layer tree (hierarchy, selection sync with the canvas, keyboard, rename, drag to reparent and undo, collapse), recently used, shortcuts dialog, keyboard menu navigation
 
 </details>

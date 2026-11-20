@@ -49,6 +49,8 @@ interface ToolbarProps extends ToolbarActions {
   fileName: string | null;
   leftOpen: boolean;
   rightOpen: boolean;
+  /** Checks that found something; shown on the inspector toggle while the inspector is folded. */
+  findingCount: number;
   drive?: DriveBar;
   /** Usage statistics in this build: the current choice and how to change it. */
   stats?: { readonly granted: boolean; toggle(): void };
@@ -79,6 +81,8 @@ export function Toolbar(props: ToolbarProps) {
   // Linked to a Drive file, the Drive status is the save status; otherwise it is this browser.
   const driveLinked = drive !== undefined && drive.view.state.status !== 'unlinked';
   const both = t('panels.both', { key: `${mod}\\` });
+  // Folded, the inspector still says when the checks found something.
+  const flagged = !props.rightOpen && !props.presenting && props.findingCount > 0;
   return (
     <header className="topbar" role="toolbar" aria-label="Structlet">
       <div className="topbar-start">
@@ -149,7 +153,10 @@ export function Toolbar(props: ToolbarProps) {
       <div className="topbar-end">
         <div className="panel-toggles" role="group" aria-label={t('panels.label')}>
           <IconButton icon="panelLeft" label={`${props.leftOpen ? t('panels.left.hide') : t('panels.left.show')} (${both})`} pressed={props.leftOpen} disabled={props.presenting} onClick={() => props.onLeftPanel(!props.leftOpen)} testId="toggle-left" />
-          <IconButton icon="panelRight" label={`${props.rightOpen ? t('panels.right.hide') : t('panels.right.show')} (${both})`} pressed={props.rightOpen} disabled={props.presenting} onClick={() => props.onRightPanel(!props.rightOpen)} testId="toggle-right" />
+          <span className="badge-anchor">
+            <IconButton icon="panelRight" label={`${props.rightOpen ? t('panels.right.hide') : t('panels.right.show')}${flagged ? ` · ${t('panels.findings', { count: props.findingCount })}` : ''} (I · ${both})`} pressed={props.rightOpen} disabled={props.presenting} onClick={() => props.onRightPanel(!props.rightOpen)} testId="toggle-right" />
+            {flagged && <span className="toggle-badge" data-testid="findings-badge" aria-hidden="true">{props.findingCount > 9 ? '9+' : props.findingCount}</span>}
+          </span>
         </div>
         <span className="topbar-divider" aria-hidden="true" />
         <IconButton icon="present" label={`${props.presenting ? t('view.exit') : t('view.present')} (${mod}.)`} pressed={props.presenting} onClick={() => props.onPresent(!props.presenting)} testId="tb-present" />

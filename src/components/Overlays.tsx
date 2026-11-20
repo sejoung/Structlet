@@ -38,6 +38,7 @@ const SHORTCUTS: [string, MessageKey][] = [
   ['Alt', 'sc.marquee'],
   ['V H C', 'sc.tools'],
   ['⌘\\', 'sc.panels'],
+  ['I', 'sc.inspector'],
   ['⌘.', 'sc.present'],
 ];
 

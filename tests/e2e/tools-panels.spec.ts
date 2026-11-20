@@ -161,3 +161,34 @@ test('the save status sits right after the title and follows its length', async 
   await expect.poll(async () => (await title.boundingBox())!.width).toBeLessThan(wide);
   expect(await gap()).toBeLessThan(12);
 });
+
+test('the inspector starts folded, opens with I, and its toggle counts check findings', async ({ page }) => {
+  await freshApp(page, 'en', { inspector: false });
+  await expect(page.locator('.inspector')).toHaveCount(0);
+  await expect(page.getByTestId('toggle-right')).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.getByTestId('findings-badge')).toHaveCount(0);
+
+  // Two services with no line between them are two findings ("Service without connections"):
+  // the folded toggle says so.
+  const search = page.getByLabel('Search services');
+  await search.fill('server');
+  await page.locator('[data-service="server"]').click();
+  await search.fill('database');
+  await page.locator('[data-service="database"]').click();
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('findings-badge')).toHaveText('2');
+  await expect(page.getByTestId('toggle-right')).toHaveAttribute('aria-label', /2 check findings/);
+
+  // I opens the inspector, where the finding is listed, and the badge steps aside.
+  await page.locator('body').press('i');
+  await expect(page.locator('.inspector')).toBeVisible();
+  await expect(page.getByTestId('checks')).toContainText('Service without connections');
+  await expect(page.getByTestId('findings-badge')).toHaveCount(0);
+  await page.locator('body').press('i');
+  await expect(page.locator('.inspector')).toHaveCount(0);
+
+  // Typing an I into a field does not fold anything.
+  await page.locator('body').press('i');
+  await search.fill('i');
+  await expect(page.locator('.inspector')).toBeVisible();
+});

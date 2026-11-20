@@ -13,6 +13,7 @@ interface ShortcutDeps {
   setTool(tool: CanvasTool): void;
   tool(): CanvasTool;
   togglePanels(): void;
+  toggleInspector(): void;
   presenting(): boolean;
   setPresenting(on: boolean): void;
 }
@@ -25,7 +26,7 @@ export function useShortcuts(deps: ShortcutDeps): void {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
       if (target?.closest?.('input, textarea, select, [contenteditable="true"]')) return;
-      const { editor, actions, fit, zoom, edit, setTool, tool, togglePanels, presenting, setPresenting } = latest.current;
+      const { editor, actions, fit, zoom, edit, setTool, tool, togglePanels, toggleInspector, presenting, setPresenting } = latest.current;
       const session = editor.session;
       const mod = e.metaKey || e.ctrlKey;
       const key = e.key.toLowerCase();
@@ -49,6 +50,11 @@ export function useShortcuts(deps: ShortcutDeps): void {
       if (!mod && !e.altKey && !e.shiftKey && (key === 'v' || key === 'h' || key === 'c') && !presenting()) {
         handled();
         setTool(key === 'v' ? 'select' : key === 'h' ? 'hand' : 'connect');
+        return;
+      }
+      if (!mod && !e.altKey && !e.shiftKey && key === 'i' && !presenting()) {
+        handled();
+        toggleInspector();
         return;
       }
       if (presenting()) return;

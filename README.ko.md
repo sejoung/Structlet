@@ -9,14 +9,17 @@
 
 [![CI](https://github.com/sejoung/Structlet/actions/workflows/ci.yml/badge.svg)](https://github.com/sejoung/Structlet/actions/workflows/ci.yml)
 [![Pages](https://github.com/sejoung/Structlet/actions/workflows/pages.yml/badge.svg)](https://github.com/sejoung/Structlet/actions/workflows/pages.yml)
-[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
-[![Node](https://img.shields.io/badge/node-%3E%3D22-339933?logo=node.js&logoColor=white)](.nvmrc)
+[![License](https://img.shields.io/github/license/sejoung/Structlet)](LICENSE)
+[![Node](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fsejoung%2FStructlet%2Fmain%2Fpackage.json&query=%24.engines.node&label=node&logo=node.js&logoColor=white&color=339933)](package.json)
 <br>
-[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)](tsconfig.json)
-[![React](https://img.shields.io/badge/React_19-20232A?logo=react&logoColor=61DAFB)](package.json)
-[![Vite](https://img.shields.io/badge/Vite-646CFF?logo=vite&logoColor=white)](vite.config.ts)
-[![Vitest](https://img.shields.io/badge/unit_tests-122-6E9F18?logo=vitest&logoColor=white)](tests/unit)
-[![Playwright](https://img.shields.io/badge/e2e_tests-36-2EAD33?logo=playwright&logoColor=white)](tests/e2e)
+[![TypeScript](https://img.shields.io/github/package-json/dependency-version/sejoung/Structlet/dev/typescript?logo=typescript&logoColor=white&color=3178C6&label=typescript)](tsconfig.json)
+[![React](https://img.shields.io/github/package-json/dependency-version/sejoung/Structlet/react?logo=react&logoColor=61DAFB&color=20232A&label=react)](package.json)
+[![Vite](https://img.shields.io/github/package-json/dependency-version/sejoung/Structlet/dev/vite?logo=vite&logoColor=white&color=646CFF&label=vite)](vite.config.ts)
+<br>
+[![Vitest](https://img.shields.io/badge/unit-Vitest-6E9F18?logo=vitest&logoColor=white)](tests/unit)
+[![Playwright](https://img.shields.io/badge/e2e-Playwright-2EAD33?logo=playwright&logoColor=white)](tests/e2e)
+[![oxlint](https://img.shields.io/badge/lint-oxlint-32F3E9)](.oxlintrc.json)
+[![dependency-cruiser](https://img.shields.io/badge/architecture-dependency--cruiser-4B32C3)](.dependency-cruiser.cjs)
 
 [English](README.md) · **한국어**
 
@@ -40,7 +43,7 @@
 
 ## 실행
 
-Node.js 22 이상(개발 확인: Node 24, npm 11).
+Node.js 22 이상(CI와 개발은 [`.nvmrc`](.nvmrc)의 Node 24, npm 11).
 
 ```bash
 npm install
@@ -52,10 +55,11 @@ npm run dev          # http://127.0.0.1:5183
 | 명령 | 내용 |
 | --- | --- |
 | `npm run dev` | 개발 서버 (`127.0.0.1:5183`). Drive는 동작하고, 사용 통계는 보내지 않는다 |
+| `npm run typecheck` | 타입 검사만 (`tsc --noEmit`) |
 | `npm run build` | 타입 검사 + 정적 빌드(`dist/`). 상대 경로라 도메인 루트든 하위 경로든 아무 정적 호스팅에 올리면 된다 |
 | `npm run build:single` | HTML 한 파일(`dist-single/structlet.html`, 약 0.5MB). 더블클릭(`file://`)으로 열린다 |
 | `npm run preview` | 빌드 결과 미리보기 (`127.0.0.1:5184`, CSP 포함) |
-| `npm test` | 단위 테스트 (Vitest, `tests/unit`) |
+| `npm test` | 단위 테스트 (Vitest, `tests/unit`). `npm run test:watch`는 바뀔 때마다 다시 돌린다 |
 | `npm run e2e` | 단일 파일 빌드 후 E2E (Playwright, `tests/e2e`). 프로덕션 빌드 두 벌(기본, 테스트 측정 ID)을 `vite preview`로 띄워 검사하고 Google은 흉내 낸다. 처음 한 번 `npx playwright install chromium` |
 | `npm run lint` | oxlint: 파일당 400줄 이하, `src/`에 `console` 금지, 정확성 규칙 (`.oxlintrc.json`) |
 | `npm run deps` | dependency-cruiser: 계층 방향, 계층별 허용 패키지, 순환, 풀리지 않거나 선언하지 않은 import (`.dependency-cruiser.cjs`) |
@@ -72,7 +76,7 @@ npm run dev          # http://127.0.0.1:5183
 
 - **위 막대** — 왼쪽에 파일 메뉴, 제목, 제목 바로 뒤에 저장 위치(이 브라우저, 연결하면 Google Drive)가 있다. 가운데에 실행 취소와 2D/아이소메트릭, 오른쪽에 패널 토글·보기 모드·단축키·설정(⚙)·**내보내기**가 있다.
 - **왼쪽** — 아이콘 레일로 **서비스 / 영역 / 주석 / 레이어** 패널을 바꾼다.
-- **오른쪽 인스펙터** — 선택한 객체의 속성이 나온다.
+- **오른쪽 인스펙터** — 선택한 객체의 속성이 나온다. 처음에는 접혀 있고, 필요할 때 위 막대 토글이나 `I`로 연다.
 - **캔버스** — 왼쪽 위에 도구 막대, 오른쪽 아래에 확대 막대와 미니맵이 떠 있다.
 
 <details>
@@ -81,7 +85,8 @@ npm run dev          # http://127.0.0.1:5183
 패널은 숨길 수 있다. 위 막대 오른쪽에 **[왼쪽 패널] [오른쪽 패널]** 토글 두 개가 늘 같은 자리에 있다.
 
 - 패널이 보이는 동안 해당 버튼이 눌린 상태로 표시된다.
-- `⌘\`는 양쪽을 한 번에 토글한다. 레일에서 열린 탭을 다시 눌러도 왼쪽 패널이 접힌다.
+- `⌘\`는 양쪽을 한 번에, `I`는 인스펙터만 토글한다. 레일에서 열린 탭을 다시 눌러도 왼쪽 패널이 접힌다.
+- 인스펙터는 처음에 접혀 있다. 빈 캔버스에서는 볼 것이 없기 때문이다. 접혀 있는 동안 토글에 점검에 걸린 항목 수가 표시된다.
 - 숨긴 상태는 이 브라우저에 기억된다. 창이 1100px보다 좁아지면 오른쪽 패널이 자동으로 접힌다.
 - 패널을 열고 닫아도 구성도의 화면 중심은 그대로다.
 
@@ -150,10 +155,15 @@ npm run dev          # http://127.0.0.1:5183
 | ⌘D, Delete/Backspace | 복제, 삭제 |
 | ⌘A, Esc | 전체 선택, 선택 해제 |
 | 화살표, ⇧+화살표 | 1px, 8px 이동 |
+| Enter / F2, ⇧+Enter | 이름 바꾸기, 이름 바꾸는 중 줄바꿈 |
+| Tab, ⇧+Tab | 캔버스에서 다음·이전 객체 |
+| ⌘0, ⌘+, ⌘− | 화면 맞춤, 확대, 축소 |
+| Space+끌기 | 어느 도구에서든 화면 이동 |
 | Alt+영역 끌기 | 영역 위에서 범위 선택 |
 | V, H, C | 선택, 손, 연결 도구 |
 | ⌘\ | 패널 숨기기·보이기 |
-| ⌘. | 보기 모드 |
+| I | 인스펙터 숨기기·보이기 |
+| ⌘., Esc | 보기 모드, 보기 모드 끝내기 |
 
 ### 저장
 
@@ -163,20 +173,22 @@ npm run dev          # http://127.0.0.1:5183
 
 ```text
 src/
-  domain/       문서·노드·영역·연결선·주석 모델, 계층, 명령, 패치, 검증   (의존 없음)
-  application/  편집 세션(미리보기·undo/redo·선택), 편집 유스케이스        (domain)
-  engine/       월드 좌표, 장면, 포트·라우팅, 자동 배치, 스냅·정렬, 히트, SVG·아이소메트릭 마크업  (domain)
-  adapters/     .structlet 형식, 초안·compose·Kubernetes·Terraform 가져오기, 자동 저장, 파일 입출력, SVG/PNG,
-                제공자별 카탈로그·아이콘 팩·범례·점검
-  components/   위 막대, 사이드바(서비스·영역·주석·레이어), 캔버스, 인스펙터, 공통 UI(ui/)
-  app/          조립, 자동 저장, 단축키
-  i18n/         한국어·영어 메시지
+  domain/       모델, 계층, 명령, 패치, 검증, 3방향 병합(sync/)                      쓰는 것: 없음
+  application/  편집 세션(미리보기·undo/redo·선택), Drive 동기화, 저장소 포트           쓰는 것: domain
+  engine/       좌표, 장면, 포트·라우팅, 자동 배치, 스냅·정렬, 히트, SVG·아이소메트릭 마크업  쓰는 것: domain
+  adapters/     .structlet 형식, 초안·compose·Kubernetes·Terraform 가져오기, 저장소,
+                파일, SVG/PNG 내보내기, 카탈로그, 아이콘 팩, 점검, Google Drive, 사용 통계   쓰는 것: domain, engine, application
+  components/   위 막대, Drive 상태, 사이드바, 캔버스, 인스펙터, 공통 UI(ui/)            쓰는 것: domain, engine, application, i18n
+  app/          조립, 자동 저장, 단축키, 클립보드, 테마, Drive·통계 훅                    쓰는 것: 전부
+  i18n/         한국어·영어 메시지                                                  쓰는 것: 없음
 tests/
   unit/         domain · application · engine · adapters · architecture (Vitest)
-  e2e/          실제 앱을 띄워 검증 (Playwright)
+  e2e/          프로덕션 빌드로 실제 앱 검증, Google은 흉내 (Playwright)
+scripts/        웹 빌드 CSP, 단일 파일 이름 바꾸기, Playwright 이미지 확인
 samples/        샘플 .structlet, 초안 JSON 예시
-docs/draft-format.md  초안 JSON 형식
+docs/           ci.md, google-drive.md, draft-format.md, images/
 docs/adr/       설계 기록. stormlet-reference/ 에 참고한 Stormlet ADR 원본
+.dependency-cruiser.cjs   계층·import 규칙       .oxlintrc.json   린트 규칙(파일당 400줄)
 ```
 
 계층 규칙은 세 곳에서 강제하고, 모두 `npm run check`와 CI에 들어 있다. [`.dependency-cruiser.cjs`](.dependency-cruiser.cjs)는 import 방향, 계층별 허용 패키지, 순환을 검사한다. [`.oxlintrc.json`](.oxlintrc.json)은 파일을 400줄로 제한해 한 파일의 책임이 커지지 않게 한다. `tests/unit/architecture/layers.test.ts`는 import 그래프로 표현할 수 없는 것(순수 계층의 브라우저 전역, 상태 있는 어댑터를 만드는 위치, 한·영 메시지 키 일치)을 검사한다. 결정 배경은 [docs/adr](docs/adr/README.md)에 있다.
@@ -188,6 +200,15 @@ docs/adr/       설계 기록. stormlet-reference/ 에 참고한 Stormlet ADR �
 - **카탈로그와 아이콘** — 서비스 정의(카탈로그)와 모양(아이콘 팩)을 나눈다. 공식 아이콘은 사용자가 불러온다([ADR 0006](docs/adr/0006-service-catalog-and-icons.md), [ADR 0013](docs/adr/0013-icon-packs.md)).
 - **배포** — 정적 사이트(CSP 포함) 또는 HTML 한 파일이다([ADR 0014](docs/adr/0014-static-deployment.md)).
 - **동기화와 통계** — Drive 동기화는 세션을 감싸 3방향 병합하고, 병합 결과는 계층 규칙을 지킨다([ADR 0016](docs/adr/0016-google-drive-sync.md)). 사용 통계는 동의 후 목록에 있는 이벤트만 보낸다([ADR 0017](docs/adr/0017-usage-statistics.md)). 둘 다 같은 저작자의 Stormlet(MIT)에서 옮겼다.
+
+## 개발 규칙
+
+- **계층** — 코드는 그 책임을 가진 계층에 둔다([ADR 0001](docs/adr/0001-layered-local-first.md)). import가 계층 방향을 거스르거나, 그 계층이 쓸 수 없는 패키지를 쓰거나, 순환을 만들거나, 풀리지 않으면 `npm run deps`가 실패한다.
+- **파일당 400줄** — 400줄을 넘으면 `npm run lint`가 실패한다. 한도를 올리지 말고, 거기 닿기 전에 책임별로 파일을 나눈다.
+- **`src/`에 `console` 금지** — 진단 로그(`adapters/diagnostics`)로 남긴다.
+- **두 언어** — 모든 메시지 키는 `src/i18n/ko.ts`와 `en.ts`에 함께 있어야 한다(단위 테스트가 검사).
+- **push 전** — `npm run check`가 CI의 `checks` job과 같은 검사를 돌린다. `npm run verify`는 E2E까지 돌린다.
+- **규칙을 바꿀 때** — ADR과 `.dependency-cruiser.cjs`, `.oxlintrc.json`, `tests/unit/architecture/layers.test.ts`를 함께 고친다.
 
 ## 검증 현황
 
@@ -215,7 +236,7 @@ docs/adr/       설계 기록. stormlet-reference/ 에 참고한 Stormlet ADR �
 </details>
 
 <details>
-<summary><b>E2E 36개</b> (<code>tests/e2e</code>, 프로덕션 빌드)</summary>
+<summary><b>E2E 37개</b> (<code>tests/e2e</code>, 프로덕션 빌드)</summary>
 
 - **기본 흐름** — 노드 두 개 → 연결 → 저장 → 열기 → 새로 고침 → SVG(화면과 같은 경로), PNG, 잘못된 파일 거부
 - **영역** — VPC 끌기 후 한 번의 undo, 다른 영역으로 끌어 넣기, 감싸기
@@ -227,7 +248,7 @@ docs/adr/       설계 기록. stormlet-reference/ 에 참고한 Stormlet ADR �
 - **배포** — `file://`로 연 단일 HTML(가져오기, 내보내기, 자동 저장, Drive 비활성), 프로덕션 빌드의 CSP 위반 없음
 - **Drive**(흉내 낸 Google) — 연결·폴더 저장·자동 저장·⌘S, 새로 고침 후 재연결(빈 문서를 쓰지 않음), 원격 변경 병합과 충돌 선택, 열기·동기화 중지·연결 해제
 - **사용 통계** — 동의 전 무전송, 허용 후 이벤트·주소 정리, 끄기, 거부
-- **패널·도구** — 패널 접기와 기억, 양쪽을 접는 `⌘\`, 위 막대 버튼 위치 고정, 제목 바로 뒤 저장 상태(캔버스가 창 끝까지, 중심 유지); 손 도구(화면만 이동, 문서 불변, 편집 없음); 연결 도구(연속 연결, 빈 곳 이동, Esc); 보기 모드
+- **패널·도구** — 패널 접기와 기억, 양쪽을 접는 `⌘\`, 처음에 접힌 인스펙터와 `I`·점검 배지, 위 막대 버튼 위치 고정, 제목 바로 뒤 저장 상태(캔버스가 창 끝까지, 중심 유지); 손 도구(화면만 이동, 문서 불변, 편집 없음); 연결 도구(연속 연결, 빈 곳 이동, Esc); 보기 모드
 - **화면 구성** — 레이어 트리(계층 표시, 캔버스와 선택 연동, 키보드, 이름 바꾸기, 끌어서 부모 바꾸기와 undo, 접기), 최근 사용, 단축키 창, 메뉴 키보드 조작
 
 </details>

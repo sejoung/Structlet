@@ -10,7 +10,9 @@ export function storedPanels(): Panels {
   } catch {
     // per-browser convenience only
   }
-  return { left: true, right: !window.matchMedia?.('(max-width: 1100px)').matches };
+  // The inspector starts folded: an empty canvas has nothing to inspect. It opens from its
+  // top-bar toggle or `I`, and the toggle shows how many checks found something.
+  return { left: true, right: false };
 }
 
 export const RECENT_KEY = 'structlet:recent-services';
