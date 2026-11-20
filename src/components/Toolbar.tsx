@@ -23,6 +23,8 @@ export interface ToolbarActions {
   onTheme(theme: ThemeChoice): void;
   onIconPacks(): void;
   onShortcuts(): void;
+  onInspector(open: boolean): void;
+  onPresent(on: boolean): void;
 }
 
 interface ToolbarProps extends ToolbarActions {
@@ -35,6 +37,8 @@ interface ToolbarProps extends ToolbarActions {
   view: ViewMode;
   theme: ThemeChoice;
   fileName: string | null;
+  inspectorOpen: boolean;
+  presenting: boolean;
 }
 
 const mod = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl+';
@@ -73,6 +77,12 @@ export function Toolbar(props: ToolbarProps) {
         </div>
       </div>
       <div className="topbar-center">
+        {props.presenting ? (
+          <button type="button" className="present-exit" onClick={() => props.onPresent(false)} data-testid="exit-present">
+            {t('view.exit')} <kbd>Esc</kbd>
+          </button>
+        ) : (
+        <>
         <IconButton icon="undo" label={`${t('toolbar.undo')} (${mod}Z)`} onClick={props.onUndo} disabled={!props.canUndo} testId="tb-undo" />
         <IconButton icon="redo" label={`${t('toolbar.redo')} (⇧${mod}Z)`} onClick={props.onRedo} disabled={!props.canRedo} testId="tb-redo" />
         <span className="topbar-divider" aria-hidden="true" />
@@ -86,9 +96,13 @@ export function Toolbar(props: ToolbarProps) {
             { value: 'isometric', label: t('toolbar.view.isometric') },
           ]}
         />
+        <IconButton icon="present" label={`${t('view.present')} (${mod}.)`} onClick={() => props.onPresent(true)} testId="tb-present" />
+        </>
+        )}
       </div>
       <div className="topbar-end">
         <IconButton icon="keyboard" label={t('menu.shortcuts')} onClick={props.onShortcuts} testId="tb-shortcuts" />
+        {!props.inspectorOpen && !props.presenting && <IconButton icon="rightOpen" label={t('panels.right.show')} onClick={() => props.onInspector(true)} testId="show-right" />}
         <Menu
           testId="menu-settings"
           align="end"

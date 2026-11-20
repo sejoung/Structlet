@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import type { Editor } from '../application';
 import { allIds, type Id } from '../domain';
+import type { CanvasTool } from '../components/canvas/use-gestures';
 import type { DocumentActions } from './document-actions';
 
 interface ShortcutDeps {
@@ -9,6 +10,11 @@ interface ShortcutDeps {
   fit(): void;
   zoom(factor: number): void;
   edit(id: Id): void;
+  setTool(tool: CanvasTool): void;
+  tool(): CanvasTool;
+  togglePanels(): void;
+  presenting(): boolean;
+  setPresenting(on: boolean): void;
 }
 
 /** Keyboard shortcuts. Ignored while typing in a field. */
@@ -19,12 +25,33 @@ export function useShortcuts(deps: ShortcutDeps): void {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
       if (target?.closest?.('input, textarea, select, [contenteditable="true"]')) return;
-      const { editor, actions, fit, zoom, edit } = latest.current;
+      const { editor, actions, fit, zoom, edit, setTool, tool, togglePanels, presenting, setPresenting } = latest.current;
       const session = editor.session;
       const mod = e.metaKey || e.ctrlKey;
       const key = e.key.toLowerCase();
       const selection = session.selected;
       const handled = () => e.preventDefault();
+      if (key === 'escape' && presenting()) {
+        handled();
+        setPresenting(false);
+        return;
+      }
+      if (mod && key === '\\') {
+        handled();
+        togglePanels();
+        return;
+      }
+      if (mod && key === '.') {
+        handled();
+        setPresenting(!presenting());
+        return;
+      }
+      if (!mod && !e.altKey && !e.shiftKey && (key === 'v' || key === 'h' || key === 'c') && !presenting()) {
+        handled();
+        setTool(key === 'v' ? 'select' : key === 'h' ? 'hand' : 'connect');
+        return;
+      }
+      if (presenting()) return;
       if (mod && key === 'z') {
         handled();
         if (e.shiftKey) editor.redo();
@@ -59,6 +86,7 @@ export function useShortcuts(deps: ShortcutDeps): void {
           editor.delete(selection);
         }
       } else if (key === 'escape') {
+        if (tool() !== 'select') setTool('select');
         session.select([]);
       } else if ((key === 'enter' || key === 'f2') && selection.length === 1) {
         handled();

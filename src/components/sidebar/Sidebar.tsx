@@ -3,6 +3,7 @@ import type { AnnotationKind, ContainerKind, Document, Id } from '../../domain';
 import type { Appearance } from '../../engine';
 import type { Translate } from '../../i18n/messages';
 import { Icon, type IconName } from '../ui/Icon';
+import { IconButton } from '../ui/controls';
 import { AreasPanel, NotesPanel } from './InsertPanels';
 import { LayersPanel } from './LayersPanel';
 import { ServicesPanel } from './ServicesPanel';
@@ -20,6 +21,9 @@ interface Props {
   t: Translate;
   tab: SidebarTab;
   onTab(tab: SidebarTab): void;
+  /** Whether the panel next to the rail is shown. */
+  open: boolean;
+  onOpen(open: boolean): void;
   editor: Editor;
   doc: Document;
   selection: readonly Id[];
@@ -38,25 +42,35 @@ interface Props {
 export function Sidebar(props: Props) {
   const { t, tab } = props;
   return (
-    <aside className="sidebar">
+    <aside className={props.open ? 'sidebar' : 'sidebar collapsed'}>
       <nav className="rail" role="tablist" aria-label={t('rail.label')} aria-orientation="vertical">
         {TABS.map((x) => (
           <button
             type="button"
             key={x.id}
             role="tab"
-            aria-selected={tab === x.id}
+            aria-selected={props.open && tab === x.id}
             aria-controls="sidebar-panel"
             className="rail-button"
             data-testid={`rail-${x.id}`}
             title={t(`rail.${x.id}`)}
-            onClick={() => props.onTab(x.id)}
+            onClick={() => {
+              // Clicking the open tab again folds the panel away, like an editor side bar.
+              if (props.open && tab === x.id) props.onOpen(false);
+              else {
+                props.onTab(x.id);
+                props.onOpen(true);
+              }
+            }}
           >
             <Icon name={x.icon} size={18} />
             <span>{t(`rail.${x.id}`)}</span>
           </button>
         ))}
+        <span className="rail-spacer" />
+        <IconButton icon={props.open ? 'leftClose' : 'leftOpen'} label={props.open ? t('panels.left.hide') : t('panels.left.show')} onClick={() => props.onOpen(!props.open)} testId="toggle-left" />
       </nav>
+      {props.open && (
       <div className="panel" id="sidebar-panel" role="tabpanel" aria-label={t(`rail.${tab}`)}>
         <div className="panel-head">
           <h2>{t(`rail.${tab}`)}</h2>
@@ -67,6 +81,7 @@ export function Sidebar(props: Props) {
         {tab === 'notes' && <NotesPanel t={t} onAdd={props.onAddNote} />}
         {tab === 'layers' && <LayersPanel t={t} editor={props.editor} doc={props.doc} selection={props.selection} appearance={props.appearance} />}
       </div>
+      )}
     </aside>
   );
 }

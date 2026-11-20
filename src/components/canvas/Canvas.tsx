@@ -9,7 +9,8 @@ import { Handles } from './Handles';
 import { IsometricView } from './IsometricView';
 import { Minimap } from './Minimap';
 import { ZoomBar } from './ZoomBar';
-import { useGestures } from './use-gestures';
+import { ToolBar } from './ToolBar';
+import { useGestures, type CanvasTool } from './use-gestures';
 
 interface CanvasProps {
   t: Translate;
@@ -26,6 +27,10 @@ interface CanvasProps {
   theme: DiagramTheme;
   view: ViewMode;
   onFit(): void;
+  tool: CanvasTool;
+  onTool(tool: CanvasTool): void;
+  /** View mode: no editing handles and no tool switch. */
+  presenting: boolean;
 }
 
 /** Objects in reading order for keyboard navigation. */
@@ -41,9 +46,17 @@ export function Canvas(props: CanvasProps) {
   const [panning, setPanning] = useState(false);
   const latest = useRef({ viewport, setViewport });
   latest.current = { viewport, setViewport };
-  const gestures = useGestures({ svgRef, editor, snapshot, scene, viewport, setViewport, spaceDown });
+  const tool: CanvasTool = props.presenting ? 'hand' : props.tool;
+  const gestures = useGestures({ svgRef, editor, snapshot, scene, viewport, setViewport, spaceDown, tool });
   const markup = useMemo(() => renderSceneBody(scene, props.theme), [scene, props.theme]);
   const [size, setSize] = useState({ width: 0, height: 0 });
+  const [presentHint, setPresentHint] = useState(false);
+  useEffect(() => {
+    setPresentHint(props.presenting);
+    if (!props.presenting) return;
+    const timer = setTimeout(() => setPresentHint(false), 4000);
+    return () => clearTimeout(timer);
+  }, [props.presenting]);
 
   useEffect(() => {
     const el = wrapRef.current;
@@ -97,6 +110,7 @@ export function Canvas(props: CanvasProps) {
   }, []);
 
   const onDoubleClick = (e: MouseEvent) => {
+    if (tool !== 'select') return;
     // Pointer capture retargets dblclick to the <svg>, so look up what is under the pointer.
     const under = document.elementFromPoint(e.clientX, e.clientY) ?? (e.target as Element);
     const el = under.closest('[data-hit]') as SVGElement | null;
@@ -164,7 +178,7 @@ export function Canvas(props: CanvasProps) {
   return (
     <div
       ref={wrapRef}
-      className={`canvas${panning ? ' panning' : ''}`}
+      className={`canvas tool-${tool}${panning ? ' panning' : ''}`}
       style={{ backgroundSize: `${grid}px ${grid}px`, backgroundPosition: `${viewport.panX}px ${viewport.panY}px` }}
       onDragOver={(e) => {
         if (e.dataTransfer.types.includes(SERVICE_DRAG_TYPE)) {
@@ -214,16 +228,19 @@ export function Canvas(props: CanvasProps) {
               <rect key={a.id} data-hit="annotation" data-id={a.id} className="hit-area" x={a.rect.x} y={a.rect.y} width={a.rect.width} height={a.rect.height} />
             ))}
           </g>
-          <Handles scene={scene} selection={snapshot.selection} hover={gestures.hover} zoom={z} overlay={gestures.overlay} connecting={!!gestures.overlay.connect} />
+          {tool !== 'hand' && <Handles scene={scene} selection={snapshot.selection} hover={tool === 'select' ? gestures.hover : null} zoom={z} overlay={gestures.overlay} connecting={!!gestures.overlay.connect} />}
         </g>
       </svg>
+      {!props.presenting && <ToolBar t={t} tool={props.tool} onTool={props.onTool} />}
+      {!props.presenting && props.tool === 'connect' && <div className="tool-hint" role="status">{t('tool.connectHint')}</div>}
+      {presentHint && <div className="tool-hint present" role="status">{t('view.hint')}</div>}
       <div className="canvas-corner">
         <ZoomBar t={t} viewport={viewport} size={size} setViewport={setViewport} onFit={props.onFit} />
         <Minimap scene={scene} viewport={viewport} size={size} setViewport={setViewport} label={t('minimap')} />
       </div>
       <div className="sr-only" aria-live="polite" data-testid="announcer">{announcement}</div>
       {props.editing && <InlineEditor key={props.editing} id={props.editing} {...props} />}
-      {empty && (
+      {empty && !props.presenting && (
         <div className="empty-state">
           <h2>{t('empty.title')}</h2>
           <p>{t('empty.body')}</p>

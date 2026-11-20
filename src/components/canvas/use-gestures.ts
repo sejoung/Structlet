@@ -23,6 +23,9 @@ export interface CanvasOverlay {
 
 const EMPTY_OVERLAY: CanvasOverlay = { marquee: null, guides: [], connect: null };
 
+/** `select` edits; `hand` only moves the view; `connect` draws a line from box to box. */
+export type CanvasTool = 'select' | 'hand' | 'connect';
+
 interface GestureDeps {
   svgRef: RefObject<SVGSVGElement | null>;
   editor: Editor;
@@ -31,6 +34,7 @@ interface GestureDeps {
   viewport: Viewport;
   setViewport(v: Viewport): void;
   spaceDown: RefObject<boolean>;
+  tool: CanvasTool;
 }
 
 function hitOf(target: EventTarget | null): { kind: string; id: string; data: DOMStringMap } | null {
@@ -54,7 +58,7 @@ export function useGestures(deps: GestureDeps) {
   const worldOf = (e: { clientX: number; clientY: number }) => screenToWorld(latest.current.viewport, screenOf(e));
 
   function onPointerDown(e: ReactPointerEvent<SVGSVGElement>) {
-    const { editor, snapshot, scene, viewport, spaceDown } = latest.current;
+    const { editor, snapshot, scene, viewport, spaceDown, tool } = latest.current;
     if (e.button === 2) return;
     const world = worldOf(e);
     const hit = hitOf(e.target);
@@ -77,8 +81,22 @@ export function useGestures(deps: GestureDeps) {
         return;
       }
     }
-    if (e.button === 1 || spaceDown.current) {
+    if (e.button === 1 || spaceDown.current || tool === 'hand') {
       gesture.current = { type: 'pan', start: screenOf(e), from: viewport };
+      return;
+    }
+    if (tool === 'connect') {
+      // Any box starts a line; empty space moves the view.
+      const from = hit?.kind === 'box' || hit?.kind === 'connect' ? hit.id : null;
+      if (from) {
+        const r = scene.rects.get(from);
+        gesture.current = { type: 'connect', from, start: r ? { x: r.x + r.width / 2, y: r.y + r.height / 2 } : world };
+        setOverlay({ ...EMPTY_OVERLAY, connect: { from: gesture.current.start, to: world, target: null } });
+      } else if (hit?.kind === 'edge') {
+        editor.session.select([hit.id]);
+      } else {
+        gesture.current = { type: 'pan', start: screenOf(e), from: viewport };
+      }
       return;
     }
     const doc = snapshot.document;
@@ -147,9 +165,10 @@ export function useGestures(deps: GestureDeps) {
   }
 
   function onPointerMove(e: ReactPointerEvent<SVGSVGElement>) {
-    const { editor, scene, viewport, setViewport } = latest.current;
+    const { editor, scene, viewport, setViewport, tool } = latest.current;
     const g = gesture.current;
     if (!g) {
+      if (tool === 'hand') return;
       const hit = hitOf(e.target);
       const id = hit && (hit.kind === 'box' || hit.kind === 'connect') ? hit.id : null;
       if (id !== hover) setHover(id);

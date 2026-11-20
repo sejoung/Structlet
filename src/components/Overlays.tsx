@@ -36,6 +36,9 @@ const SHORTCUTS: [string, MessageKey][] = [
   ['Space', 'sc.pan'],
   ['Tab', 'sc.tab'],
   ['Alt', 'sc.marquee'],
+  ['V H C', 'sc.tools'],
+  ['⌘\\', 'sc.panels'],
+  ['⌘.', 'sc.present'],
 ];
 
 export function ShortcutsDialog({ t, onClose }: { t: Translate; onClose(): void }) {

@@ -13,6 +13,7 @@ import { Canvas } from '../components/canvas/Canvas';
 import { IconPacksDialog } from '../components/IconPacksDialog';
 import { ShortcutsDialog, Toast } from '../components/Overlays';
 import { Sidebar, type SidebarTab } from '../components/sidebar/Sidebar';
+import type { CanvasTool } from '../components/canvas/use-gestures';
 import type { PaletteService } from '../components/sidebar/types';
 import { PropertiesPanel, type PanelFinding } from '../components/properties/PropertiesPanel';
 import { Toolbar, type ViewMode } from '../components/Toolbar';
@@ -40,6 +41,18 @@ interface AppProps {
 
 const toPalette = (language: Language, look: ReturnType<typeof createAppearance>) => (s: ServiceDefinition): PaletteService => ({ id: s.id, name: s.name[language], provider: s.provider, role: s.role, glyph: s.glyph, color: s.color, image: look.service(s.id)?.image });
 
+const PANELS_KEY = 'structlet:panels';
+type Panels = { left: boolean; right: boolean };
+function storedPanels(): Panels {
+  try {
+    const v = JSON.parse(localStorage.getItem(PANELS_KEY) ?? 'null');
+    if (v && typeof v.left === 'boolean' && typeof v.right === 'boolean') return v;
+  } catch {
+    // per-browser convenience only
+  }
+  return { left: true, right: !window.matchMedia?.('(max-width: 1100px)').matches };
+}
+
 const RECENT_KEY = 'structlet:recent-services';
 function storedRecent(): string[] {
   try {
@@ -60,6 +73,36 @@ export function App({ editor, store, files, packStore, newId, initialLanguage, o
   const [tab, setTab] = useState<SidebarTab>('services');
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [recent, setRecent] = useState<string[]>(storedRecent);
+  const [panels, setPanelsState] = useState<Panels>(storedPanels);
+  const [tool, setTool] = useState<CanvasTool>('select');
+  const [presenting, setPresentingState] = useState(false);
+  const setPanels = useCallback((next: Panels) => {
+    setPanelsState(next);
+    try {
+      localStorage.setItem(PANELS_KEY, JSON.stringify(next));
+    } catch {
+      // per-browser convenience only
+    }
+  }, []);
+  const panelsRef = useRef(panels);
+  panelsRef.current = panels;
+  const fitOnResize = useRef(false);
+  const setPresenting = useCallback((on: boolean) => {
+    setPresentingState(on);
+    fitOnResize.current = on;
+    if (on) {
+      editor.session.select([]);
+      setEditing(null);
+    }
+  }, [editor]);
+  // Narrow windows give the canvas the room: fold the inspector when the window gets narrow.
+  useEffect(() => {
+    const q = window.matchMedia?.('(max-width: 1100px)');
+    if (!q) return;
+    const on = (e: MediaQueryListEvent) => e.matches && setPanels({ ...panelsRef.current, right: false });
+    q.addEventListener('change', on);
+    return () => q.removeEventListener('change', on);
+  }, [setPanels]);
   const dismissNotice = useCallback(() => setNotice(null), []);
   const theme = useTheme();
   // The canvas is not white: edge label boxes take the canvas color (keep in sync with --canvas in styles.css).
@@ -88,6 +131,8 @@ export function App({ editor, store, files, packStore, newId, initialLanguage, o
   sceneRef.current = scene;
   const viewRef = useRef(view);
   viewRef.current = view;
+  const presentingRef = useRef(false);
+  const toolRef = useRef<CanvasTool>('select');
 
   const fitTo = useCallback((doc: Document) => {
     const s = sizeRef.current;
@@ -99,6 +144,13 @@ export function App({ editor, store, files, packStore, newId, initialLanguage, o
     [editor, files, newId, t, fitTo],
   );
   const panelActions = useMemo(() => createPanelActions(editor, () => sceneRef.current, language), [editor, language]);
+
+  // Entering view mode fits the diagram once the canvas has taken the freed space.
+  useEffect(() => {
+    if (!fitOnResize.current || !presenting) return;
+    fitOnResize.current = false;
+    fitTo(editor.session.committedDocument);
+  }, [size, presenting, fitTo, editor]);
 
   const fitted = useRef(false);
   useEffect(() => {
@@ -121,6 +173,9 @@ export function App({ editor, store, files, packStore, newId, initialLanguage, o
     document.title = `${snapshot.document.title} · Structlet`;
     document.documentElement.lang = language;
   }, [snapshot.document.title, language]);
+
+  presentingRef.current = presenting;
+  toolRef.current = tool;
 
   const viewCenter = (): Point => screenToWorld(viewport, { x: size.width / 2, y: size.height / 2 });
 
@@ -170,6 +225,15 @@ export function App({ editor, store, files, packStore, newId, initialLanguage, o
     fit: () => fitTo(editor.session.committedDocument),
     zoom: (f) => setViewport((v) => zoomAt(v, { x: size.width / 2, y: size.height / 2 }, f)),
     edit: setEditing,
+    setTool,
+    togglePanels: () => {
+      const p = panelsRef.current;
+      const show = !(p.left || p.right);
+      setPanels({ left: show, right: show });
+    },
+    presenting: () => presentingRef.current,
+    setPresenting,
+    tool: () => toolRef.current,
   });
 
   useClipboard({
@@ -186,7 +250,7 @@ export function App({ editor, store, files, packStore, newId, initialLanguage, o
   const fit = () => fitTo(editor.session.committedDocument);
 
   return (
-    <div className="app">
+    <div className={presenting ? 'app presenting' : 'app'}>
       <Toolbar
         t={t}
         title={snapshot.document.title}
@@ -212,6 +276,10 @@ export function App({ editor, store, files, packStore, newId, initialLanguage, o
         onTheme={theme.setChoice}
         onIconPacks={() => setPacksOpen(true)}
         onShortcuts={() => setShortcutsOpen(true)}
+        inspectorOpen={panels.right}
+        onInspector={(right) => setPanels({ ...panels, right })}
+        presenting={presenting}
+        onPresent={setPresenting}
         onLanguage={(l) => {
           setLanguage(l);
           onLanguage(l);
@@ -222,6 +290,8 @@ export function App({ editor, store, files, packStore, newId, initialLanguage, o
           t={t}
           tab={tab}
           onTab={setTab}
+          open={panels.left && !presenting}
+          onOpen={(left) => setPanels({ ...panels, left })}
           editor={editor}
           doc={snapshot.document}
           selection={snapshot.selection}
@@ -251,11 +321,16 @@ export function App({ editor, store, files, packStore, newId, initialLanguage, o
             theme={canvasTheme}
             view={view}
             onFit={fit}
+            tool={view === 'isometric' ? 'hand' : tool}
+            onTool={setTool}
+            presenting={presenting}
           />
           <Toast t={t} message={notice} onDismiss={dismissNotice} />
         </main>
+        {panels.right && !presenting && (
         <PropertiesPanel
           t={t}
+          onHide={() => setPanels({ ...panels, right: false })}
           editor={editor}
           snapshot={snapshot}
           scene={scene}
@@ -265,6 +340,7 @@ export function App({ editor, store, files, packStore, newId, initialLanguage, o
           actions={panelActions}
           onWrap={(ids, kind) => editor.wrapInArea(ids, kind, t(`area.${kind}`))}
         />
+        )}
       </div>
       {packsOpen && (
         <IconPacksDialog
