@@ -18,6 +18,8 @@ Structlet은 서버 없이 HTML로만 배포한다. 정적 호스팅(루트나 �
   - 자동 저장과 아이콘 팩 보관은 브라우저의 저장소 정책을 따른다.
   - 같은 파일 덮어쓰기는 API가 없으면 다운로드로 대신한다.
 
+- GitHub Actions의 **CI**는 모든 push·PR에서 검사와 E2E를 돌린다. **Pages**는 수동 실행(`workflow_dispatch`)으로만 배포하고, 전체 검사(`npm run verify`)가 통과해야 배포 job이 실행된다. 빌드 job은 읽기 권한만 갖고, 배포 job만 `pages: write`를 갖는다. 오프라인용 단일 파일도 `/structlet.html`로 함께 올린다([CI와 배포](../ci.md)).
+
 ## 결과
 
 `tests/e2e/single-file.spec.ts`가 `file://`로 연 `structlet.html`에서 다음을 확인한다: 샘플, compose 가져오기(지연 청크 포함), SVG·PNG 내보내기, 새로 고침 후 자동 저장 유지, 페이지 오류 없음. `npm run e2e`는 단일 파일을 먼저 빌드한다.

@@ -11,6 +11,8 @@ npm install
 npm run dev          # http://127.0.0.1:5183
 ```
 
+**CI와 배포**: push와 PR마다 GitHub Actions의 **CI**가 검사와 E2E를 돌린다. GitHub Pages 배포는 Actions 탭의 **Pages → Run workflow** 버튼으로 수동으로 하고, 모든 검사를 통과해야 배포된다. 처음 설정(Pages 소스, 저장소 변수, Google origin 등록)은 [docs/ci.md](docs/ci.md)에 있다. 배포한 사이트의 `/structlet.html`은 오프라인용 단일 파일이다.
+
 선택 기능(Google Drive, 사용 통계)은 `.env.example`을 `.env.local`로 복사해 공개 설정 값을 넣으면 켜진다. 값이 없으면 그 기능 없이 빌드된다. Google Cloud·GA4 설정과 등록할 origin은 [docs/google-drive.md](docs/google-drive.md)에 있다.
 
 | 명령 | 내용 |
@@ -21,7 +23,8 @@ npm run dev          # http://127.0.0.1:5183
 | `npm run preview` | 빌드 결과 미리보기 (`127.0.0.1:5184`, CSP 포함) |
 | `npm test` | 단위 테스트 (Vitest, `tests/unit`) |
 | `npm run e2e` | 단일 파일 빌드 후 E2E (Playwright, `tests/e2e`). 프로덕션 빌드 두 벌(기본, 테스트 측정 ID)을 `vite preview`로 띄워 검사하고 Google은 흉내 낸다. 처음 한 번 `npx playwright install chromium` |
-| `npm run verify` | 타입 검사 → 단위 → 빌드 → E2E 전부 |
+| `npm run check` | 타입 검사 → 단위 → 웹 빌드 → 단일 파일 빌드 (CI의 checks job) |
+| `npm run verify` | `check` + E2E 전부 (Pages 배포 전 검사) |
 
 처음 열면 빈 캔버스다. **파일 → 샘플**(또는 가운데의 **샘플 열기**)을 누르면 검증용 구성도(사용자 → DNS → 로드밸런서 → API → DB/캐시/큐 → 워커 → 결제·메일, VPC 안 두 서브넷, 노드 11개·영역 5개·연결 10개)가 열린다. 원본은 `samples/three-tier.structlet`이다.
 

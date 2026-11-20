@@ -1,0 +1,74 @@
+name: Pages
+# Run by hand: Actions tab → Pages → Run workflow. It deploys only after every check passes.
+on:
+  workflow_dispatch:
+# The build runs third-party code (npm ci), so only the deploy job may publish.
+permissions:
+  contents: read
+concurrency:
+  group: pages
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    container:
+      image: mcr.microsoft.com/playwright:v1.65.1-noble
+      options: --init --ipc=host
+    env:
+      CI: 'true'
+      # Public settings from the repository's Actions variables (docs/ci.md, docs/google-drive.md).
+      # Without them the site is built without Google Drive or usage statistics. The E2E builds
+      # override them with test values and never reach Google.
+      VITE_GOOGLE_CLIENT_ID: ${{ vars.VITE_GOOGLE_CLIENT_ID }}
+      VITE_GOOGLE_API_KEY: ${{ vars.VITE_GOOGLE_API_KEY }}
+      VITE_GOOGLE_APP_ID: ${{ vars.VITE_GOOGLE_APP_ID }}
+      VITE_GA_MEASUREMENT_ID: ${{ vars.VITE_GA_MEASUREMENT_ID }}
+    steps:
+      - name: Check public settings
+        run: |
+          if [ -z "$VITE_GOOGLE_CLIENT_ID" ] || [ -z "$VITE_GOOGLE_API_KEY" ] || [ -z "$VITE_GOOGLE_APP_ID" ]; then
+            echo "::warning::VITE_GOOGLE_* repository variables are not all set; the site is built without Google Drive."
+          fi
+          if [ -z "$VITE_GA_MEASUREMENT_ID" ]; then
+            echo "::notice::VITE_GA_MEASUREMENT_ID is not set; the site sends no usage statistics."
+          fi
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Check preinstalled Playwright version
+        run: node scripts/check-playwright-image.mjs
+      # Type check, unit tests, the site into dist/ and the single file; then the browser tests.
+      - run: npm run verify
+      - name: Add the offline single-file page
+        run: cp dist-single/structlet.html dist/structlet.html
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: failure()
+        with:
+          name: test-results
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 3
+      - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: dist
+          # Deployed by the next job straight away.
+          retention-days: 1
+  deploy:
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

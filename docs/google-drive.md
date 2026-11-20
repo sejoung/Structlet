@@ -39,7 +39,7 @@ GA4 속성과 웹 데이터 스트림을 만들고 측정 ID(`G-…`)를 `VITE_G
 
 ## 배포
 
-- **웹 배포**(`npm run build` → `dist/`): 상대 경로라 어떤 정적 호스팅에도 올릴 수 있다. CSP는 빌드한 설정에 필요한 Google origin만 연다. 배포 환경(예: GitHub Actions)에는 위 값을 빌드 변수로 넣는다.
+- **웹 배포**(`npm run build` → `dist/`): 상대 경로라 어떤 정적 호스팅에도 올릴 수 있다. CSP는 빌드한 설정에 필요한 Google origin만 연다. GitHub Pages는 저장소 Actions 변수에 위 값을 넣고 **Pages** 워크플로를 수동 실행한다([docs/ci.md](ci.md)).
 - **HTML 한 파일**(`npm run build:single`): `file://`에는 등록할 수 있는 origin이 없어 Google 로그인이 동작하지 않는다. 그래서 Drive와 사용 통계는 꺼지고, 파일 메뉴에 이유가 표시된다.
 - **origin을 Stormlet과 나눈다.** 브라우저 저장소와 탭 간 채널은 경로가 아니라 origin 단위로 공유된다. 같은 `https://<계정>.github.io`에 Stormlet과 함께 올리면 서로의 저장 정보와 Drive 토큰 채널에 접근할 수 있다. Drive를 켜는 배포는 Structlet 전용 도메인(또는 별도 origin)에 둔다.
 

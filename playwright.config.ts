@@ -9,7 +9,9 @@ export default defineConfig({
   testDir: 'tests/e2e',
   timeout: 30_000,
   fullyParallel: true,
-  reporter: [['list']],
+  forbidOnly: !!process.env.CI,
+  workers: process.env.CI ? 2 : undefined,
+  reporter: process.env.CI ? [['github'], ['list']] : [['list']],
   use: { baseURL: 'http://127.0.0.1:5184', viewport: { width: 1440, height: 900 }, acceptDownloads: true, trace: 'retain-on-failure' },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } } }],
   webServer: [

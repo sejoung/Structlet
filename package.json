@@ -13,8 +13,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "e2e": "npm run build:single && playwright test",
-    "verify": "npm run typecheck && npm test && npm run build && npm run e2e",
-    "build:single": "tsc --noEmit && vite build --mode single && node scripts/rename-single.mjs"
+    "verify": "npm run check && playwright test",
+    "build:single": "tsc --noEmit && vite build --mode single && node scripts/rename-single.mjs",
+    "check": "npm run typecheck && npm test && npm run build && npm run build:single"
   },
   "dependencies": {
     "fflate": "^0.8.3",
@@ -34,5 +35,8 @@
     "vite": "^8.3.8",
     "vite-plugin-singlefile": "^2.3.4",
     "vitest": "^5.1.1"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }
