@@ -4,7 +4,7 @@
 
 | 워크플로 | 언제 | 하는 일 |
 | --- | --- | --- |
-| **CI** (`.github/workflows/ci.yml`) | 모든 push와 pull request | 두 job이 나란히 돈다. `checks`: 타입 검사, 단위 테스트, 웹 빌드, 단일 파일 빌드(`npm run check`). `e2e`: 단일 파일 빌드 후 Playwright E2E(`npm run e2e`). 같은 브랜치에 새 push가 오면 이전 실행은 취소된다 |
+| **CI** (`.github/workflows/ci.yml`) | 모든 push와 pull request | 두 job이 나란히 돈다. `checks`: 타입 검사, 린트(oxlint), 의존성 규칙(dependency-cruiser), 단위 테스트, 웹 빌드, 단일 파일 빌드(`npm run check`). `e2e`: 단일 파일 빌드 후 Playwright E2E(`npm run e2e`). 같은 브랜치에 새 push가 오면 이전 실행은 취소된다 |
 | **Pages** (`.github/workflows/pages.yml`) | **수동**: Actions 탭 → Pages → Run workflow | 저장소 변수로 빌드하고 `npm run verify`(위 검사 전부 + E2E)가 모두 통과해야 배포한다. 오프라인용 `structlet.html`(단일 파일)도 함께 올린다 |
 
 E2E는 프로덕션 빌드 두 벌(기본, 테스트 GA 측정 ID)을 `vite preview`로 띄워 실행한다. Google 로그인·Picker·Drive API·GA 스크립트는 테스트 안에서 흉내 내므로 실제 Google에 닿지 않는다. 실패하면 `test-results/`가 artifact(3일 보관)로 남는다.

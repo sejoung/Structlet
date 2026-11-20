@@ -62,8 +62,14 @@ export function Menu({ label, ariaLabel, items, testId, className = '', align = 
               setOpen(false);
               root.current?.querySelector<HTMLButtonElement>('.menu-button')?.focus();
             }
-            if (e.key === 'ArrowDown') (e.preventDefault(), move(1));
-            if (e.key === 'ArrowUp') (e.preventDefault(), move(-1));
+            if (e.key === 'ArrowDown') {
+              e.preventDefault();
+              move(1);
+            }
+            if (e.key === 'ArrowUp') {
+              e.preventDefault();
+              move(-1);
+            }
           }}
         >
           {items.map((item) => (

@@ -27,6 +27,18 @@ Structlet은 서버 없이 정적 호스팅으로 동작한다. 문서는 사용
 
 ## 결과
 
-`tests/unit/architecture/layers.test.ts`가 계층 import, 허용 패키지, 순수 계층의 브라우저 전역, 어댑터 생성 위치, 콘솔, 파일 길이, 순환, 한·영 메시지 키 일치를 검사한다. 규칙을 바꾸려면 이 ADR과 그 테스트를 함께 고친다.
+규칙은 세 도구로 나눠 검사하고, 모두 `npm run check`(CI의 `checks` job)에 들어 있다.
+
+| 검사 | 도구 | 파일 |
+| --- | --- | --- |
+| 계층 import 방향, 계층별 허용 패키지, `src` 밖 import(`app`의 `samples/`만 허용), Node 내장 모듈과 devDependencies 금지, 순환, 풀리지 않는 import, package.json에 없는 패키지 | dependency-cruiser (`npm run deps`) | `.dependency-cruiser.cjs` |
+| 파일 400줄 이하, `src`의 `console` 금지, 정확성 규칙 | oxlint (`npm run lint`) | `.oxlintrc.json` |
+| 모든 파일이 알려진 계층에 속함, 순수 계층의 브라우저 전역, 어댑터 생성 위치, 한·영 메시지 키 일치 | Vitest | `tests/unit/architecture/layers.test.ts` |
+
+규칙을 바꾸려면 이 ADR과 해당 파일을 함께 고친다. 계층 표는 `.dependency-cruiser.cjs`의 `LAYERS`·`PACKAGES`와 같아야 한다.
+
+- 처음에는 정규식으로 import를 읽는 테스트 하나가 전부 검사했다. 실제 모듈 해석(확장자, `exports`, 타입 전용 import)을 하는 dependency-cruiser로 옮겨, 풀리지 않는 import와 선언하지 않은 패키지까지 잡는다. 파일 길이와 `console`은 편집기에서 바로 보이도록 린트로 옮겼다.
+- TypeScript 7.0에는 JavaScript API가 없어 typescript-eslint와 dependency-cruiser의 tsc 파서를 쓸 수 없다. 그래서 린트는 TypeScript에 기대지 않는 oxlint를, dependency-cruiser는 swc 파서를 쓴다. 실행할 때 나오는 `missing-tsc-transpiler` 경고는 이 때문이고, swc가 모든 소스를 읽는다(파일 수로 확인). dependency-cruiser가 Node 22 이상을 요구해 `engines`도 22 이상으로 올렸다.
+- oxlint의 React 규칙(`react`, `react-hooks`)은 켜지 않았다. 켜면 기존 코드에서 렌더 중 ref 읽기 등 24건이 나와 별도 작업으로 다룬다.
 
 테스트는 `tests/unit`(Vitest, 계층별 폴더)과 `tests/e2e`(Playwright, 실제 앱)로 나눈다.

@@ -1,0 +1,42 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": [
+    "eslint",
+    "typescript",
+    "unicorn",
+    "oxc"
+  ],
+  "categories": {
+    "correctness": "error"
+  },
+  "rules": {
+    "max-lines": [
+      "error",
+      {
+        "max": 400,
+        "skipBlankLines": false,
+        "skipComments": false
+      }
+    ],
+    "no-console": "error"
+  },
+  "overrides": [
+    {
+      "files": [
+        "scripts/**",
+        "tests/**",
+        "*.config.ts"
+      ],
+      "rules": {
+        "no-console": "off"
+      }
+    }
+  ],
+  "ignorePatterns": [
+    "dist/**",
+    "dist-single/**",
+    "test-results/**",
+    ".e2e/**",
+    "node_modules/**"
+  ]
+}

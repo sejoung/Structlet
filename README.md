@@ -10,12 +10,12 @@ and export to SVG or PNG — no server, no account, no external AI calls.
 [![CI](https://github.com/sejoung/Structlet/actions/workflows/ci.yml/badge.svg)](https://github.com/sejoung/Structlet/actions/workflows/ci.yml)
 [![Pages](https://github.com/sejoung/Structlet/actions/workflows/pages.yml/badge.svg)](https://github.com/sejoung/Structlet/actions/workflows/pages.yml)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
-[![Node](https://img.shields.io/badge/node-%3E%3D20-339933?logo=node.js&logoColor=white)](.nvmrc)
+[![Node](https://img.shields.io/badge/node-%3E%3D22-339933?logo=node.js&logoColor=white)](.nvmrc)
 <br>
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)](tsconfig.json)
 [![React](https://img.shields.io/badge/React_19-20232A?logo=react&logoColor=61DAFB)](package.json)
 [![Vite](https://img.shields.io/badge/Vite-646CFF?logo=vite&logoColor=white)](vite.config.ts)
-[![Vitest](https://img.shields.io/badge/unit_tests-125-6E9F18?logo=vitest&logoColor=white)](tests/unit)
+[![Vitest](https://img.shields.io/badge/unit_tests-122-6E9F18?logo=vitest&logoColor=white)](tests/unit)
 [![Playwright](https://img.shields.io/badge/e2e_tests-36-2EAD33?logo=playwright&logoColor=white)](tests/e2e)
 
 **English** · [한국어](README.ko.md)
@@ -40,7 +40,7 @@ and export to SVG or PNG — no server, no account, no external AI calls.
 
 ## Getting started
 
-Requires Node.js 20 or later (developed on Node 24, npm 11).
+Requires Node.js 22 or later (developed on Node 24, npm 11).
 
 ```bash
 npm install
@@ -57,7 +57,9 @@ The editor opens on an empty canvas. Choose **File → Sample** (or **Open sampl
 | `npm run preview` | Preview the build (`127.0.0.1:5184`, with CSP) |
 | `npm test` | Unit tests (Vitest, `tests/unit`) |
 | `npm run e2e` | Builds the single file, then runs E2E (Playwright, `tests/e2e`) against two production builds served by `vite preview`, with Google mocked. Run `npx playwright install chromium` once first |
-| `npm run check` | Type check → unit → web build → single-file build (the CI `checks` job) |
+| `npm run lint` | oxlint: at most 400 lines per file, no `console` in `src/`, correctness rules (`.oxlintrc.json`) |
+| `npm run deps` | dependency-cruiser: layer direction, allowed packages, cycles, unresolvable or undeclared imports (`.dependency-cruiser.cjs`) |
+| `npm run check` | Type check → lint → deps → unit → web build → single-file build (the CI `checks` job) |
 | `npm run verify` | `check` + all E2E (run before a Pages deploy) |
 
 **CI and deployment** — every push and PR runs **CI** (checks and E2E) on GitHub Actions. GitHub Pages is deployed by hand from **Actions → Pages → Run workflow**, and only after every check passes. First-time setup (Pages source, repository variables, Google origins) is in [docs/ci.md](docs/ci.md). The deployed site's `/structlet.html` is the offline single file.
@@ -181,7 +183,7 @@ docs/draft-format.md  draft JSON format
 docs/adr/       design records; stormlet-reference/ holds the Stormlet ADRs used as reference
 ```
 
-The layer rules are enforced by `tests/unit/architecture/layers.test.ts`. The reasoning behind each decision is in [docs/adr](docs/adr/README.md).
+The layer rules are enforced in three places, all part of `npm run check` and CI: [`.dependency-cruiser.cjs`](.dependency-cruiser.cjs) checks import direction, allowed packages per layer and cycles; [`.oxlintrc.json`](.oxlintrc.json) caps files at 400 lines so no single file takes on too much; `tests/unit/architecture/layers.test.ts` checks what an import graph cannot (browser globals in pure layers, where stateful adapters are created, matching Korean / English keys). The reasoning behind each decision is in [docs/adr](docs/adr/README.md).
 
 - **Model** — nodes and areas store an explicit `parentId` and coordinates local to their parent. Cycles are rejected ([ADR 0002](docs/adr/0002-service-nodes-and-explicit-areas.md)).
 - **Connectors** — automatic paths are not stored; they are recomputed every time (obstacle-avoiding A*). Only paths the user edited are stored, as waypoints ([ADR 0003](docs/adr/0003-edge-routing-and-manual-waypoints.md)).
@@ -194,7 +196,7 @@ The layer rules are enforced by `tests/unit/architecture/layers.test.ts`. The re
 ## Tests
 
 <details>
-<summary><b>125 unit tests</b> (<code>tests/unit</code>)</summary>
+<summary><b>122 unit tests</b> (<code>tests/unit</code>)</summary>
 
 - **domain** — hierarchy, local coordinates, children moving with parents, reparenting and cycle rejection, patch undo (including adjacent-delete order), fragment copy / paste, document diff
 - **domain** — three-way merge (fields, grouped positions, delete conflicts, hierarchy repair, cycles)
@@ -212,7 +214,7 @@ The layer rules are enforced by `tests/unit/architecture/layers.test.ts`. The re
   - SVG matches the canvas paths and labels; checks; legend; saving to the same file
   - Drive: REST contract, name numbering, lost responses, failure handling; token, tab sharing, settings
   - Usage statistics: nothing sent before consent, listed events only, caps, cookie deletion on refusal; CSP setup
-- **architecture** — layer rules
+- **architecture** — every file in a known layer, no browser globals in pure layers, stateful adapters created only in `app`, matching message keys (import rules: `npm run deps`)
 
 </details>
 

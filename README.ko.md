@@ -10,12 +10,12 @@
 [![CI](https://github.com/sejoung/Structlet/actions/workflows/ci.yml/badge.svg)](https://github.com/sejoung/Structlet/actions/workflows/ci.yml)
 [![Pages](https://github.com/sejoung/Structlet/actions/workflows/pages.yml/badge.svg)](https://github.com/sejoung/Structlet/actions/workflows/pages.yml)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
-[![Node](https://img.shields.io/badge/node-%3E%3D20-339933?logo=node.js&logoColor=white)](.nvmrc)
+[![Node](https://img.shields.io/badge/node-%3E%3D22-339933?logo=node.js&logoColor=white)](.nvmrc)
 <br>
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)](tsconfig.json)
 [![React](https://img.shields.io/badge/React_19-20232A?logo=react&logoColor=61DAFB)](package.json)
 [![Vite](https://img.shields.io/badge/Vite-646CFF?logo=vite&logoColor=white)](vite.config.ts)
-[![Vitest](https://img.shields.io/badge/unit_tests-125-6E9F18?logo=vitest&logoColor=white)](tests/unit)
+[![Vitest](https://img.shields.io/badge/unit_tests-122-6E9F18?logo=vitest&logoColor=white)](tests/unit)
 [![Playwright](https://img.shields.io/badge/e2e_tests-36-2EAD33?logo=playwright&logoColor=white)](tests/e2e)
 
 [English](README.md) · **한국어**
@@ -40,7 +40,7 @@
 
 ## 실행
 
-Node.js 20 이상(개발 확인: Node 24, npm 11).
+Node.js 22 이상(개발 확인: Node 24, npm 11).
 
 ```bash
 npm install
@@ -57,7 +57,9 @@ npm run dev          # http://127.0.0.1:5183
 | `npm run preview` | 빌드 결과 미리보기 (`127.0.0.1:5184`, CSP 포함) |
 | `npm test` | 단위 테스트 (Vitest, `tests/unit`) |
 | `npm run e2e` | 단일 파일 빌드 후 E2E (Playwright, `tests/e2e`). 프로덕션 빌드 두 벌(기본, 테스트 측정 ID)을 `vite preview`로 띄워 검사하고 Google은 흉내 낸다. 처음 한 번 `npx playwright install chromium` |
-| `npm run check` | 타입 검사 → 단위 → 웹 빌드 → 단일 파일 빌드 (CI의 checks job) |
+| `npm run lint` | oxlint: 파일당 400줄 이하, `src/`에 `console` 금지, 정확성 규칙 (`.oxlintrc.json`) |
+| `npm run deps` | dependency-cruiser: 계층 방향, 계층별 허용 패키지, 순환, 풀리지 않거나 선언하지 않은 import (`.dependency-cruiser.cjs`) |
+| `npm run check` | 타입 검사 → 린트 → 의존성 → 단위 → 웹 빌드 → 단일 파일 빌드 (CI의 checks job) |
 | `npm run verify` | `check` + E2E 전부 (Pages 배포 전 검사) |
 
 **CI와 배포** — push와 PR마다 GitHub Actions의 **CI**가 검사와 E2E를 돌린다. GitHub Pages 배포는 Actions 탭의 **Pages → Run workflow** 버튼으로 수동으로 하고, 모든 검사를 통과해야 배포된다. 처음 설정(Pages 소스, 저장소 변수, Google origin 등록)은 [docs/ci.md](docs/ci.md)에 있다. 배포한 사이트의 `/structlet.html`은 오프라인용 단일 파일이다.
@@ -177,7 +179,7 @@ docs/draft-format.md  초안 JSON 형식
 docs/adr/       설계 기록. stormlet-reference/ 에 참고한 Stormlet ADR 원본
 ```
 
-계층 규칙은 `tests/unit/architecture/layers.test.ts`가 강제한다. 결정 배경은 [docs/adr](docs/adr/README.md)에 있다.
+계층 규칙은 세 곳에서 강제하고, 모두 `npm run check`와 CI에 들어 있다. [`.dependency-cruiser.cjs`](.dependency-cruiser.cjs)는 import 방향, 계층별 허용 패키지, 순환을 검사한다. [`.oxlintrc.json`](.oxlintrc.json)은 파일을 400줄로 제한해 한 파일의 책임이 커지지 않게 한다. `tests/unit/architecture/layers.test.ts`는 import 그래프로 표현할 수 없는 것(순수 계층의 브라우저 전역, 상태 있는 어댑터를 만드는 위치, 한·영 메시지 키 일치)을 검사한다. 결정 배경은 [docs/adr](docs/adr/README.md)에 있다.
 
 - **모델** — 노드·영역은 명시적 `parentId`와 부모 기준 로컬 좌표로 저장한다. 순환은 거부한다([ADR 0002](docs/adr/0002-service-nodes-and-explicit-areas.md)).
 - **연결선** — 자동 경로는 저장하지 않고 매번 계산하며(장애물 회피 A*), 사용자가 고친 경로만 꺾임점으로 저장한다([ADR 0003](docs/adr/0003-edge-routing-and-manual-waypoints.md)).
@@ -190,7 +192,7 @@ docs/adr/       설계 기록. stormlet-reference/ 에 참고한 Stormlet ADR �
 ## 검증 현황
 
 <details>
-<summary><b>단위 125개</b> (<code>tests/unit</code>)</summary>
+<summary><b>단위 122개</b> (<code>tests/unit</code>)</summary>
 
 - **domain** — 계층·로컬 좌표·자식 동반 이동, 부모 변경·순환 거부, 패치 undo(인접 삭제 순서 포함), 조각 복사·붙여넣기, 문서 차이
 - **domain** — 3방향 병합(필드·위치 묶음·삭제 충돌·계층 복구·순환)
@@ -208,7 +210,7 @@ docs/adr/       설계 기록. stormlet-reference/ 에 참고한 Stormlet ADR �
   - SVG가 캔버스와 같은 경로·라벨인지, 점검, 범례, 같은 파일에 저장
   - Drive: REST 계약·이름 번호·유실 응답·실패 대응, 토큰·탭 공유·설정
   - 사용 통계: 동의 전 무전송, 목록 이벤트만, 상한, 거부 시 쿠키 삭제; CSP 구성
-- **architecture** — 계층 규칙
+- **architecture** — 모든 파일이 알려진 계층에 속함, 순수 계층의 브라우저 전역 금지, 상태 있는 어댑터는 `app`에서만 생성, 메시지 키 일치 (import 규칙은 `npm run deps`)
 
 </details>
 
