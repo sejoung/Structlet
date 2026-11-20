@@ -1,6 +1,6 @@
 import type { Point, Rect } from '../domain';
 import { AREA_STROKE } from './appearance';
-import { glyphMarkup, escapeXml, ImageSymbols, LIGHT_THEME, markerDefs, pathData, type DiagramTheme } from './render-svg';
+import { glyphMarkup, escapeXml, ImageSymbols, labelSurface, LIGHT_THEME, markerDefs, pathData, type DiagramTheme } from './render-svg';
 import { CONTAINER_HEADER, EDGE_LABEL, NODE_LABEL, type Scene } from './scene';
 import { FONT_FAMILY } from './text';
 
@@ -90,7 +90,7 @@ export function renderIsometricBody(scene: Scene, theme: DiagramTheme = LIGHT_TH
     const p = iso({ x: e.labelBox.x + e.labelBox.width / 2, y: e.labelBox.y + e.labelBox.height / 2 });
     const w = e.labelBox.width;
     const h = e.labelBox.height;
-    out.push(`<rect x="${n(p.x - w / 2)}" y="${n(p.y - h / 2)}" width="${n(w)}" height="${n(h)}" rx="3" fill="${theme.labelBackground}" fill-opacity="0.9"/>`);
+    out.push(`<rect x="${n(p.x - w / 2)}" y="${n(p.y - h / 2)}" width="${n(w)}" height="${n(h)}" rx="3" fill="${labelSurface(e, { ...theme, areaFillOpacity: theme.areaFillOpacity + 0.04 })}"/>`);
     out.push(upright(e.label, { x: p.x, y: p.y - h / 2 + EDGE_LABEL.padY + EDGE_LABEL.fontSize - 1 }, EDGE_LABEL.fontSize, EDGE_LABEL.lineHeight, theme.edgeLabel));
   }
   for (const a of scene.annotations) {

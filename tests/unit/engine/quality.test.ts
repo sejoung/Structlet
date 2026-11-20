@@ -91,3 +91,19 @@ describe('rendering variants', () => {
     expect(box.width).toBeGreaterThan(500);
   });
 });
+
+describe('edge label surface', () => {
+  it('fills label boxes with the color behind them instead of white', async () => {
+    const { labelSurface, mixColor, onSurface, LIGHT_THEME } = await import('../../../src/engine');
+    const scene = computeScene(sampleDocument(), look);
+    // "SQL" sits inside the tinted private subnet, "HTTPS" on the plain page.
+    const sql = scene.edges.find((e) => e.id === 'e-api-db')!;
+    const https = scene.edges.find((e) => e.id === 'e-user-alb')!;
+    expect(sql.labelTints).toEqual(['#147eba']);
+    expect(labelSurface(sql, LIGHT_THEME)).toBe(mixColor('#ffffff', '#147eba', LIGHT_THEME.areaFillOpacity));
+    expect(labelSurface(https, LIGHT_THEME)).toBe('#ffffff');
+    const canvas = onSurface(LIGHT_THEME, '#f6f7f9');
+    expect(labelSurface(https, canvas)).toBe('#f6f7f9');
+    expect(renderSceneBody(scene, canvas)).not.toContain('fill-opacity="0.94"');
+  });
+});

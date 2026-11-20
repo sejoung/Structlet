@@ -13,7 +13,7 @@ import {
   type NodeVariant,
   type Side,
 } from '../domain';
-import type { Appearance, Glyph } from './appearance';
+import { AREA_STROKE, type Appearance, type Glyph } from './appearance';
 import { intersects, polylineLength, union } from './geometry';
 import { resolveEndpoints, type Blocker, type PortFrame } from './routing/ports';
 import { routeAuto, routeManual, routeStraight } from './routing/route';
@@ -61,6 +61,8 @@ export interface SceneEdge {
   readonly points: readonly Point[];
   readonly label: readonly string[];
   readonly labelBox: Rect | null;
+  /** Colors of the tinted areas under the label, outermost first, so its box can match what is behind it. */
+  readonly labelTints: readonly string[];
   readonly style: EdgeStyle;
   readonly manual: boolean;
   readonly sourceSide: Side | null;
@@ -216,7 +218,8 @@ export function computeScene(doc: Document, appearance: Appearance): Scene {
       labelBox = placeLabel(points, w, h, taken);
       taken.push(labelBox);
     }
-    edges.push({ id: e.id, points, label, labelBox, style: e.style, manual, sourceSide: pair.source.side, targetSide: pair.target.side });
+    const labelTints = labelBox ? tintsAt(containers, { x: labelBox.x + labelBox.width / 2, y: labelBox.y + labelBox.height / 2 }) : [];
+    edges.push({ id: e.id, points, label, labelBox, labelTints, style: e.style, manual, sourceSide: pair.source.side, targetSide: pair.target.side });
   }
 
   const annotations: SceneAnnotation[] = doc.annotations.map((a) => ({ id: a.id, kind: a.kind, ...annotationRect(a) }));
@@ -228,6 +231,13 @@ export function computeScene(doc: Document, appearance: Appearance): Scene {
     ...annotations.map((a) => a.rect),
   ];
   return { containers, nodes, edges, annotations, frames, rects, bounds: union(all) };
+}
+
+/** Tint colors of filled areas containing a point, outermost first (containers are sorted by depth). */
+function tintsAt(containers: readonly SceneContainer[], p: Point): string[] {
+  return containers
+    .filter((c) => c.style.filled && p.x >= c.rect.x && p.x <= c.rect.x + c.rect.width && p.y >= c.rect.y && p.y <= c.rect.y + c.rect.height)
+    .map((c) => AREA_STROKE[c.style.color] ?? AREA_STROKE.gray!);
 }
 
 /** Point at fraction `t` of a polyline's length. */

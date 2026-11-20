@@ -7,7 +7,7 @@ import { summarize, type IconPack } from '../adapters/icon-packs/pack';
 import type { IconPackStore } from '../adapters/storage/icon-pack-store';
 import type { LocalFileAccess } from '../adapters/files/file-access';
 import { CONTAINER_PRESETS, getBox, indexDocument, NODE_SIZE, type AnnotationKind, type ContainerKind, type Document, type Id, type Point } from '../domain';
-import { AREA_STROKE, computeScene, containerAt, fitView, screenToWorld, zoomAt, DEFAULT_VIEWPORT, type Viewport } from '../engine';
+import { AREA_STROKE, computeScene, containerAt, fitView, onSurface, screenToWorld, zoomAt, DEFAULT_VIEWPORT, type Viewport } from '../engine';
 import { createTranslator, type Language } from '../i18n/messages';
 import { Canvas } from '../components/canvas/Canvas';
 import { IconPacksDialog } from '../components/IconPacksDialog';
@@ -43,6 +43,8 @@ export function App({ editor, store, files, packStore, newId, initialLanguage, o
   const [notice, setNotice] = useState<string | null>(null);
   const [view, setView] = useState<ViewMode>('2d');
   const theme = useTheme();
+  // The canvas is not white: edge label boxes take the canvas color (keep in sync with --canvas in styles.css).
+  const canvasTheme = useMemo(() => onSurface(theme.diagram, theme.resolved === 'dark' ? '#14171d' : '#f6f7f9'), [theme.diagram, theme.resolved]);
   const snapshot = useSession(editor.session);
   const t = useMemo(() => createTranslator(language), [language]);
   const [packs, setPacks] = useState<IconPack[]>([]);
@@ -209,7 +211,7 @@ export function App({ editor, store, files, packStore, newId, initialLanguage, o
           onOpenSample={actions.openSample}
           editing={editing}
           setEditing={setEditing}
-          theme={theme.diagram}
+          theme={canvasTheme}
           view={view}
         />
         <PropertiesPanel

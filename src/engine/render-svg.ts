@@ -27,9 +27,9 @@ export interface DiagramTheme {
   readonly name: 'light' | 'dark';
   readonly edge: string;
   readonly edgeLabel: string;
-  readonly labelBackground: string;
   readonly nodeLabel: string;
   readonly annotation: string;
+  /** Color the drawing sits on: the page in exports, the canvas on screen. Edge label boxes use it. */
   readonly background: string;
   readonly boxFill: string;
   readonly legendFill: string;
@@ -43,7 +43,6 @@ export const LIGHT_THEME: DiagramTheme = {
   name: 'light',
   edge: '#4b5563',
   edgeLabel: '#1f2937',
-  labelBackground: '#ffffff',
   nodeLabel: '#111827',
   annotation: '#1f2937',
   background: '#ffffff',
@@ -59,7 +58,6 @@ export const DARK_THEME: DiagramTheme = {
   name: 'dark',
   edge: '#9aa4b2',
   edgeLabel: '#e5e7eb',
-  labelBackground: '#1b1f27',
   nodeLabel: '#e5e7eb',
   annotation: '#e5e7eb',
   background: '#14171d',
@@ -71,6 +69,11 @@ export const DARK_THEME: DiagramTheme = {
   areaFillOpacity: 0.12,
 };
 
+
+/** The same theme drawn on the editor canvas, whose surface color differs from an exported page. */
+export function onSurface(theme: DiagramTheme, background: string): DiagramTheme {
+  return background === theme.background ? theme : { ...theme, background };
+}
 
 export function escapeXml(text: string): string {
   return text.replace(/[<>&"']/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;' })[c]!);
@@ -108,11 +111,29 @@ function edgeMarkup(e: SceneEdge, t: DiagramTheme): string {
   return `<path data-edge="${escapeXml(e.id)}" d="${pathData(e.points)}" fill="none" stroke="${t.edge}" stroke-width="1.5" stroke-linejoin="round"${dash}${start}${end}/>`;
 }
 
+function channel(hex: string, shift: number): number {
+  return (Number.parseInt(hex.slice(1, 7), 16) >> shift) & 255;
+}
+
+/** `over` painted on `base` at `alpha`, as an opaque hex color. */
+export function mixColor(base: string, over: string, alpha: number): string {
+  const c = (shift: number) => Math.round(channel(base, shift) * (1 - alpha) + channel(over, shift) * alpha).toString(16).padStart(2, '0');
+  return `#${c(16)}${c(8)}${c(0)}`;
+}
+
+/**
+ * Color behind an edge label: the drawing background with every tinted area
+ * under it, so the label box hides the line without standing out.
+ */
+export function labelSurface(e: SceneEdge, t: DiagramTheme): string {
+  return e.labelTints.reduce((color, tint) => mixColor(color, tint, t.areaFillOpacity), t.background);
+}
+
 function edgeLabelMarkup(e: SceneEdge, t: DiagramTheme): string {
   if (!e.labelBox) return '';
   const b = e.labelBox;
   return (
-    `<g data-edge-label="${escapeXml(e.id)}"><rect x="${n(b.x)}" y="${n(b.y)}" width="${n(b.width)}" height="${n(b.height)}" rx="3" fill="${t.labelBackground}" fill-opacity="0.94"/>` +
+    `<g data-edge-label="${escapeXml(e.id)}"><rect x="${n(b.x)}" y="${n(b.y)}" width="${n(b.width)}" height="${n(b.height)}" rx="3" fill="${labelSurface(e, t)}"/>` +
     textLines(e.label, b.x + b.width / 2, b.y + EDGE_LABEL.padY + EDGE_LABEL.fontSize - 1, EDGE_LABEL.lineHeight, `font-size="${EDGE_LABEL.fontSize}" fill="${t.edgeLabel}" text-anchor="middle"`) +
     '</g>'
   );

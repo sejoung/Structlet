@@ -4,7 +4,7 @@
   --line: #e4e7ec;
   --panel: #fbfbfc;
   --surface: #ffffff;
-  --canvas: #f6f7f9;
+  --canvas: #f6f7f9; /* also in App.tsx (canvasTheme) */
   --dot: #d5d9e0;
   --accent: #2563eb;
   --accent-soft: #e8efff;
