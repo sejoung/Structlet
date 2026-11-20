@@ -1,0 +1,485 @@
+{
+  "format": "structlet",
+  "formatVersion": 1,
+  "id": "sample-three-tier",
+  "title": "온라인 상점 · 시스템 구성도",
+  "containers": [
+    {
+      "id": "cloud",
+      "kind": "cloud",
+      "label": "AWS Cloud",
+      "parentId": null,
+      "x": 160,
+      "y": 40,
+      "width": 1180,
+      "height": 660,
+      "style": {
+        "color": "gray",
+        "dashed": false,
+        "filled": false
+      },
+      "locked": false
+    },
+    {
+      "id": "region",
+      "kind": "region",
+      "label": "서울 리전 (ap-northeast-2)",
+      "parentId": "cloud",
+      "x": 180,
+      "y": 50,
+      "width": 960,
+      "height": 580,
+      "style": {
+        "color": "teal",
+        "dashed": true,
+        "filled": false
+      },
+      "locked": false
+    },
+    {
+      "id": "vpc",
+      "kind": "vpc",
+      "label": "VPC 10.0.0.0/16",
+      "parentId": "region",
+      "x": 40,
+      "y": 50,
+      "width": 720,
+      "height": 470,
+      "style": {
+        "color": "purple",
+        "dashed": false,
+        "filled": false
+      },
+      "locked": false
+    },
+    {
+      "id": "public",
+      "kind": "subnet",
+      "label": "퍼블릭 서브넷",
+      "parentId": "vpc",
+      "x": 40,
+      "y": 60,
+      "width": 220,
+      "height": 370,
+      "style": {
+        "color": "green",
+        "dashed": false,
+        "filled": true
+      },
+      "locked": false
+    },
+    {
+      "id": "private",
+      "kind": "subnet",
+      "label": "프라이빗 서브넷",
+      "parentId": "vpc",
+      "x": 300,
+      "y": 60,
+      "width": 380,
+      "height": 370,
+      "style": {
+        "color": "blue",
+        "dashed": false,
+        "filled": true
+      },
+      "locked": false
+    }
+  ],
+  "nodes": [
+    {
+      "id": "user",
+      "serviceId": "user",
+      "label": "고객\n웹·모바일",
+      "parentId": null,
+      "x": 40,
+      "y": 320,
+      "width": 64,
+      "height": 64,
+      "locked": false
+    },
+    {
+      "id": "dns",
+      "serviceId": "aws.route53",
+      "label": "Route 53\nDNS",
+      "parentId": "cloud",
+      "x": 40,
+      "y": 280,
+      "width": 64,
+      "height": 64,
+      "locked": false
+    },
+    {
+      "id": "alb",
+      "serviceId": "aws.elb",
+      "label": "애플리케이션 로드밸런서",
+      "parentId": "public",
+      "x": 78,
+      "y": 150,
+      "width": 64,
+      "height": 64,
+      "locked": false
+    },
+    {
+      "id": "api",
+      "serviceId": "aws.ecs",
+      "label": "주문 API\nECS Fargate",
+      "parentId": "private",
+      "x": 60,
+      "y": 60,
+      "width": 64,
+      "height": 64,
+      "locked": false
+    },
+    {
+      "id": "auth",
+      "serviceId": "container",
+      "label": "인증 서비스",
+      "parentId": "private",
+      "x": 60,
+      "y": 230,
+      "width": 64,
+      "height": 64,
+      "locked": false
+    },
+    {
+      "id": "db",
+      "serviceId": "aws.aurora",
+      "label": "주문 DB\nAurora PostgreSQL",
+      "parentId": "private",
+      "x": 250,
+      "y": 60,
+      "width": 64,
+      "height": 64,
+      "locked": false
+    },
+    {
+      "id": "cache",
+      "serviceId": "aws.elasticache",
+      "label": "세션 캐시\nRedis",
+      "parentId": "private",
+      "x": 250,
+      "y": 230,
+      "width": 64,
+      "height": 64,
+      "locked": false
+    },
+    {
+      "id": "queue",
+      "serviceId": "aws.sqs",
+      "label": "주문 큐\nSQS",
+      "parentId": "region",
+      "x": 800,
+      "y": 130,
+      "width": 64,
+      "height": 64,
+      "locked": false
+    },
+    {
+      "id": "worker",
+      "serviceId": "aws.lambda",
+      "label": "주문 처리 워커\nLambda",
+      "parentId": "region",
+      "x": 800,
+      "y": 330,
+      "width": 64,
+      "height": 64,
+      "locked": false
+    },
+    {
+      "id": "mail",
+      "serviceId": "aws.ses",
+      "label": "알림 메일\nSES",
+      "parentId": "region",
+      "x": 800,
+      "y": 470,
+      "width": 64,
+      "height": 64,
+      "locked": false
+    },
+    {
+      "id": "payment",
+      "serviceId": "payment",
+      "label": "외부 결제 대행사",
+      "parentId": null,
+      "x": 1420,
+      "y": 420,
+      "width": 64,
+      "height": 64,
+      "locked": false
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-user-dns",
+      "source": {
+        "kind": "attached",
+        "objectId": "user",
+        "side": "auto",
+        "offset": null
+      },
+      "target": {
+        "kind": "attached",
+        "objectId": "dns",
+        "side": "auto",
+        "offset": null
+      },
+      "label": "DNS 조회",
+      "style": {
+        "dashed": true,
+        "arrow": "end",
+        "shape": "orthogonal"
+      },
+      "routingMode": "auto",
+      "waypoints": []
+    },
+    {
+      "id": "e-user-alb",
+      "source": {
+        "kind": "attached",
+        "objectId": "user",
+        "side": "auto",
+        "offset": null
+      },
+      "target": {
+        "kind": "attached",
+        "objectId": "alb",
+        "side": "auto",
+        "offset": null
+      },
+      "label": "HTTPS",
+      "style": {
+        "dashed": false,
+        "arrow": "end",
+        "shape": "orthogonal"
+      },
+      "routingMode": "auto",
+      "waypoints": []
+    },
+    {
+      "id": "e-alb-api",
+      "source": {
+        "kind": "attached",
+        "objectId": "alb",
+        "side": "auto",
+        "offset": null
+      },
+      "target": {
+        "kind": "attached",
+        "objectId": "api",
+        "side": "auto",
+        "offset": null
+      },
+      "label": "",
+      "style": {
+        "dashed": false,
+        "arrow": "end",
+        "shape": "orthogonal"
+      },
+      "routingMode": "auto",
+      "waypoints": []
+    },
+    {
+      "id": "e-api-auth",
+      "source": {
+        "kind": "attached",
+        "objectId": "api",
+        "side": "auto",
+        "offset": null
+      },
+      "target": {
+        "kind": "attached",
+        "objectId": "auth",
+        "side": "auto",
+        "offset": null
+      },
+      "label": "gRPC",
+      "style": {
+        "dashed": false,
+        "arrow": "end",
+        "shape": "orthogonal"
+      },
+      "routingMode": "auto",
+      "waypoints": []
+    },
+    {
+      "id": "e-api-db",
+      "source": {
+        "kind": "attached",
+        "objectId": "api",
+        "side": "auto",
+        "offset": null
+      },
+      "target": {
+        "kind": "attached",
+        "objectId": "db",
+        "side": "auto",
+        "offset": null
+      },
+      "label": "SQL",
+      "style": {
+        "dashed": false,
+        "arrow": "end",
+        "shape": "orthogonal"
+      },
+      "routingMode": "auto",
+      "waypoints": []
+    },
+    {
+      "id": "e-auth-cache",
+      "source": {
+        "kind": "attached",
+        "objectId": "auth",
+        "side": "auto",
+        "offset": null
+      },
+      "target": {
+        "kind": "attached",
+        "objectId": "cache",
+        "side": "auto",
+        "offset": null
+      },
+      "label": "",
+      "style": {
+        "dashed": false,
+        "arrow": "end",
+        "shape": "orthogonal"
+      },
+      "routingMode": "auto",
+      "waypoints": []
+    },
+    {
+      "id": "e-api-queue",
+      "source": {
+        "kind": "attached",
+        "objectId": "api",
+        "side": "auto",
+        "offset": null
+      },
+      "target": {
+        "kind": "attached",
+        "objectId": "queue",
+        "side": "auto",
+        "offset": null
+      },
+      "label": "주문 이벤트 발행",
+      "style": {
+        "dashed": false,
+        "arrow": "end",
+        "shape": "orthogonal"
+      },
+      "routingMode": "auto",
+      "waypoints": []
+    },
+    {
+      "id": "e-queue-worker",
+      "source": {
+        "kind": "attached",
+        "objectId": "queue",
+        "side": "auto",
+        "offset": null
+      },
+      "target": {
+        "kind": "attached",
+        "objectId": "worker",
+        "side": "auto",
+        "offset": null
+      },
+      "label": "소비",
+      "style": {
+        "dashed": true,
+        "arrow": "end",
+        "shape": "orthogonal"
+      },
+      "routingMode": "auto",
+      "waypoints": []
+    },
+    {
+      "id": "e-worker-payment",
+      "source": {
+        "kind": "attached",
+        "objectId": "worker",
+        "side": "auto",
+        "offset": null
+      },
+      "target": {
+        "kind": "attached",
+        "objectId": "payment",
+        "side": "auto",
+        "offset": null
+      },
+      "label": "결제 요청",
+      "style": {
+        "dashed": false,
+        "arrow": "end",
+        "shape": "orthogonal"
+      },
+      "routingMode": "auto",
+      "waypoints": []
+    },
+    {
+      "id": "e-worker-mail",
+      "source": {
+        "kind": "attached",
+        "objectId": "worker",
+        "side": "auto",
+        "offset": null
+      },
+      "target": {
+        "kind": "attached",
+        "objectId": "mail",
+        "side": "auto",
+        "offset": null
+      },
+      "label": "",
+      "style": {
+        "dashed": true,
+        "arrow": "end",
+        "shape": "orthogonal"
+      },
+      "routingMode": "auto",
+      "waypoints": []
+    }
+  ],
+  "annotations": [
+    {
+      "id": "title",
+      "kind": "text",
+      "x": 40,
+      "y": 0,
+      "text": "온라인 상점 · 요청은 왼쪽에서 오른쪽으로 흐른다",
+      "targetId": null
+    },
+    {
+      "id": "step-1",
+      "kind": "step",
+      "x": 104,
+      "y": 286,
+      "text": "1",
+      "targetId": null
+    },
+    {
+      "id": "step-2",
+      "kind": "step",
+      "x": 560,
+      "y": 316,
+      "text": "2",
+      "targetId": null
+    },
+    {
+      "id": "step-3",
+      "kind": "step",
+      "x": 1100,
+      "y": 190,
+      "text": "3",
+      "targetId": null
+    },
+    {
+      "id": "legend",
+      "kind": "legend",
+      "x": 40,
+      "y": 730,
+      "text": "범례\n① 고객 요청이 로드밸런서를 거쳐 주문 API로 간다\n② API가 DB에 쓰고 주문 이벤트를 큐에 발행한다\n③ 워커가 결제를 요청하고 메일을 보낸다\n실선: 동기 호출 · 점선: 비동기 메시지",
+      "targetId": null
+    }
+  ]
+}
