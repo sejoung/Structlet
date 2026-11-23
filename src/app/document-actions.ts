@@ -6,13 +6,14 @@ import { downloadBlob, downloadText } from '../adapters/files/browser-files';
 import type { LocalFileAccess } from '../adapters/files/file-access';
 import { FILE_EXTENSION, fileNameFor, MIME_TYPE, parseStructlet, serializeStructlet } from '../adapters/format/structlet-format';
 import { emptyDocument, type Document } from '../domain';
-import type { Appearance } from '../engine';
+import type { Appearance, DiagramView } from '../engine';
 import type { Translate } from '../i18n/messages';
 import threeTier from '../../samples/three-tier.structlet?raw';
 import gpuTraining from '../../samples/gpu-training.structlet?raw';
 import migInference from '../../samples/mig-inference.structlet?raw';
+import commerceAndMl from '../../samples/commerce-and-ml.structlet?raw';
 
-const SAMPLES = { 'three-tier': threeTier, 'gpu-training': gpuTraining, 'mig-inference': migInference };
+const SAMPLES = { 'three-tier': threeTier, 'gpu-training': gpuTraining, 'mig-inference': migInference, 'commerce-and-ml': commerceAndMl };
 
 export interface DocumentActions {
   newDocument(): Promise<void>;
@@ -36,6 +37,7 @@ interface Deps {
   notify(message: string): void;
   onOpened(doc: Document): void;
   view(): ExportView;
+  diagram(doc: Document): DiagramView;
   /** Google Drive, when this build has it: settle before replacing, save to the linked file. */
   drive?: () => { beforeReplace(): Promise<boolean>; markFresh(): void; linked: boolean; saveNow(): void } | null;
 }
@@ -43,7 +45,7 @@ interface Deps {
 const SOURCE_NAMES: Record<ImportSource, string> = { draft: 'draft JSON', compose: 'docker-compose', terraform: 'Terraform', kubernetes: 'Kubernetes' };
 
 /** File use cases wired to browser adapters. `onOpened` lets the view fit the new document. */
-export function createDocumentActions({ editor, files, newId, appearance, t, notify, onOpened, view, drive }: Deps): DocumentActions {
+export function createDocumentActions({ editor, files, newId, appearance, t, notify, onOpened, view, diagram, drive }: Deps): DocumentActions {
   const session = editor.session;
   /** False when unsaved Drive changes could not be saved first; nothing is replaced then. */
   const replace = async (doc: Document, keepFile = false): Promise<boolean> => {
@@ -134,14 +136,14 @@ export function createDocumentActions({ editor, files, newId, appearance, t, not
     exportSvg() {
       const doc = session.committedDocument;
       const suffix = view() === 'isometric' ? '-isometric' : '';
-      downloadText(exportSvg(doc, appearance(), { view: view() }), fileNameFor(doc.title + suffix, '.svg'), 'image/svg+xml');
+      downloadText(exportSvg(doc, appearance(), { view: view(), diagram: diagram(doc) }), fileNameFor(doc.title + suffix, '.svg'), 'image/svg+xml');
       log.info('files.exported', { format: 'svg', view: view() });
     },
     async exportPng() {
       const doc = session.committedDocument;
       try {
         const suffix = view() === 'isometric' ? '-isometric' : '';
-        downloadBlob(await exportPng(doc, appearance(), { view: view() }), fileNameFor(doc.title + suffix, '.png'));
+        downloadBlob(await exportPng(doc, appearance(), { view: view(), diagram: diagram(doc) }), fileNameFor(doc.title + suffix, '.png'));
         log.info('files.exported', { format: 'png', view: view() });
       } catch {
         log.error('files.png-failed');

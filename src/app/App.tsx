@@ -7,7 +7,7 @@ import { summarize, type IconPack } from '../adapters/icon-packs/pack';
 import type { IconPackStore } from '../adapters/storage/icon-pack-store';
 import type { LocalFileAccess } from '../adapters/files/file-access';
 import { CONTAINER_PRESETS, getBox, indexDocument, NODE_SIZE, type AnnotationKind, type ContainerKind, type Document, type Id, type Point } from '../domain';
-import { AREA_STROKE, computeScene, containerAt, fitView, onSurface, screenToWorld, zoomAt, DEFAULT_VIEWPORT, type Viewport } from '../engine';
+import { AREA_STROKE, computeDiagramView, layoutDocument, containerAt, fitView, onSurface, screenToWorld, zoomAt, DEFAULT_VIEWPORT, type Viewport } from '../engine';
 import { createTranslator, type Language } from '../i18n/messages';
 import { Canvas } from '../components/canvas/Canvas';
 import { IconPacksDialog } from '../components/IconPacksDialog';
@@ -23,6 +23,7 @@ import { createIconPackActions } from './icon-pack-actions';
 import { createPanelActions } from './panel-actions';
 import { useClipboard } from './use-clipboard';
 import { useShortcuts } from './use-shortcuts';
+import { useDiagramView } from './use-diagram-view';
 import { useTheme } from './use-theme';
 import { useAutosave } from './use-autosave';
 import { RECENT_KEY, PANELS_KEY, store as storePref, storedPanels, storedRecent, type Panels } from './preferences';
@@ -108,7 +109,8 @@ export function App({ editor, store, files, packStore, drive: driveServices, dri
     void packActions.refresh();
     void packStore.persistent().then(setPersistentPacks);
   }, [packActions, packStore]);
-  const scene = useMemo(() => computeScene(snapshot.document, appearance), [snapshot.document, appearance]);
+  const diagram = useDiagramView(snapshot.document, appearance, t);
+  const { scene, optionsFor, fitPending } = diagram;
   const services = useMemo(() => [...SERVICES, ...packServices(packs)].map(toPalette(language, appearance)), [language, appearance, packs]);
   const search = useCallback((q: string) => searchServices(q, packServices(packs)).map(toPalette(language, appearance)), [language, appearance, packs]);
   const findings = useMemo<PanelFinding[]>(() => runChecks(snapshot.committed, (id) => !!appearance.service(id)).map((f) => ({ severity: f.severity, ids: f.ids, message: `${t(`checks.${f.code}`)} · ${label(snapshot.committed, f.ids[0]!)}` })), [snapshot.committed, t]);
@@ -123,8 +125,8 @@ export function App({ editor, store, files, packStore, drive: driveServices, dri
 
   const fitTo = useCallback((doc: Document) => {
     const s = sizeRef.current;
-    if (s.width > 0) setViewport(fitView(computeScene(doc, appearance).bounds, s));
-  }, [appearance]);
+    if (s.width > 0) setViewport(fitView(computeDiagramView(doc, appearance, optionsFor(doc)).bounds, s));
+  }, [appearance, optionsFor]);
 
   const driveUi = useDriveBar({ services: driveServices, webOnly: driveWebOnly, editor, t, language, notify: setNotice, onOpened: fitTo });
   const driveRef = useRef(driveUi.controller);
@@ -133,22 +135,23 @@ export function App({ editor, store, files, packStore, drive: driveServices, dri
   const actions = useMemo(
     () =>
       createDocumentActions({
-        editor, files, newId, appearance: () => appearanceRef.current, t, notify: setNotice, onOpened: fitTo, view: () => viewRef.current,
+        editor, files, newId, appearance: () => appearanceRef.current, t, notify: setNotice, onOpened: fitTo, view: () => viewRef.current, diagram: optionsFor,
         drive: () => {
           const d = driveRef.current;
           return d ? { beforeReplace: d.beforeReplace, markFresh: d.markFresh, linked: d.linked, saveNow: d.actions.saveNow } : null;
         },
       }),
-    [editor, files, newId, t, fitTo],
+    [editor, files, newId, t, fitTo, optionsFor],
   );
   const panelActions = useMemo(() => createPanelActions(editor, () => sceneRef.current, language), [editor, language]);
 
   // Entering view mode fits the diagram once the canvas has taken the freed space.
   useEffect(() => {
-    if (!fitOnResize.current || !presenting) return;
+    if (!fitPending.current && !(fitOnResize.current && presenting)) return;
+    fitPending.current = false;
     fitOnResize.current = false;
     fitTo(editor.session.committedDocument);
-  }, [size, presenting, fitTo, editor]);
+  }, [size, presenting, fitPending, fitTo, editor]);
 
   const fitted = useRef(false);
   useEffect(() => {
@@ -215,11 +218,13 @@ export function App({ editor, store, files, packStore, drive: driveServices, dri
     togglePanels: () => togglePanels(),
     toggleInspector: () => setPanels({ ...panelsRef.current, right: !panelsRef.current.right }),
     presenting: () => presentingRef.current,
+    summary: () => diagram.active,
     setPresenting,
     tool: () => toolRef.current,
   });
 
   useClipboard({
+    summary: () => diagram.active,
     editor,
     pasteParent: () => {
       const sel = editor.session.selected;
@@ -248,10 +253,16 @@ export function App({ editor, store, files, packStore, drive: driveServices, dri
   };
 
   return (
-    <div className={presenting ? 'app presenting' : 'app'}>
+    <div className={`app${presenting ? ' presenting' : ''}${diagram.active ? ' summary' : ''}`}>
       <Toolbar
         t={t}
         title={snapshot.document.title}
+        diagram={{ ...diagram, layout: diagram.settings.layout, hasObjects: !!(snapshot.document.nodes.length || snapshot.document.containers.length),
+          layoutAll: (mode) => {
+            editor.applyDocumentLayout(layoutDocument(editor.session.committedDocument, mode));
+            diagram.expandAll();
+          },
+        }}
         canUndo={snapshot.canUndo}
         canRedo={snapshot.canRedo}
         dirty={snapshot.dirty}
@@ -314,9 +325,7 @@ export function App({ editor, store, files, packStore, drive: driveServices, dri
         <main
           className="stage"
           onDragOver={(e) => {
-            if (!e.dataTransfer.types.includes('Files')) return;
-            e.preventDefault();
-            e.dataTransfer.dropEffect = 'copy';
+            if (e.dataTransfer.types.includes('Files')) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }
           }}
           onDrop={(e) => {
             const dropped = e.dataTransfer.files;
@@ -334,6 +343,8 @@ export function App({ editor, store, files, packStore, drive: driveServices, dri
             setViewport={setViewport}
             onResize={onCanvasResize}
             onDropService={(id, world) => addService(id, world)}
+            summary={diagram.active}
+            onToggleArea={(id) => { setEditing(null); editor.session.select([id]); diagram.toggle(id); }}
             editing={editing}
             setEditing={setEditing}
             theme={canvasTheme}
@@ -345,7 +356,7 @@ export function App({ editor, store, files, packStore, drive: driveServices, dri
           />
           <Toast t={t} message={notice} onDismiss={dismissNotice} />
         </main>
-        {panels.right && !presenting && (
+        {panels.right && !presenting && !diagram.active && (
         <PropertiesPanel
           t={t}
           editor={editor}

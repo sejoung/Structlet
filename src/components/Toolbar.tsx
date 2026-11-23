@@ -1,4 +1,5 @@
 import type { Language, Translate } from '../i18n/messages';
+import { DiagramMenu, type DiagramMenuProps } from './DiagramMenu';
 import { DriveButton } from './drive/DriveButton';
 import type { DriveActions, DriveView } from './drive/types';
 import { Icon } from './ui/Icon';
@@ -38,6 +39,7 @@ export type DriveBar =
 
 interface ToolbarProps extends ToolbarActions {
   t: Translate;
+  diagram: DiagramMenuProps;
   title: string;
   canUndo: boolean;
   canRedo: boolean;
@@ -105,6 +107,7 @@ export function Toolbar(props: ToolbarProps) {
             ...driveItems(t, props.drive),
           ]}
         />
+        {!props.presenting && <DiagramMenu t={t} diagram={props.diagram} />}
         <div className="doc-title">
           {/* The hidden copy of the title sizes the field, so the save status sits right after it. */}
           <span className="title-field" data-value={props.title}>
@@ -150,9 +153,9 @@ export function Toolbar(props: ToolbarProps) {
       </div>
       <div className="topbar-end">
         <div className="panel-toggles" role="group" aria-label={t('panels.label')}>
-          <IconButton icon="panelLeft" label={`${props.leftOpen ? t('panels.left.hide') : t('panels.left.show')} (${both})`} pressed={props.leftOpen} disabled={props.presenting} onClick={() => props.onLeftPanel(!props.leftOpen)} testId="toggle-left" />
+          <IconButton icon="panelLeft" label={`${props.leftOpen ? t('panels.left.hide') : t('panels.left.show')} (${both})`} pressed={props.leftOpen && !props.diagram.active} disabled={props.presenting || props.diagram.active} onClick={() => props.onLeftPanel(!props.leftOpen)} testId="toggle-left" />
           <span className="badge-anchor">
-            <IconButton icon="panelRight" label={`${props.rightOpen ? t('panels.right.hide') : t('panels.right.show')}${flagged ? ` · ${t('panels.findings', { count: props.findingCount })}` : ''} (I · ${both})`} pressed={props.rightOpen} disabled={props.presenting} onClick={() => props.onRightPanel(!props.rightOpen)} testId="toggle-right" />
+            <IconButton icon="panelRight" label={`${props.rightOpen ? t('panels.right.hide') : t('panels.right.show')}${flagged ? ` · ${t('panels.findings', { count: props.findingCount })}` : ''} (I · ${both})`} pressed={props.rightOpen && !props.diagram.active} disabled={props.presenting || props.diagram.active} onClick={() => props.onRightPanel(!props.rightOpen)} testId="toggle-right" />
             {flagged && <span className="toggle-badge" data-testid="findings-badge" aria-hidden="true">{props.findingCount > 9 ? '9+' : props.findingCount}</span>}
           </span>
         </div>

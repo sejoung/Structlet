@@ -113,6 +113,8 @@ test('NVIDIA palette, architecture samples and link presets work together', asyn
   ] as const) {
     await page.getByTestId('tb-help').click();
     const manual = page.getByRole('dialog', { name: 'User guide' });
+    await manual.getByRole('radio', { name: 'NVIDIA examples' }).click();
+    await expect(manual.getByRole('img')).toHaveCount(2);
     const [sample] = await Promise.all([page.waitForEvent('download'), manual.getByRole('button', { name, exact: true }).click()]);
     expect(sample.suggestedFilename()).toBe(filename);
     await page.keyboard.press('Escape');

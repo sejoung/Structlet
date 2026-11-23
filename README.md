@@ -57,7 +57,7 @@ The editor opens on an empty canvas. Open **Help (?)** in the top bar for a quic
 | `npm run dev` | Dev server (`127.0.0.1:5183`). Drive works; usage statistics are not sent |
 | `npm run typecheck` | Type check only (`tsc --noEmit`) |
 | `npm run build` | Type check + static build (`dist/`). Uses relative paths, so any static host works, at the domain root or a sub-path |
-| `npm run build:single` | One HTML file (`dist-single/structlet.html`, about 0.9 MB) that opens by double-click (`file://`) |
+| `npm run build:single` | One HTML file (`dist-single/structlet.html`, about 1.3 MB) that opens by double-click (`file://`) |
 | `npm run preview` | Preview the build (`127.0.0.1:5184`, with CSP) |
 | `npm test` | Unit tests (Vitest, `tests/unit`); `npm run test:watch` reruns them on change |
 | `npm run e2e` | Builds the single file, then runs E2E (Playwright, `tests/e2e`) against two production builds served by `vite preview`, with Google mocked. Run `npx playwright install chromium` once first |
@@ -74,6 +74,8 @@ The editor opens on an empty canvas. Open **Help (?)** in the top bar for a quic
 > Most documents under `docs/` are written in Korean.
 
 ## Usage
+
+**Large diagrams** — Use the − button on an area to collapse it into one tile. **Diagram → Collapse top-level groups** summarizes the whole system and bundles matching external links. **Arrange summary view** affects the canvas and image exports. **Auto-layout entire diagram** updates the editable document in one undoable step. Try both with the [commerce and ML platform](samples/commerce-and-ml.structlet) in **Help → Complex example**.
 
 The screen has four parts:
 
@@ -217,7 +219,7 @@ The layer rules are enforced in three places, all part of `npm run check` and CI
 ## Tests
 
 <details>
-<summary><b>122 unit tests</b> (<code>tests/unit</code>)</summary>
+<summary><b>129 unit tests</b> (<code>tests/unit</code>)</summary>
 
 - **domain** — hierarchy, local coordinates, children moving with parents, reparenting and cycle rejection, patch undo (including adjacent-delete order), fragment copy / paste, document diff
 - **domain** — three-way merge (fields, grouped positions, delete conflicts, hierarchy repair, cycles)
@@ -240,7 +242,7 @@ The layer rules are enforced in three places, all part of `npm run check` and CI
 </details>
 
 <details>
-<summary><b>39 E2E tests</b> (<code>tests/e2e</code>, production builds)</summary>
+<summary><b>41 E2E tests</b> (<code>tests/e2e</code>, production builds)</summary>
 
 - **Basic flow** — two nodes → connect → save → open → reload → SVG (same paths as the screen), PNG, rejecting an invalid file
 - **Areas** — dragging a VPC then a single undo, dragging into another area, wrapping

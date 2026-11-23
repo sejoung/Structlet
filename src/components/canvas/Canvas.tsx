@@ -5,6 +5,7 @@ import { polylineMidpoint, renderSceneBody, screenToWorld, worldToScreen, zoomAt
 import type { Translate } from '../../i18n/messages';
 import { SERVICE_DRAG_TYPE } from '../sidebar/types';
 import type { ViewMode } from '../Toolbar';
+import { FoldControls } from './FoldControls';
 import { Handles } from './Handles';
 import { IsometricView } from './IsometricView';
 import { Minimap } from './Minimap';
@@ -21,6 +22,8 @@ interface CanvasProps {
   setViewport(v: Viewport): void;
   onResize(size: { width: number; height: number }): void;
   onDropService(serviceId: string, world: Point): void;
+  summary: boolean;
+  onToggleArea(id: Id): void;
   editing: Id | null;
   setEditing(id: Id | null): void;
   theme: DiagramTheme;
@@ -45,8 +48,8 @@ export function Canvas(props: CanvasProps) {
   const [panning, setPanning] = useState(false);
   const latest = useRef({ viewport, setViewport });
   latest.current = { viewport, setViewport };
-  const tool: CanvasTool = props.presenting ? 'hand' : props.tool;
-  const gestures = useGestures({ svgRef, editor, snapshot, scene, viewport, setViewport, spaceDown, tool });
+  const tool: CanvasTool = props.presenting || props.summary ? 'hand' : props.tool;
+  const gestures = useGestures({ svgRef, editor, snapshot, scene, viewport, setViewport, spaceDown, tool, summary: props.summary && !props.presenting });
   const markup = useMemo(() => renderSceneBody(scene, props.theme), [scene, props.theme]);
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [presentHint, setPresentHint] = useState(false);
@@ -86,7 +89,7 @@ export function Canvas(props: CanvasProps) {
   }, [props.view]);
 
   useEffect(() => {
-    const typing = (e: KeyboardEvent) => (e.target as HTMLElement | null)?.closest?.('input, textarea, select, [contenteditable="true"]');
+    const typing = (e: KeyboardEvent) => (e.target as HTMLElement | null)?.closest?.('button, dialog, input, textarea, select, [contenteditable="true"]');
     const down = (e: KeyboardEvent) => {
       if (e.code === 'Space' && !typing(e)) {
         spaceDown.current = true;
@@ -129,7 +132,7 @@ export function Canvas(props: CanvasProps) {
 
   const onDrop = (e: DragEvent) => {
     const serviceId = e.dataTransfer.getData(SERVICE_DRAG_TYPE);
-    if (!serviceId) return;
+    if (!serviceId || props.summary) return;
     e.preventDefault();
     const r = svgRef.current!.getBoundingClientRect();
     props.onDropService(serviceId, screenToWorld(viewport, { x: e.clientX - r.left, y: e.clientY - r.top }));
@@ -180,13 +183,14 @@ export function Canvas(props: CanvasProps) {
       className={`canvas tool-${tool}${panning ? ' panning' : ''}`}
       style={{ backgroundSize: `${grid}px ${grid}px`, backgroundPosition: `${viewport.panX}px ${viewport.panY}px` }}
       onDragOver={(e) => {
-        if (e.dataTransfer.types.includes(SERVICE_DRAG_TYPE)) {
+        if (!props.summary && e.dataTransfer.types.includes(SERVICE_DRAG_TYPE)) {
           e.preventDefault();
           e.dataTransfer.dropEffect = 'copy';
         }
       }}
       onDrop={onDrop}
     >
+      {!props.presenting && <FoldControls t={t} doc={snapshot.document} scene={scene} viewport={viewport} size={size} onToggle={props.onToggleArea} />}
       <svg
         ref={svgRef}
         className="canvas-svg"
@@ -227,18 +231,19 @@ export function Canvas(props: CanvasProps) {
               <rect key={a.id} data-hit="annotation" data-id={a.id} className="hit-area" x={a.rect.x} y={a.rect.y} width={a.rect.width} height={a.rect.height} />
             ))}
           </g>
-          {tool !== 'hand' && <Handles scene={scene} selection={snapshot.selection} hover={tool === 'select' ? gestures.hover : null} zoom={z} overlay={gestures.overlay} connecting={!!gestures.overlay.connect} />}
+          {(tool !== 'hand' || (props.summary && !props.presenting)) && <Handles readOnly={props.summary} scene={scene} selection={snapshot.selection} hover={tool === 'select' ? gestures.hover : null} zoom={z} overlay={gestures.overlay} connecting={!!gestures.overlay.connect} />}
         </g>
       </svg>
-      {!props.presenting && <ToolBar t={t} tool={props.tool} onTool={props.onTool} />}
-      {!props.presenting && props.tool === 'connect' && <div className="tool-hint" role="status">{t('tool.connectHint')}</div>}
+      {props.summary && !props.presenting && <div className="tool-hint present" role="status">{t('summary.hint')}</div>}
+      {!props.presenting && !props.summary && <ToolBar t={t} tool={props.tool} onTool={props.onTool} />}
+      {!props.presenting && !props.summary && props.tool === 'connect' && <div className="tool-hint" role="status">{t('tool.connectHint')}</div>}
       {presentHint && <div className="tool-hint present" role="status">{t('view.hint')}</div>}
       <div className="canvas-corner">
         <ZoomBar t={t} viewport={viewport} size={size} setViewport={setViewport} onFit={props.onFit} />
         <Minimap scene={scene} viewport={viewport} size={size} setViewport={setViewport} label={t('minimap')} />
       </div>
       <div className="sr-only" aria-live="polite" data-testid="announcer">{announcement}</div>
-      {props.editing && <InlineEditor key={props.editing} id={props.editing} {...props} />}
+      {!props.summary && props.editing && <InlineEditor key={props.editing} id={props.editing} {...props} />}
       {empty && !props.presenting && (
         <div className="empty-state">
           <h2>{t('empty.title')}</h2>

@@ -308,9 +308,15 @@ button.twisty:hover { background: var(--surface-3); color: var(--ink); }
 .pack-table td { border-top: 1px solid var(--line); padding: 8px 4px; vertical-align: middle; }
 .pack-table td:last-child { text-align: right; width: 1%; }
 .pack-table .hint { display: block; margin: 2px 0 0 22px; }
+.manual-dialog { width: min(820px, 94vw); }
+.manual-walkthrough { margin-top: 12px; }
+.manual-walkthrough summary { cursor: pointer; font-weight: 600; padding: 6px 0; }
+.manual-walkthrough li p { margin: 4px 0 8px; }
 .manual-steps { margin: 4px 0 16px; padding-left: 20px; color: var(--ink-2); }
 .manual-steps li + li { margin-top: 6px; }
 .manual-sample { padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); }
+.manual-dialog .segmented { margin-bottom: 12px; }
+.manual-sample + .manual-sample { margin-top: 12px; }
 .manual-sample h3, .manual-packs h3 { font-size: 13px; }
 .manual-preview { display: block; width: 100%; height: auto; margin: 8px 0; border: 1px solid var(--line); border-radius: 6px; }
 .manual-packs { margin-top: 16px; }
@@ -340,7 +346,9 @@ button.twisty:hover { background: var(--surface-3); color: var(--ink); }
 
 /* Collapsible panels */
 .sidebar.collapsed { grid-template-columns: 56px; }
-.app.presenting .sidebar { display: none; }
+.app.presenting .sidebar, .app.summary .sidebar { display: none; }
+.fold-control { position: absolute; z-index: 3; width: 20px; height: 20px; display: grid; place-items: center; padding: 0; border: 1px solid var(--line-strong); border-radius: 4px; background: var(--surface); color: var(--ink-2); }
+.fold-control:hover, .fold-control:focus-visible { background: var(--accent-soft); color: var(--accent); }
 
 /* Tools */
 .toolbar-float { position: absolute; left: 12px; top: 12px; z-index: 4; display: flex; gap: 2px; padding: 3px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--float); }

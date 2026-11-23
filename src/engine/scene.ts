@@ -44,6 +44,7 @@ export interface SceneContainer {
 export interface SceneNode {
   readonly id: Id;
   readonly variant: NodeVariant;
+  readonly summary?: boolean;
   readonly rect: Rect;
   readonly label: readonly string[];
   readonly labelBox: Rect | null;
@@ -151,7 +152,7 @@ function containerDepth(doc: Document, c: Container): number {
   return d;
 }
 
-export function computeScene(doc: Document, appearance: Appearance): Scene {
+export function computeScene(doc: Document, appearance: Appearance, summaries?: ReadonlyMap<Id, Container>): Scene {
   const rects = worldRects(doc);
   const frames = new Map<Id, PortFrame>();
   const containers: SceneContainer[] = doc.containers
@@ -167,9 +168,15 @@ export function computeScene(doc: Document, appearance: Appearance): Scene {
   const blockers: Blocker[] = [];
   const nodes: SceneNode[] = doc.nodes.map((n) => {
     const rect = rects.get(n.id)!;
-    const service = appearance.service(n.serviceId);
+    const group = summaries?.get(n.id);
+    const service = group ? {
+      name: group.label,
+      glyph: appearance.containerGlyph(group.kind) ?? appearance.fallback.glyph,
+      color: AREA_STROKE[group.style.color]!,
+      image: appearance.containerImage?.(group.kind) ?? undefined,
+    } : appearance.service(n.serviceId);
     const look = service ?? appearance.fallback;
-    const base = { id: n.id, variant: n.variant, rect, glyph: look.glyph, image: look.image ?? null, color: look.color, serviceName: look.name, knownService: !!service, locked: n.locked };
+    const base = { id: n.id, summary: !!group, variant: n.variant, rect, glyph: look.glyph, image: look.image ?? null, color: look.color, serviceName: look.name, knownService: !!service, locked: n.locked };
     blockers.push({ id: n.id, rect });
     if (n.variant === 'box') {
       const textWidth = rect.width - BOX_NODE.pad - BOX_NODE.icon - BOX_NODE.gap - BOX_NODE.pad;

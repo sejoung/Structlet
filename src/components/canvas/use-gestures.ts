@@ -5,7 +5,7 @@ import { dragSegment, edgeAt, idsInRect, MAX_ZOOM, MIN_ZOOM, screenToWorld, snap
 import { dropParents, endpointAt, movableIds, movingRect, movingSet, resizeRect, type ResizeHandle } from './endpoints';
 
 type Gesture =
-  | { type: 'pan'; start: Point; from: Viewport }
+  | { type: 'pan'; start: Point; from: Viewport; select?: readonly Id[] }
   | { type: 'pinch'; distance: number; mid: Point; from: Viewport }
   | { type: 'marquee'; start: Point; additive: boolean; base: readonly Id[] }
   | { type: 'move'; ids: Id[]; start: Point; startScreen: Point; pressed: Id; moved: boolean; shift: boolean; delta: Point; base: Rect | null; others: Rect[] }
@@ -35,6 +35,7 @@ interface GestureDeps {
   setViewport(v: Viewport): void;
   spaceDown: RefObject<boolean>;
   tool: CanvasTool;
+  summary: boolean;
 }
 
 function hitOf(target: EventTarget | null): { kind: string; id: string; data: DOMStringMap } | null {
@@ -58,7 +59,7 @@ export function useGestures(deps: GestureDeps) {
   const worldOf = (e: { clientX: number; clientY: number }) => screenToWorld(latest.current.viewport, screenOf(e));
 
   function onPointerDown(e: ReactPointerEvent<SVGSVGElement>) {
-    const { editor, snapshot, scene, viewport, spaceDown, tool } = latest.current;
+    const { editor, snapshot, scene, viewport, spaceDown, tool, summary } = latest.current;
     if (e.button === 2) return;
     const world = worldOf(e);
     const hit = hitOf(e.target);
@@ -82,7 +83,8 @@ export function useGestures(deps: GestureDeps) {
       }
     }
     if (e.button === 1 || spaceDown.current || tool === 'hand') {
-      gesture.current = { type: 'pan', start: screenOf(e), from: viewport };
+      const select = summary && e.button === 0 && !spaceDown.current ? (hit?.id ? [hit.id] : []) : undefined;
+      gesture.current = { type: 'pan', start: screenOf(e), from: viewport, select };
       return;
     }
     if (tool === 'connect') {
@@ -189,6 +191,7 @@ export function useGestures(deps: GestureDeps) {
         return;
       }
       case 'pan':
+        if (Math.hypot(screen.x - g.start.x, screen.y - g.start.y) >= 3) g.select = undefined;
         setViewport({ ...g.from, panX: g.from.panX + screen.x - g.start.x, panY: g.from.panY + screen.y - g.start.y });
         return;
       case 'marquee':
@@ -297,6 +300,7 @@ export function useGestures(deps: GestureDeps) {
         else editor.cancelPreview();
         return;
       case 'pan':
+        if (g.select) editor.session.select(g.select);
         return;
     }
   }

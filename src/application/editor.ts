@@ -203,6 +203,11 @@ export class Editor {
     return this.run((d) => sequence(d, (x) => moveEach(x, moves), ...[...grow].map(([id, rect]) => (x: Document) => setBounds(x, id, rect))));
   }
 
+  /** Applies a complete geometry update as one undoable operation. */
+  applyDocumentLayout(next: Document): EditResult {
+    return this.run((doc) => diffDocuments(doc, next));
+  }
+
   /** Replaces the document with an imported version as one undo step; the document id is kept. */
   importDocument(next: Document, created: readonly Id[]): EditResult {
     return this.run((d) => diffDocuments(d, { ...next, id: d.id, formatVersion: d.formatVersion }), { select: created.filter((id) => findCollection(next, id) !== 'edges') });

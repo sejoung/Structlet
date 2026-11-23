@@ -15,6 +15,7 @@ interface ShortcutDeps {
   togglePanels(): void;
   toggleInspector(): void;
   presenting(): boolean;
+  summary(): boolean;
   setPresenting(on: boolean): void;
 }
 
@@ -25,8 +26,8 @@ export function useShortcuts(deps: ShortcutDeps): void {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
-      if (target?.closest?.('dialog, input, textarea, select, [contenteditable="true"]')) return;
-      const { editor, actions, fit, zoom, edit, setTool, tool, togglePanels, toggleInspector, presenting, setPresenting } = latest.current;
+      if (target?.closest?.('dialog, .fold-control, input, textarea, select, [contenteditable="true"]')) return;
+      const { editor, actions, fit, zoom, edit, setTool, tool, togglePanels, toggleInspector, presenting, summary, setPresenting } = latest.current;
       const session = editor.session;
       const mod = e.metaKey || e.ctrlKey;
       const key = e.key.toLowerCase();
@@ -58,6 +59,7 @@ export function useShortcuts(deps: ShortcutDeps): void {
         return;
       }
       if (presenting()) return;
+      if (summary() && !(mod && ['s', 'o', 'z', 'y', '0', '+', '=', '-'].includes(key))) return;
       if (mod && key === 'z') {
         handled();
         if (e.shiftKey) editor.redo();

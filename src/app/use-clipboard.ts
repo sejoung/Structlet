@@ -5,6 +5,7 @@ import { extractFragment, getBox, isEmptyFragment, type Fragment, type Id, type 
 
 interface ClipboardDeps {
   editor: Editor;
+  summary?(): boolean;
   /** Area to paste into: a single selected area, otherwise the area under the view center. */
   pasteParent(): Id | null;
   /** Text that is not a Structlet fragment (draft JSON, compose, terraform) goes to import. */
@@ -22,7 +23,7 @@ export function useClipboard(deps: ClipboardDeps): void {
   useEffect(() => {
     const typing = (e: Event) => (e.target as HTMLElement | null)?.closest?.('dialog, input, textarea, select, [contenteditable="true"]');
     const copy = (e: ClipboardEvent, cut: boolean) => {
-      if (typing(e)) return;
+      if (latest.current.summary?.() || typing(e)) return;
       const { editor } = latest.current;
       const selection = editor.session.selected;
       if (!selection.length) return;
@@ -36,7 +37,7 @@ export function useClipboard(deps: ClipboardDeps): void {
     const onCopy = (e: ClipboardEvent) => copy(e, false);
     const onCut = (e: ClipboardEvent) => copy(e, true);
     const onPaste = (e: ClipboardEvent) => {
-      if (typing(e)) return;
+      if (latest.current.summary?.() || typing(e)) return;
       const text = e.clipboardData?.getData('text/plain') ?? '';
       const { editor, pasteParent, onImportText } = latest.current;
       const fragment = parseFragment(text) ?? (text.trim() === '' ? memory.current?.fragment ?? null : null);

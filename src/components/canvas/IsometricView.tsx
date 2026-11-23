@@ -17,6 +17,11 @@ export function IsometricView({ scene, theme, notice }: { scene: Scene; theme: D
     const b = isometricBounds(scene);
     const zoom = Math.min(1.4, Math.max(0.2, Math.min((r.width - 96) / b.width, (r.height - 96) / b.height)));
     setView({ zoom, panX: (r.width - b.width * zoom) / 2 - b.x * zoom, panY: (r.height - b.height * zoom) / 2 - b.y * zoom });
+  }, [scene.bounds]);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
       const v = latest.current;

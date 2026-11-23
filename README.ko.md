@@ -57,7 +57,7 @@ npm run dev          # http://127.0.0.1:5183
 | `npm run dev` | 개발 서버 (`127.0.0.1:5183`). Drive는 동작하고, 사용 통계는 보내지 않는다 |
 | `npm run typecheck` | 타입 검사만 (`tsc --noEmit`) |
 | `npm run build` | 타입 검사 + 정적 빌드(`dist/`). 상대 경로라 도메인 루트든 하위 경로든 아무 정적 호스팅에 올리면 된다 |
-| `npm run build:single` | HTML 한 파일(`dist-single/structlet.html`, 약 0.9MB). 더블클릭(`file://`)으로 열린다 |
+| `npm run build:single` | HTML 한 파일(`dist-single/structlet.html`, 약 1.3MB). 더블클릭(`file://`)으로 열린다 |
 | `npm run preview` | 빌드 결과 미리보기 (`127.0.0.1:5184`, CSP 포함) |
 | `npm test` | 단위 테스트 (Vitest, `tests/unit`). `npm run test:watch`는 바뀔 때마다 다시 돌린다 |
 | `npm run e2e` | 단일 파일 빌드 후 E2E (Playwright, `tests/e2e`). 프로덕션 빌드 두 벌(기본, 테스트 측정 ID)을 `vite preview`로 띄워 검사하고 Google은 흉내 낸다. 처음 한 번 `npx playwright install chromium` |
@@ -71,6 +71,8 @@ npm run dev          # http://127.0.0.1:5183
 **선택 기능** — Google Drive와 사용 통계는 `.env.example`을 `.env.local`로 복사해 공개 설정 값을 넣으면 켜진다. 값이 없으면 그 기능 없이 빌드된다. Google Cloud·GA4 설정과 등록할 origin은 [docs/google-drive.md](docs/google-drive.md)에 있다.
 
 ## 사용법
+
+**큰 구성도** — 영역의 − 버튼으로 요약 타일 하나로 접는다. **구성도 → 최상위 그룹 모두 접기**는 전체 시스템을 요약하고 같은 외부 연결을 묶는다. **요약 보기 자동 배치**는 화면과 이미지 내보내기에 적용한다. **전체 구성도 자동 배치**는 편집 문서의 위치를 바꾸며 한 번의 실행 취소로 되돌린다. **도움말 → 복잡한 예제**에서 [쇼핑몰·ML 플랫폼](samples/commerce-and-ml.structlet)을 내려받아 두 방식을 비교할 수 있다.
 
 화면은 네 부분이다.
 
@@ -213,7 +215,7 @@ docs/adr/       설계 기록. stormlet-reference/ 에 참고한 Stormlet ADR �
 ## 검증 현황
 
 <details>
-<summary><b>단위 122개</b> (<code>tests/unit</code>)</summary>
+<summary><b>단위 129개</b> (<code>tests/unit</code>)</summary>
 
 - **domain** — 계층·로컬 좌표·자식 동반 이동, 부모 변경·순환 거부, 패치 undo(인접 삭제 순서 포함), 조각 복사·붙여넣기, 문서 차이
 - **domain** — 3방향 병합(필드·위치 묶음·삭제 충돌·계층 복구·순환)
@@ -236,7 +238,7 @@ docs/adr/       설계 기록. stormlet-reference/ 에 참고한 Stormlet ADR �
 </details>
 
 <details>
-<summary><b>E2E 39개</b> (<code>tests/e2e</code>, 프로덕션 빌드)</summary>
+<summary><b>E2E 41개</b> (<code>tests/e2e</code>, 프로덕션 빌드)</summary>
 
 - **기본 흐름** — 노드 두 개 → 연결 → 저장 → 열기 → 새로 고침 → SVG(화면과 같은 경로), PNG, 잘못된 파일 거부
 - **영역** — VPC 끌기 후 한 번의 undo, 다른 영역으로 끌어 넣기, 감싸기

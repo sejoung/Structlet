@@ -14,10 +14,11 @@ interface HandlesProps {
   zoom: number;
   overlay: CanvasOverlay;
   connecting: boolean;
+  readOnly?: boolean;
 }
 
 /** Selection outlines and edit handles, drawn in world coordinates above the diagram. */
-export function Handles({ scene, selection, hover, zoom, overlay, connecting }: HandlesProps) {
+export function Handles({ scene, selection, hover, zoom, overlay, connecting, readOnly }: HandlesProps) {
   const px = (v: number) => v / zoom;
   const selected = new Set(selection);
   const single = selection.length === 1 ? selection[0]! : null;
@@ -42,6 +43,8 @@ export function Handles({ scene, selection, hover, zoom, overlay, connecting }: 
     if (!selected.has(e.id)) continue;
     out.push(<path key={`sel-${e.id}`} className="sel-edge" d={pathData(e.points)} />);
   }
+
+  if (readOnly) return <g className="handles">{out}</g>;
 
   // Locked marker.
   for (const box of [...scene.nodes, ...scene.containers]) {

@@ -48,5 +48,21 @@ test('single structlet.html works from file://', async ({ page }) => {
   await page.waitForTimeout(600);
   await page.reload();
   await expect(page.locator('[data-testid="node-svc-api"]')).toHaveCount(1);
+  await page.getByTestId('tb-help').click();
+  await manual.getByRole('radio', { name: 'Complex example' }).click();
+  const summaryPreview = manual.getByRole('img').first();
+  await summaryPreview.scrollIntoViewIfNeeded();
+  await expect(summaryPreview).toHaveAttribute('src', /^data:image\/webp/);
+  await expect.poll(() => summaryPreview.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(1080);
+  const [complex] = await Promise.all([
+    page.waitForEvent('download'), manual.getByRole('button', { name: 'Download Commerce & ML platform (.structlet)' }).click(),
+  ]);
+  await page.keyboard.press('Escape');
+  const [complexChooser] = await Promise.all([page.waitForEvent('filechooser'), act(page, 'tb-open')]);
+  await complexChooser.setFiles((await complex.path())!);
+  await expect(page.locator('[data-testid^="node-"]')).toHaveCount(16);
+  await page.getByTestId('menu-diagram').click();
+  await page.getByTestId('fold-top').click();
+  await expect(page.locator('[data-testid^="node-"]')).toHaveCount(5);
   expect(errors).toEqual([]);
 });
