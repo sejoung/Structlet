@@ -66,7 +66,7 @@ test('saved infrastructure details are editable in the inspector and readable in
   expect(readFileSync((await exported.path())!, 'utf8')).toContain('stroke-dasharray="6 4"');
 });
 
-test('imported Argo CD, node lifecycle and EBS details are visible in Korean viewers', async ({ page }) => {
+test('imported workloads, Argo CD and node provisioning details are visible in Korean viewers', async ({ page }) => {
   await freshApp(page, 'ko');
   const [picker] = await Promise.all([page.waitForEvent('filechooser'), act(page, 'tb-import')]);
   await picker.setFiles('tests/unit/adapters/fixtures/kubernetes-infrastructure.yaml');
@@ -86,20 +86,32 @@ test('imported Argo CD, node lifecycle and EBS details are visible in Korean vie
   await app.click();
   await expect(dialog.getByText('$values/profiles/test.yaml')).toBeVisible();
   await dialog.getByRole('button', { name: '닫기' }).click();
+  await page.getByTestId('node-k8s-billing-deployment-paused-api').locator('rect').first().click();
+  await expect(dialog.getByText('선언된 복제본 수')).toBeVisible();
+  await expect(dialog.getByText('0', { exact: true })).toBeVisible();
+  await dialog.getByRole('button', { name: '닫기' }).click();
   await page.getByTestId('exit-present').click();
 
   await page.locator('[data-testid="tb-view"] [data-value="isometric"]').click();
   const iso = page.getByTestId('isometric');
   const label = (id: string) => iso.locator(`[data-iso-label="node"][data-iso-object="${id}"] text`).first();
+  await label('k8s-billing-cronjob-cleanup').click();
+  await expect(dialog.getByText('30 2 * * 1-5', { exact: true })).toBeVisible();
+  await expect(dialog.getByText('Asia/Seoul')).toBeVisible();
+  await dialog.getByRole('button', { name: '닫기' }).click();
   await label('k8s-cluster-nodepool-compute').click();
   await expect(dialog.getByText('512Gi')).toBeVisible();
   await expect(dialog.getByText('workload=gpu')).toBeVisible();
   await expect(dialog.getByText('WhenEmptyOrUnderutilized')).toBeVisible();
   await expect(dialog.getByText('20%')).toBeVisible();
+  await expect(dialog.getByText('In arm64, amd64')).toBeVisible();
+  await expect(dialog.getByText('최소 고유 값 개수')).toHaveCount(2);
   await dialog.getByRole('button', { name: '닫기' }).click();
   await label('k8s-cluster-ec2nodeclass-linux').click({ button: 'right' });
   await page.getByRole('menuitem', { name: '인프라 상세 보기' }).click();
   await expect(dialog.getByText('/dev/xvda · gp3 · 80Gi')).toBeVisible();
   await expect(dialog.getByText('snap-example')).toBeVisible();
   await expect(dialog.getByText('암호화', { exact: true })).toBeVisible();
+  await expect(dialog.getByText('KarpenterNodeRole-example')).toBeVisible();
+  await expect(dialog.getByText('/platform/amis/approved')).toBeVisible();
 });

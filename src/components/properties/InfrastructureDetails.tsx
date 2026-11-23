@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import type { Editor } from '../../application';
-import { readInfrastructure, type ArgoCdDetails, type BlockDeviceDetails, type InfrastructureDetails as Details, type NodeProvisioningDetails, type Node, type PlacementSelector } from '../../domain';
+import { readInfrastructure, type ArgoCdDetails, type BlockDeviceDetails, type InfrastructureDetails as Details, type Node, type NodeClassDetails, type NodeProvisioningDetails, type PlacementSelector, type WorkloadDetails } from '../../domain';
 import type { Translate } from '../../i18n/messages';
 import { Section } from '../ui/controls';
 
@@ -55,6 +55,15 @@ function ArgoCd({ details, t }: { details: ArgoCdDetails; t: Translate }) {
   );
 }
 
+function Workload({ details, t }: { details: WorkloadDetails; t: Translate }) {
+  return <section>
+    <h3>{t('infra.workload')}</h3>
+    <Fields t={t} fields={[
+      ['infra.replicas', details.replicas], ['infra.cronSchedule', details.schedule], ['infra.timeZone', details.timeZone],
+    ]} />
+  </section>;
+}
+
 function NodeProvisioning({ details, t }: { details: NodeProvisioningDetails; t: Translate }) {
   const { disruption } = details;
   const taintLabel = ({ key, value, effect }: NonNullable<NodeProvisioningDetails['taints']>[number]) =>
@@ -65,6 +74,12 @@ function NodeProvisioning({ details, t }: { details: NodeProvisioningDetails; t:
       <List title={t('infra.taints')}>{details.taints?.map(taintLabel)}</List>
       <List title={t('infra.startupTaints')}>{details.startupTaints?.map(taintLabel)}</List>
       <List title={t('infra.limits')}>{details.limits?.map(({ resource, quantity }) => <Entry name={resource} values={[quantity]} />)}</List>
+      <List title={t('infra.instanceRequirements')}>{details.requirements?.map(({ key, operator, values, minValues }) => (
+        <>
+          <Entry name={key} values={[[operator, values?.map((value) => value === '' ? '""' : value).join(', ')].filter(Boolean).join(' ')]} />
+          <Fields t={t} fields={[['infra.minValues', minValues]]} />
+        </>
+      ))}</List>
       {disruption && <section>
         <h3>{t('infra.disruption')}</h3>
         <Fields t={t} fields={[
@@ -84,6 +99,24 @@ function NodeProvisioning({ details, t }: { details: NodeProvisioningDetails; t:
   );
 }
 
+function NodeClass({ details, t }: { details: NodeClassDetails; t: Translate }) {
+  return <section>
+    <h3>{t('infra.nodeClass')}</h3>
+    <Fields t={t} fields={[
+      ['infra.amiFamily', details.amiFamily], ['infra.nodeRole', details.role], ['infra.instanceProfile', details.instanceProfile],
+    ]} />
+    <List title={t('infra.amiTerms')}>{details.amiSelectorTerms?.map((term) => (
+      <>
+        <Fields t={t} fields={[
+          ['infra.amiAlias', term.alias], ['infra.amiId', term.id], ['infra.amiName', term.name],
+          ['infra.amiOwner', term.owner], ['infra.amiParameter', term.ssmParameter],
+        ]} />
+        <Entry name={t('infra.amiTags')} values={term.tags?.map(({ key, value }) => `${key}=${value === '' ? '""' : value}`)} />
+      </>
+    ))}</List>
+  </section>;
+}
+
 function BlockDevices({ devices, t }: { devices: readonly BlockDeviceDetails[]; t: Translate }) {
   return <List title={t('infra.blockDevices')}>{devices.map((device) => (
     <>
@@ -99,11 +132,13 @@ function BlockDevices({ devices, t }: { devices: readonly BlockDeviceDetails[]; 
 }
 
 export function InfrastructureDetails({ details, t }: { details: Details; t: Translate }) {
-  const { securityGroupRules, iamStatements, iamPolicyRefs, remoteStates, placement, argoCd, nodeProvisioning, blockDevices } = details;
+  const { securityGroupRules, iamStatements, iamPolicyRefs, remoteStates, placement, argoCd, workload, nodeProvisioning, nodeClass, blockDevices } = details;
   return (
     <div className="infra-details">
       {argoCd && <ArgoCd details={argoCd} t={t} />}
+      {workload && <Workload details={workload} t={t} />}
       {nodeProvisioning && <NodeProvisioning details={nodeProvisioning} t={t} />}
+      {nodeClass && <NodeClass details={nodeClass} t={t} />}
       {blockDevices && <BlockDevices devices={blockDevices} t={t} />}
       <List title={t('infra.security')}>{securityGroupRules?.map(({ direction, protocol, fromPort, toPort, peers, group, description }) => (
         <>

@@ -7,7 +7,7 @@ import { emptyDocument } from '../../../src/domain';
 
 const base = emptyDocument('details', 'Example');
 
-it('imports Argo CD sources and sync settings, NodePool policy, and EC2NodeClass volumes', async () => {
+it('imports workload, Argo CD, NodePool and EC2NodeClass declarations', async () => {
   const fixture = readFileSync(new URL('./fixtures/kubernetes-infrastructure.yaml', import.meta.url), 'utf8');
   const result = await importInto(base, fixture);
   expect(result).toMatchObject({ ok: true, source: 'kubernetes' });
@@ -35,6 +35,11 @@ it('imports Argo CD sources and sync settings, NodePool policy, and EC2NodeClass
     nodeProvisioning: {
       taints: [{ key: 'workload', value: 'gpu', effect: 'NoSchedule' }],
       startupTaints: [{ key: 'node.example.test/initialize', effect: 'NoExecute' }],
+      requirements: [
+        { key: 'kubernetes.io/arch', operator: 'In', values: ['arm64', 'amd64'], minValues: 2 },
+        { key: 'karpenter.k8s.aws/instance-family', operator: 'Exists', minValues: 3 },
+        { key: 'environment', operator: 'In', values: [''] },
+      ],
       limits: [{ resource: 'cpu', quantity: '120' }, { resource: 'memory', quantity: '512Gi' }, { resource: 'nvidia.com/gpu', quantity: '4' }],
       disruption: {
         consolidationPolicy: 'WhenEmptyOrUnderutilized', consolidateAfter: '30m', expireAfter: 'Never', terminationGracePeriod: '1h',
@@ -43,11 +48,24 @@ it('imports Argo CD sources and sync settings, NodePool policy, and EC2NodeClass
     },
   });
   expect(details('k8s.karpenter-ec2nodeclass')).toMatchObject({
+    nodeClass: {
+      amiFamily: 'AL2023', role: 'KarpenterNodeRole-example',
+      amiSelectorTerms: [
+        { name: 'eks-linux-*', owner: 'self', tags: [{ key: 'release-channel', value: '' }] },
+        { id: 'ami-synthetic' },
+        { ssmParameter: '/platform/amis/approved' },
+      ],
+    },
     blockDevices: [
       { deviceName: '/dev/xvda', rootVolume: true, volumeType: 'gp3', volumeSize: '80Gi', encrypted: true, deleteOnTermination: false, iops: 3500, throughput: 150 },
       { deviceName: '/dev/xvdb', snapshotId: 'snap-example', kmsKeyId: 'key-example', volumeInitializationRate: 100 },
     ],
   });
+  expect(document.nodes.find((node) => node.id === 'k8s-cluster-ec2nodeclass-profile')?.infrastructure).toMatchObject({
+    nodeClass: { instanceProfile: 'example-managed-instance-profile', amiSelectorTerms: [{ alias: 'al2023@v20241010' }] },
+  });
+  expect(details('k8s.deployment')).toMatchObject({ workload: { replicas: 0 }, placement: { nodePools: ['compute'] } });
+  expect(details('k8s.cronjob')).toMatchObject({ workload: { schedule: '30 2 * * 1-5', timeZone: 'Asia/Seoul' } });
   expect(document.annotations).toHaveLength(0);
   const file = serializeStructlet(document);
   expect(file).not.toMatch(/SYNTHETIC_|unused\.example\.test/);
@@ -58,11 +76,14 @@ it('keeps older Karpenter expiration declarations and distinguishes manual Argo 
   const result = await importInto(base, [
     'apiVersion: karpenter.sh/v1beta1\nkind: NodePool\nmetadata: {name: legacy}\nspec: {disruption: {expireAfter: 720h}}',
     'apiVersion: argoproj.io/v1alpha1\nkind: Application\nmetadata: {name: manual}\nspec: {source: {repoURL: "https://git.example.test/manual.git"}}',
+    'apiVersion: batch/v1\nkind: CronJob\nmetadata: {name: default-timezone}\nspec: {schedule: "@daily"}',
   ].join('\n---\n'));
   expect(result).toMatchObject({ ok: true, document: { nodes: [
     { infrastructure: { nodeProvisioning: { disruption: { expireAfter: '720h' } } } },
     { infrastructure: { argoCd: { automated: { enabled: false } } } },
+    { infrastructure: { workload: { schedule: '@daily' } } },
   ] } });
+  if (result.ok) expect(result.document.nodes.find((node) => node.serviceId === 'k8s.cronjob')?.infrastructure?.workload?.timeZone).toBeUndefined();
 });
 
 it('normalizes declared Terraform EKS taints into Kubernetes effects', async () => {
@@ -83,6 +104,9 @@ it('normalizes declared Terraform EKS taints into Kubernetes effects', async () 
 it.each([
   [{ argoCd: { automated: { enabled: 'false' } } }, 'argoCd.automated.enabled'],
   [{ nodeProvisioning: { taints: [{ key: 'gpu', effect: 'Never' }] } }, 'nodeProvisioning.taints[0].effect'],
+  [{ workload: { replicas: -1 } }, 'workload.replicas'],
+  [{ nodeProvisioning: { requirements: [{ key: 'instance-family', operator: 'Exists', minValues: 0 }] } }, 'nodeProvisioning.requirements[0].minValues'],
+  [{ nodeClass: { amiSelectorTerms: [{ tags: [{ key: 'channel', value: false }] }] } }, 'nodeClass.amiSelectorTerms[0].tags[0].value'],
   [{ blockDevices: [{ deviceName: '/dev/xvda', iops: '3500' }] }, 'blockDevices[0].iops'],
 ])('rejects invalid provisioning details', (infrastructure, path) => {
   const result = compileDraft(JSON.stringify({ nodes: [{ id: 'node', infrastructure }] }), base);

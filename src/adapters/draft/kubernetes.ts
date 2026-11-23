@@ -1,8 +1,8 @@
 import { parseAllDocuments } from 'yaml';
 import type { InfrastructureDetails } from '../../domain';
 import { argoCdDetails } from './argo-cd-details';
-import { present } from './infrastructure-values';
-import { karpenterBlockDevices, karpenterProvisioning } from './node-provisioning';
+import { integer, present, record, text } from './infrastructure-values';
+import { karpenterBlockDevices, karpenterNodeClass, karpenterProvisioning } from './node-provisioning';
 import { workloadPlacement } from './kubernetes-placement';
 import type { Draft, DraftContainer, DraftEdge, DraftNode } from './draft-format';
 
@@ -59,13 +59,29 @@ function second(o: Obj): string {
   return o.kind ?? '';
 }
 
+function workloadDetails(o: Obj): InfrastructureDetails['workload'] {
+  const spec = record(o.spec);
+  if (o.kind === 'Deployment' || o.kind === 'StatefulSet') {
+    const replicas = integer(spec.replicas);
+    return replicas !== undefined && replicas >= 0 ? { replicas } : undefined;
+  }
+  if (o.kind === 'CronJob') return present({ schedule: text(spec.schedule), timeZone: text(spec.timeZone) });
+  return undefined;
+}
+
 function infrastructureOf(o: Obj): InfrastructureDetails | undefined {
   const service = serviceFor(o);
   if (service === 'k8s.argocd-application') return present({ argoCd: argoCdDetails(o.spec, false) });
   if (service === 'k8s.argocd-applicationset') return present({ argoCd: argoCdDetails(o.spec?.template?.spec, true) });
   if (service === 'k8s.karpenter-nodepool') return present({ nodeProvisioning: karpenterProvisioning(o.spec) });
-  if (service === 'k8s.karpenter-ec2nodeclass') return present({ blockDevices: karpenterBlockDevices(o.spec) });
-  return WORKLOADS.has(o.kind!) ? present({ placement: workloadPlacement(podOf(o)?.spec) }) : undefined;
+  if (service === 'k8s.karpenter-ec2nodeclass') return present({
+    nodeClass: karpenterNodeClass(o.spec),
+    blockDevices: karpenterBlockDevices(o.spec),
+  });
+  return WORKLOADS.has(o.kind!) ? present({
+    workload: workloadDetails(o),
+    placement: workloadPlacement(podOf(o)?.spec),
+  }) : undefined;
 }
 
 export function kubernetesToDraft(text: string, title = 'Kubernetes'): Draft {

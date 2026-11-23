@@ -1,4 +1,4 @@
-import type { BlockDeviceDetails, NodeProvisioningDetails, NodeTaint } from '../../domain';
+import type { BlockDeviceDetails, NodeClassDetails, NodeProvisioningDetails, NodeTaint } from '../../domain';
 import { array, boolean, integer, present, record, text, texts } from './infrastructure-values';
 
 function quantity(value: unknown): string | undefined {
@@ -36,10 +36,24 @@ export function karpenterProvisioning(value: unknown): NodeProvisioningDetails |
       nodes: amount, schedule: text(schedule), duration: text(duration), reasons: Array.isArray(reasons) ? texts(reasons) : undefined,
     }];
   });
+  const requirements = array(template.requirements).flatMap((input) => {
+    const { key, operator, values, minValues } = record(input);
+    const label = text(key);
+    const operation = text(operator);
+    const minimum = integer(minValues);
+    if (!label || !operation) return [];
+    return [{
+      key: label,
+      operator: operation,
+      values: Array.isArray(values) ? values.filter((item) => typeof item === 'string' && item.length <= 2048) : undefined,
+      minValues: minimum !== undefined && minimum > 0 ? minimum : undefined,
+    }];
+  });
   return present({
     taints: nodeTaints(template.taints),
     startupTaints: nodeTaints(template.startupTaints),
     limits: limits.length ? limits : undefined,
+    requirements: requirements.length ? requirements : undefined,
     disruption: present({
       consolidationPolicy: text(disruption.consolidationPolicy),
       consolidateAfter: text(disruption.consolidateAfter),
@@ -47,6 +61,23 @@ export function karpenterProvisioning(value: unknown): NodeProvisioningDetails |
       terminationGracePeriod: text(template.terminationGracePeriod),
       budgets: Array.isArray(disruption.budgets) ? budgets : undefined,
     }),
+  });
+}
+
+export function karpenterNodeClass(value: unknown): NodeClassDetails | undefined {
+  const spec = record(value);
+  const amiSelectorTerms = array(spec.amiSelectorTerms).flatMap((input) => {
+    const term = record(input);
+    const tags = Object.entries(record(term.tags)).flatMap(([key, value]) =>
+      text(key) && typeof value === 'string' && value.length <= 2048 ? [{ key, value }] : []);
+    return present({
+      alias: text(term.alias), id: text(term.id), name: text(term.name), owner: text(term.owner),
+      ssmParameter: text(term.ssmParameter), tags: tags.length ? tags : undefined,
+    }) ?? [];
+  });
+  return present({
+    amiFamily: text(spec.amiFamily), role: text(spec.role), instanceProfile: text(spec.instanceProfile),
+    amiSelectorTerms: amiSelectorTerms.length ? amiSelectorTerms : undefined,
   });
 }
 

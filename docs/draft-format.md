@@ -44,6 +44,6 @@
   - Google Compute Engine은 머신 타입, 커스텀 타입의 vCPU와 메모리, 지정된 GPU와 시스템 디스크를 읽는다. Azure VM은 크기와 지정된 시스템 디스크를 읽는다. Terraform 출력에서 확인할 수 없는 값은 인스펙터에서 입력할 수 있다.
 - **Kubernetes**: 여러 문서 YAML, `kubectl get -o yaml` 또는 `-o json`(List), `helm template` 결과. 클러스터·네임스페이스 → 영역, 워크로드·Service·Ingress·ConfigMap·Secret·PVC·HPA → 노드. 선은 Ingress 규칙, Service selector, 볼륨·환경 변수 참조, HPA 대상에서 만든다. Argo CD Application·ApplicationSet, Karpenter NodePool·EC2NodeClass도 노드로 표시한다. 선언된 NodePool 참조를 점선으로 연결하고 노드 셀렉터와 어피니티를 워크로드에 저장한다. 컨트롤러가 관리하는 Pod·ReplicaSet은 그리지 않는다.
 
-Argo CD Application의 소스와 동기화 옵션 및 ApplicationSet의 기본 템플릿은 `infrastructure.argoCd`에 저장한다. NodePool의 taint, 리소스 상한, 통합·만료·중단 한도는 `infrastructure.nodeProvisioning`에 있다. EC2NodeClass의 EBS 매핑은 `infrastructure.blockDevices`에 저장한다. 2D 발표 모드와 아이소메트릭에서 노드를 클릭하면 상세가 열린다.
+Argo CD Application의 소스와 동기화 옵션 및 ApplicationSet의 기본 템플릿은 `infrastructure.argoCd`에 저장한다. NodePool의 taint, 리소스 상한, 통합·만료·중단 한도는 `infrastructure.nodeProvisioning`에 있다. EC2NodeClass의 EBS 매핑은 `infrastructure.blockDevices`에 저장한다. Deployment·StatefulSet의 복제본 수와 CronJob 크론식·시간대는 `infrastructure.workload`에 저장한다. NodePool 인스턴스 선택 조건은 `infrastructure.nodeProvisioning.requirements`에, EC2NodeClass의 AMI 선택 조건과 IAM 참조는 `infrastructure.nodeClass`에 저장한다. 2D 발표 모드와 아이소메트릭에서 노드를 클릭하면 상세가 열린다.
 
 AI 스킬과 프롬프트는 Kubernetes 구성도에서 Ingress → Service → 워크로드 경로를 기본으로 그린다. 배포 주체를 표시할 때는 Argo CD 설치마다 요약 노드 하나를 쓰고, 배포 상세를 요청받으면 Application과 ApplicationSet의 선언까지 기록한다. YAML을 파일 메뉴에서 직접 가져오면 파일에 들어 있는 리소스를 노드로 표시한다.

@@ -10,11 +10,23 @@ function invalid(path: string, expected: string): never {
   throw new InfrastructureError(`${path}: ${expected}`);
 }
 
-const text: Reader<string> = (value, path) =>
-  typeof value === 'string' && value.length > 0 && value.length <= 2048 ? value : invalid(path, 'expected a string of 1–2048 characters');
+function stringOfLength(minimum: number): Reader<string> {
+  return (value, path) => typeof value === 'string' && value.length >= minimum && value.length <= 2048
+    ? value : invalid(path, `expected a string of ${minimum}–2048 characters`);
+}
+
+const text = stringOfLength(1);
+const labelValue = stringOfLength(0);
 
 const integer: Reader<number> = (value, path) =>
   typeof value === 'number' && Number.isSafeInteger(value) ? value : invalid(path, 'expected an integer');
+
+function count(minimum: number): Reader<number> {
+  return (value, path) => {
+    const n = integer(value, path);
+    return n >= minimum ? n : invalid(path, `expected an integer of at least ${minimum}`);
+  };
+}
 
 const boolean: Reader<boolean> = (value, path) =>
   typeof value === 'boolean' ? value : invalid(path, 'expected true or false');
@@ -51,7 +63,8 @@ const iamStatement = shape({ effect: choice('Allow', 'Deny') }, {
   principals: list(principal), notPrincipals: list(principal), conditions: list(condition),
 });
 const remoteState = shape({ address: text }, { backend: text, outputs: strings });
-const selector = shape({ key: text, operator: text }, { values: strings, source: choice('label', 'field') });
+const selectorFields = { key: text, operator: text };
+const selector = shape(selectorFields, { values: strings, source: choice('label', 'field') });
 const placement = shape({}, {
   nodePools: strings, nodeGroups: strings, nodeSelector: list(selector), required: list(list(selector)),
   preferred: list(shape({ weight: integer, selectors: list(selector) }, {})),
@@ -67,10 +80,12 @@ const argoCd = shape({}, {
 });
 const nodeTaint = shape({ key: text, effect: choice('NoSchedule', 'PreferNoSchedule', 'NoExecute') }, { value: text });
 const disruptionBudget = shape({ nodes: text }, { schedule: text, duration: text, reasons: strings });
+const workload = shape({}, { replicas: count(0), schedule: text, timeZone: text });
 const nodeProvisioning = shape({}, {
   taints: list(nodeTaint),
   startupTaints: list(nodeTaint),
   limits: list(shape({ resource: text, quantity: text }, {})),
+  requirements: list(shape(selectorFields, { values: list(labelValue), minValues: count(1) })),
   disruption: shape({}, {
     consolidationPolicy: text, consolidateAfter: text, expireAfter: text, terminationGracePeriod: text,
     budgets: list(disruptionBudget),
@@ -80,9 +95,16 @@ const blockDevice = shape({ deviceName: text }, {
   rootVolume: boolean, volumeType: text, volumeSize: text, encrypted: boolean, deleteOnTermination: boolean,
   iops: integer, throughput: integer, snapshotId: text, kmsKeyId: text, volumeInitializationRate: integer,
 });
+const amiTerm = shape({}, {
+  alias: text, id: text, name: text, owner: text, ssmParameter: text,
+  tags: list(shape({ key: text, value: labelValue }, {})),
+});
+const nodeClass = shape({}, {
+  amiFamily: text, amiSelectorTerms: list(amiTerm), role: text, instanceProfile: text,
+});
 const infrastructure = shape({}, {
   securityGroupRules: list(securityRule), iamStatements: list(iamStatement), iamPolicyRefs: strings,
-  remoteStates: list(remoteState), placement, argoCd, nodeProvisioning, blockDevices: list(blockDevice),
+  remoteStates: list(remoteState), placement, argoCd, workload, nodeProvisioning, nodeClass, blockDevices: list(blockDevice),
 });
 
 export type InfrastructureDetails = Read<typeof infrastructure>;
@@ -92,7 +114,9 @@ export type RemoteStateReference = Read<typeof remoteState>;
 export type PlacementSelector = Read<typeof selector>;
 export type WorkloadPlacement = Read<typeof placement>;
 export type ArgoCdDetails = Read<typeof argoCd>;
+export type WorkloadDetails = Read<typeof workload>;
 export type NodeProvisioningDetails = Read<typeof nodeProvisioning>;
+export type NodeClassDetails = Read<typeof nodeClass>;
 export type NodeTaint = Read<typeof nodeTaint>;
 export type BlockDeviceDetails = Read<typeof blockDevice>;
 

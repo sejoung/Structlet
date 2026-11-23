@@ -67,6 +67,17 @@ spec:
         duration: 8h
   template:
     spec:
+      requirements:
+        - key: kubernetes.io/arch
+          operator: In
+          values: [arm64, amd64]
+          minValues: 2
+        - key: karpenter.k8s.aws/instance-family
+          operator: Exists
+          minValues: 3
+        - key: environment
+          operator: In
+          values: [""]
       expireAfter: Never
       terminationGracePeriod: 1h
       taints:
@@ -86,6 +97,15 @@ kind: EC2NodeClass
 metadata:
   name: linux
 spec:
+  amiFamily: AL2023
+  role: KarpenterNodeRole-example
+  amiSelectorTerms:
+    - name: eks-linux-*
+      owner: self
+      tags:
+        release-channel: ""
+    - id: ami-synthetic
+    - ssmParameter: /platform/amis/approved
   blockDeviceMappings:
     - deviceName: /dev/xvda
       rootVolume: true
@@ -101,3 +121,33 @@ spec:
         snapshotID: snap-example
         kmsKeyID: key-example
         volumeInitializationRate: 100
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: paused-api
+  namespace: billing
+spec:
+  replicas: 0
+  template:
+    spec:
+      nodeSelector:
+        karpenter.sh/nodepool: compute
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: cleanup
+  namespace: billing
+spec:
+  schedule: "30 2 * * 1-5"
+  timeZone: Asia/Seoul
+---
+apiVersion: karpenter.k8s.aws/v1
+kind: EC2NodeClass
+metadata:
+  name: profile
+spec:
+  instanceProfile: example-managed-instance-profile
+  amiSelectorTerms:
+    - alias: al2023@v20241010
