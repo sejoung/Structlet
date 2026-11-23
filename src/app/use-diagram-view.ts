@@ -34,8 +34,17 @@ export function useDiagramView(doc: Document, appearance: Appearance, t: Transla
     };
   }, [doc.id, settings, t]);
   const scene = useMemo(() => computeDiagramView(doc, appearance, optionsFor(doc)), [doc, appearance, optionsFor]);
-  const children = indexDocument(doc).children;
+  const { children, containers } = indexDocument(doc);
   const top = doc.containers.filter((area) => area.parentId === null && children.get(area.id)?.length).map((area) => area.id);
+  const groupsUnder = (id: Id) => (children.get(id) ?? []).filter((child) => containers.has(child) && children.get(child)?.length);
+  const middle = top.flatMap((id) => {
+    const first = groupsUnder(id);
+    if (!first.length) return [id];
+    // Skip a chain of single wrappers, such as Cloud → Region → VPC.
+    let next = first;
+    while (next.length === 1) next = groupsUnder(next[0]!);
+    return next.length ? next : first;
+  });
   const active = scene.nodes.some((node) => node.summary);
   const update = (value: Settings, fit = false) => {
     fitPending.current = fit;
@@ -43,7 +52,7 @@ export function useDiagramView(doc: Document, appearance: Appearance, t: Transla
     setChanged({ id: doc.id, value });
   };
   return {
-    scene, active, optionsFor, fitPending, settings, canFoldTop: top.length > 0,
+    scene, active, optionsFor, fitPending, settings, canFoldTop: top.length > 0, canFoldMiddle: middle.some((id) => containers.get(id)?.parentId !== null),
     toggle(id: Id) {
       update({
         ...settings,
@@ -51,6 +60,7 @@ export function useDiagramView(doc: Document, appearance: Appearance, t: Transla
       });
     },
     foldTop: () => update({ ...settings, folded: [...new Set([...settings.folded, ...top])] }, true),
+    foldMiddle: () => update({ ...settings, folded: middle }, true),
     expandAll: () => update(EMPTY, true),
     arrange: (mode: LayoutMode | null) => update({ ...settings, layout: mode }, true),
   };

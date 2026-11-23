@@ -222,7 +222,7 @@ export function App({ editor, store, files, packStore, drive: driveServices, dri
     tool: () => toolRef.current,
   });
 
-  useClipboard({
+  const pasteAt = useClipboard({
     summary: () => diagram.active,
     editor,
     pasteParent: () => {
@@ -232,9 +232,16 @@ export function App({ editor, store, files, packStore, drive: driveServices, dri
       return containerAt(sceneRef.current, screenToWorld(viewport, { x: sizeRef.current.width / 2, y: sizeRef.current.height / 2 }));
     },
     onImportText: (text) => void actions.importText(text),
+    onPasteUnavailable: () => setNotice(t('context.pasteUnavailable')),
   });
 
   const fit = () => fitTo(editor.session.committedDocument);
+  const canvasDiagram = { ...diagram, layout: diagram.settings.layout, hasObjects: !!scene.rects.size,
+    layoutAll: (mode: Parameters<typeof layoutDocument>[1]) => {
+      editor.applyDocumentLayout(layoutDocument(editor.session.committedDocument, mode));
+      diagram.expandAll();
+    },
+  };
   function togglePanels() {
     const p = panelsRef.current;
     const show = !(p.left || p.right);
@@ -256,12 +263,7 @@ export function App({ editor, store, files, packStore, drive: driveServices, dri
       <Toolbar
         t={t}
         title={snapshot.document.title}
-        diagram={{ ...diagram, layout: diagram.settings.layout, hasObjects: !!(snapshot.document.nodes.length || snapshot.document.containers.length),
-          layoutAll: (mode) => {
-            editor.applyDocumentLayout(layoutDocument(editor.session.committedDocument, mode));
-            diagram.expandAll();
-          },
-        }}
+        diagram={canvasDiagram}
         canUndo={snapshot.canUndo}
         canRedo={snapshot.canRedo}
         dirty={snapshot.dirty}
@@ -342,6 +344,7 @@ export function App({ editor, store, files, packStore, drive: driveServices, dri
             onResize={onCanvasResize}
             onDropService={(id, world) => addService(id, world)}
             summary={diagram.active}
+            context={{ diagram: canvasDiagram, actions: panelActions, paste: (at) => void pasteAt(at, containerAt(scene, at)) }}
             onToggleArea={(id) => { setEditing(null); editor.session.select([id]); diagram.toggle(id); }}
             editing={editing}
             setEditing={setEditing}

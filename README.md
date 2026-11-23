@@ -77,6 +77,8 @@ The editor opens on an empty canvas. Open **Help (?)** in the top bar to open th
 
 **Large diagrams** — Use the − button on an area to collapse it into one tile. **Diagram → Collapse top-level groups** summarizes the whole system and bundles matching external links. **Arrange summary view** affects the canvas and image exports. **Auto-layout entire diagram** updates the editable document in one undoable step. Try both with the [commerce and ML platform](samples/commerce-and-ml.structlet) in **Help → Complex example**.
 
+**Canvas context menu** — Right-click a service, area, or connection for its actions. Right-click a selected object to keep the multi-selection. Right-click empty space for paste, fit, and diagram-wide layout. You can also press **Shift+F10** with the canvas focused. **Collapse to middle-level groups** lets you keep the outer boundaries visible while summarizing their subgroups.
+
 The screen has four parts:
 
 - **Top bar** — on the left, the file menu, the title and, right after it, where the diagram is saved (this browser, or Google Drive once linked); undo and 2D / isometric in the middle; on the right, panel toggles, view mode, help, settings (⚙) and **Export**.
@@ -242,7 +244,7 @@ The layer rules are enforced in three places, all part of `npm run check` and CI
 </details>
 
 <details>
-<summary><b>41 E2E tests</b> (<code>tests/e2e</code>, production builds)</summary>
+<summary><b>45 E2E tests</b> (<code>tests/e2e</code>, production builds)</summary>
 
 - **Basic flow** — two nodes → connect → save → open → reload → SVG (same paths as the screen), PNG, rejecting an invalid file
 - **Areas** — dragging a VPC then a single undo, dragging into another area, wrapping

@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useRef, useState, type DragEvent, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent } from 'react';
 import type { Editor, SessionSnapshot } from '../../application';
 import { indexDocument, type Id, type Point } from '../../domain';
 import { polylineMidpoint, renderSceneBody, screenToWorld, worldToScreen, zoomAt, type DiagramTheme, type Scene, type Viewport } from '../../engine';
 import type { Translate } from '../../i18n/messages';
 import { SERVICE_DRAG_TYPE } from '../sidebar/types';
 import type { ViewMode } from '../Toolbar';
+import { ContextMenu, type ContextActions, type ContextRequest } from './ContextMenu';
 import { FoldControls } from './FoldControls';
 import { Handles } from './Handles';
 import { IsometricView } from './IsometricView';
@@ -23,6 +24,7 @@ interface CanvasProps {
   onResize(size: { width: number; height: number }): void;
   onDropService(serviceId: string, world: Point): void;
   summary: boolean;
+  context: ContextActions;
   onToggleArea(id: Id): void;
   editing: Id | null;
   setEditing(id: Id | null): void;
@@ -44,6 +46,11 @@ export function Canvas(props: CanvasProps) {
   const { t, editor, snapshot, scene, viewport, setViewport } = props;
   const svgRef = useRef<SVGSVGElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const [menu, setMenu] = useState<ContextRequest | null>(null);
+  const dismissMenu = useCallback((restoreFocus: boolean) => {
+    setMenu(null);
+    if (restoreFocus) svgRef.current?.focus({ preventScroll: true });
+  }, []);
   const spaceDown = useRef(false);
   const [panning, setPanning] = useState(false);
   const latest = useRef({ viewport, setViewport });
@@ -138,9 +145,41 @@ export function Canvas(props: CanvasProps) {
     props.onDropService(serviceId, screenToWorld(viewport, { x: e.clientX - r.left, y: e.clientY - r.top }));
   };
 
+  const showMenu = (screen: Point, ids: readonly Id[]) => {
+    const box = svgRef.current!.getBoundingClientRect();
+    const world = screenToWorld(viewport, { x: screen.x - box.left, y: screen.y - box.top });
+    editor.session.select(ids);
+    setMenu({ screen, world, ids, docId: snapshot.document.id });
+  };
+
+  const onContextMenu = (e: MouseEvent<HTMLDivElement>) => {
+    const target = e.target as Element;
+    if (target.closest('textarea, input, select, .canvas-context-menu')) return;
+    e.preventDefault();
+    if (props.presenting) return;
+    const id = target.closest<SVGElement | HTMLElement>('[data-hit], [data-fold-id]')?.dataset;
+    const object = id?.id ?? id?.foldId;
+    const ids = object ? (snapshot.selection.includes(object) ? snapshot.selection : [object]) : [];
+    showMenu({ x: e.clientX, y: e.clientY }, ids);
+  };
+
   const onKeyDown = (e: ReactKeyboardEvent<SVGSVGElement>) => {
     // Show the focus ring only for keyboard use; pointer use clears it.
     e.currentTarget.dataset.keyboard = 'true';
+    if (!props.presenting && (e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10'))) {
+      e.preventDefault();
+      const visible = new Set(tabOrder(scene));
+      const selected = snapshot.selection.filter((id) => visible.has(id));
+      const id = selected[0];
+      const rect = id ? scene.rects.get(id) ?? scene.annotations.find((a) => a.id === id)?.rect : undefined;
+      const edge = id ? scene.edges.find((edge) => edge.id === id) : undefined;
+      const box = e.currentTarget.getBoundingClientRect();
+      const point = rect ? { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 }
+        : edge ? polylineMidpoint(edge.points).point : null;
+      const p = point ? worldToScreen(viewport, point) : { x: box.width / 2, y: box.height / 2 };
+      showMenu({ x: box.left + Math.max(0, Math.min(box.width, p.x)), y: box.top + Math.max(0, Math.min(box.height, p.y)) }, selected);
+      return;
+    }
     if (e.key !== 'Tab') return;
     const order = tabOrder(scene);
     if (order.length === 0) return;
@@ -189,6 +228,7 @@ export function Canvas(props: CanvasProps) {
         }
       }}
       onDrop={onDrop}
+      onContextMenu={onContextMenu}
     >
       {!props.presenting && <FoldControls t={t} doc={snapshot.document} scene={scene} viewport={viewport} size={size} onToggle={props.onToggleArea} />}
       <svg
@@ -207,7 +247,6 @@ export function Canvas(props: CanvasProps) {
         onPointerUp={gestures.onPointerUp}
         onPointerCancel={gestures.onPointerCancel}
         onDoubleClick={onDoubleClick}
-        onContextMenu={(e) => e.preventDefault()}
       >
         <g transform={`translate(${viewport.panX} ${viewport.panY}) scale(${z})`}>
           <g className="diagram" dangerouslySetInnerHTML={{ __html: markup }} />
@@ -238,6 +277,7 @@ export function Canvas(props: CanvasProps) {
       {!props.presenting && !props.summary && <ToolBar t={t} tool={props.tool} onTool={props.onTool} />}
       {!props.presenting && !props.summary && props.tool === 'connect' && <div className="tool-hint" role="status">{t('tool.connectHint')}</div>}
       {presentHint && <div className="tool-hint present" role="status">{t('view.hint')}</div>}
+      {menu?.docId === snapshot.document.id && !props.presenting && <ContextMenu {...props.context} t={t} doc={snapshot.document} scene={scene} editor={editor} request={menu} fit={props.onFit} edit={props.setEditing} toggle={props.onToggleArea} dismiss={dismissMenu} />}
       <div className="canvas-corner">
         <ZoomBar t={t} viewport={viewport} size={size} setViewport={setViewport} onFit={props.onFit} />
         <Minimap scene={scene} viewport={viewport} size={size} setViewport={setViewport} label={t('minimap')} />

@@ -10,13 +10,14 @@ interface ClipboardDeps {
   pasteParent(): Id | null;
   /** Text that is not a Structlet fragment (draft JSON, compose, terraform) goes to import. */
   onImportText(text: string): void;
+  onPasteUnavailable(): void;
 }
 
 /**
  * Copy, cut and paste through the browser clipboard events, so no clipboard
  * permission is needed. The clipboard holds a small `.structlet` document.
  */
-export function useClipboard(deps: ClipboardDeps): void {
+export function useClipboard(deps: ClipboardDeps) {
   const latest = useRef(deps);
   latest.current = deps;
   const memory = useRef<{ fragment: Fragment; pastes: number } | null>(null);
@@ -65,4 +66,23 @@ export function useClipboard(deps: ClipboardDeps): void {
       window.removeEventListener('paste', onPaste);
     };
   }, []);
+
+  return async (at: Point, parent: Id | null) => {
+    const { editor } = latest.current;
+    const doc = editor.session.committedDocument;
+    const text = await navigator.clipboard?.readText?.().catch(() => '') ?? '';
+    const { summary, onImportText, onPasteUnavailable } = latest.current;
+    if (summary?.() || editor.session.committedDocument !== doc) return;
+    const fragment = text.trim() ? parseFragment(text) : memory.current?.fragment;
+    if (!fragment) {
+      if (text.trim()) onImportText(text);
+      else onPasteUnavailable();
+      return;
+    }
+    const roots = [...fragment.containers, ...fragment.nodes].filter((box) => box.parentId === null);
+    const points = [...roots, ...fragment.annotations, ...fragment.edges.flatMap((edge) => [edge.source, edge.target].flatMap((end) => end.kind === 'free' ? [end] : []))];
+    const x = points.length ? Math.min(...points.map((point) => point.x)) : at.x;
+    const y = points.length ? Math.min(...points.map((point) => point.y)) : at.y;
+    editor.paste(fragment, { x: Math.round(at.x - x), y: Math.round(at.y - y) }, parent);
+  };
 }

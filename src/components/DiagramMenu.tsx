@@ -6,9 +6,11 @@ import { Menu } from './ui/Menu';
 export interface DiagramMenuProps {
   active: boolean;
   canFoldTop: boolean;
+  canFoldMiddle: boolean;
   hasObjects: boolean;
   layout: LayoutMode | null;
   foldTop(): void;
+  foldMiddle(): void;
   expandAll(): void;
   arrange(mode: LayoutMode | null): void;
   layoutAll(mode: LayoutMode): void;
@@ -22,6 +24,7 @@ export function DiagramMenu({ t, diagram }: { t: Translate; diagram: DiagramMenu
       label={<><Icon name="group" />{t('summary.menu')}<Icon name="chevronDown" size={14} /></>}
       items={[
         { id: 'fold-top', label: t('summary.foldTop'), disabled: !diagram.canFoldTop, onSelect: diagram.foldTop },
+        { id: 'fold-middle', label: t('summary.foldMiddle'), disabled: !diagram.canFoldMiddle, onSelect: diagram.foldMiddle },
         { id: 'expand-all', label: t('summary.expandAll'), disabled: !diagram.active, onSelect: diagram.expandAll },
         ...LAYOUT_MODES.map((mode, i) => ({
           id: `layout-summary-${mode}`, label: t(`props.layout.${mode}`), disabled: !diagram.active,

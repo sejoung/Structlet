@@ -14,6 +14,8 @@ import {
   duplicate,
   findCollection,
   getBox,
+  indexDocument,
+
   moveBy,
   moveEach,
   moveInto,
@@ -192,6 +194,14 @@ export class Editor {
   setRoute(edgeId: Id, waypoints: readonly Point[]): EditResult {
     const rounded = waypoints.map((p) => ({ x: Math.round(p.x), y: Math.round(p.y) }));
     return this.update('edges', edgeId, rounded.length ? { routingMode: 'manual', waypoints: rounded } : { routingMode: 'auto', waypoints: [] });
+  }
+
+  reverseEdge(edgeId: Id): EditResult {
+    return this.run((doc) => {
+      const edge = indexDocument(doc).edges.get(edgeId);
+      if (!edge) return { changes: [] };
+      return updateObject(doc, 'edges', edgeId, { source: edge.target, target: edge.source, waypoints: [...edge.waypoints].reverse() });
+    });
   }
 
   resetRoute(edgeId: Id): EditResult {

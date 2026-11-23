@@ -20,7 +20,7 @@ export function FoldControls({ t, doc, scene, viewport, size, onToggle }: {
     return (
       <button
         key={area.id} type="button" className="fold-control" style={{ left: p.x - 22, top: p.y + 2 }}
-        aria-expanded={!folded} aria-label={label} title={label} data-testid={`fold-area-${area.id}`}
+        aria-expanded={!folded} aria-label={label} title={label} data-testid={`fold-area-${area.id}`} data-fold-id={area.id}
         onClick={(event) => {
           onToggle(area.id);
           if (event.detail === 0) requestAnimationFrame(() => document.querySelector<HTMLButtonElement>(`[data-testid="${CSS.escape(`fold-area-${area.id}`)}"]`)?.focus());

@@ -90,6 +90,7 @@ export function ManualPage({ t, language, onDownloadSample }: { t: Translate; la
         <ul className="manual-steps">
           <li>{t('manual.areaGuide')}</li>
           <li>{t('manual.inspectorGuide')}</li>
+          <li>{t('manual.contextGuide')}</li>
           <li>{t('manual.importGuide')}</li>
           <li>{t('manual.storageGuide')}</li>
         </ul>

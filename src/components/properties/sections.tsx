@@ -189,7 +189,7 @@ export function EdgeSection({ edge, ...p }: SectionProps & { edge: Edge }) {
         </Row>
         <div className="button-row">
           <button type="button" className="chip-button" disabled={edge.routingMode === 'auto'} onClick={() => editor.resetRoute(edge.id)}>{t('props.resetRoute')}</button>
-          <button type="button" className="chip-button" onClick={() => editor.update('edges', edge.id, { source: edge.target, target: edge.source, waypoints: [...edge.waypoints].reverse() })}>{t('props.swap')}</button>
+          <button type="button" className="chip-button" onClick={() => editor.reverseEdge(edge.id)}>{t('props.swap')}</button>
         </div>
         <p className="section-hint">{t('props.editHint')}</p>
       </Section>
