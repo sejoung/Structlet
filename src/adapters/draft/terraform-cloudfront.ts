@@ -1,4 +1,4 @@
-import type { CachePolicyDetails, CloudFrontDetails } from '../../domain';
+import { CLOUDFRONT_VIEWER_PROTOCOL_POLICIES, type CachePolicyDetails, type CloudFrontDetails } from '../../domain';
 import { block, blocks, boolean, natural, present, text, texts } from './infrastructure-values';
 import type { TerraformResource } from './terraform-resource';
 
@@ -37,11 +37,15 @@ export function cloudFrontIndex(resources: readonly TerraformResource[]) {
     const v = r.values ?? {};
     const behavior = (config: Record<string, unknown>, ordered: boolean) => {
       const id = text(config.cache_policy_id);
+      const methods = texts(config.allowed_methods);
       return present({
         pathPattern: ordered ? text(config.path_pattern) : undefined,
         originId: text(config.target_origin_id),
         cachePolicy: id ? policies.get(id) ?? { id } : present(ttl(config)),
         originRequestPolicyId: text(config.origin_request_policy_id),
+        viewerProtocolPolicy: CLOUDFRONT_VIEWER_PROTOCOL_POLICIES.find((policy) => policy === config.viewer_protocol_policy),
+        allowedMethods: methods.length ? methods : undefined,
+        compress: boolean(config.compress),
       });
     };
     const cacheBehaviors = [

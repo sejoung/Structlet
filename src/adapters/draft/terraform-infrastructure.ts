@@ -167,7 +167,7 @@ export function terraformInfrastructure(resources: readonly TerraformResource[],
   const groups = securityGroups(resources);
   const iam = iamIndex(resources);
   const cloudFrontFor = cloudFrontIndex(all);
-  const wafFor = wafIndex(resources);
+  const wafFor = wafIndex(all);
   const datasets = new Map(all.filter((r) => r.mode === 'data' && r.type === 'terraform_remote_state').map((r) => [r.address, r]));
   return (r: TerraformResource, refs: readonly string[], expressions: readonly string[]): InfrastructureDetails | undefined => {
     const v = r.values ?? {};

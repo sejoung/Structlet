@@ -129,6 +129,8 @@ test('CloudFront cache behaviors and WAF rules are readable after saving and reo
   await expect(inspector.getByText('website-policy')).toBeVisible();
   await expect(inspector.getByText('whitelist, Accept-Language')).toBeVisible();
   await expect(inspector.getByText('policy-unavailable')).toBeVisible();
+  await expect(inspector.getByText('redirect-to-https')).toBeVisible();
+  await expect(inspector.getByText('GET, HEAD, OPTIONS')).toBeVisible();
 
   const [saved] = await Promise.all([page.waitForEvent('download'), act(page, 'tb-save')]);
   const [open] = await Promise.all([page.waitForEvent('filechooser'), act(page, 'tb-open')]);
@@ -139,6 +141,9 @@ test('CloudFront cache behaviors and WAF rules are readable after saving and reo
   await cloudFront.click();
   await expect(dialog.getByText('/static/*')).toBeVisible();
   await expect(dialog.getByText('images-policy')).toBeVisible();
+  const staticBehavior = dialog.getByRole('listitem').filter({ hasText: '/static/*' });
+  await expect(staticBehavior.getByText('https-only')).toBeVisible();
+  await expect(staticBehavior.getByText('Disabled', { exact: true })).toBeVisible();
   await dialog.getByRole('button', { name: 'Close' }).click();
   await page.getByTestId('exit-present').click();
 
@@ -147,4 +152,7 @@ test('CloudFront cache behaviors and WAF rules are readable after saving and reo
   await expect(dialog.getByText('managed-baseline')).toBeVisible();
   await expect(dialog.getByText('Scope-down conditions')).toBeVisible();
   await expect(dialog.getByText('KR, JP')).toBeVisible();
+  await expect(dialog.getByText('192.0.2.0/24, 198.51.100.4/32')).toBeVisible();
+  await expect(dialog.getByText('website-acl-metrics')).toBeVisible();
+  await expect(dialog.getByText('rate-metrics')).toBeVisible();
 });

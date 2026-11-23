@@ -11,10 +11,16 @@
             "default_cache_behavior": [{
               "target_origin_id": "website",
               "cache_policy_id": "policy-custom",
-              "default_ttl": 99999
+              "default_ttl": 99999,
+              "viewer_protocol_policy": "redirect-to-https",
+              "allowed_methods": ["GET", "HEAD", "OPTIONS"],
+              "compress": true
             }],
             "ordered_cache_behavior": [
-              { "path_pattern": "/static/*", "target_origin_id": "assets", "cache_policy_id": "policy-unavailable", "origin_request_policy_id": "requests-assets" },
+              {
+                "path_pattern": "/static/*", "target_origin_id": "assets", "cache_policy_id": "policy-unavailable", "origin_request_policy_id": "requests-assets",
+                "viewer_protocol_policy": "https-only", "allowed_methods": ["GET", "HEAD"], "compress": false
+              },
               { "path_pattern": "/legacy/*", "target_origin_id": "compatibility", "min_ttl": 0, "default_ttl": 30, "max_ttl": 300 },
               { "path_pattern": "/images/*", "target_origin_id": "assets", "cache_policy_id": "policy-data" }
             ]
@@ -50,9 +56,11 @@
             "arn": "arn:aws:wafv2:us-east-1:000000000000:global/webacl/example/acl",
             "scope": "CLOUDFRONT",
             "default_action": [{ "allow": [{}], "block": [] }],
+            "visibility_config": [{ "metric_name": "website-acl-metrics", "cloudwatch_metrics_enabled": true, "sampled_requests_enabled": false }],
             "rule": [
               {
                 "name": "request-rate", "priority": 20,
+                "visibility_config": [{ "metric_name": "rate-metrics", "cloudwatch_metrics_enabled": false, "sampled_requests_enabled": true }],
                 "action": [{ "block": [{}], "allow": [] }],
                 "statement": [{
                   "rate_based_statement": [{
@@ -61,6 +69,7 @@
                       "or_statement": [{
                         "statement": [
                           { "ip_set_reference_statement": [{ "arn": "arn:aws:wafv2:us-east-1:000000000000:global/ipset/example/test" }] },
+                          { "ip_set_reference_statement": [{ "arn": "arn:aws:wafv2:us-east-1:000000000000:global/ipset/external/unknown" }] },
                           { "geo_match_statement": [{ "country_codes": ["KR", "JP"] }] }
                         ]
                       }]
@@ -82,11 +91,30 @@
           }
         },
         {
+          "address": "aws_wafv2_ip_set.test",
+          "type": "aws_wafv2_ip_set",
+          "name": "test",
+          "values": {
+            "arn": "arn:aws:wafv2:us-east-1:000000000000:global/ipset/example/test",
+            "name": "address-allowlist", "ip_address_version": "IPV4", "addresses": ["192.0.2.0/24", "198.51.100.4/32"]
+          }
+        },
+        {
+          "address": "aws_wafv2_ip_set.unrelated",
+          "type": "aws_wafv2_ip_set",
+          "name": "unrelated",
+          "values": {
+            "arn": "arn:aws:wafv2:us-east-1:000000000000:global/ipset/unrelated/other",
+            "name": "unrelated-v6", "ip_address_version": "IPV6", "addresses": ["2001:db8::/32"]
+          }
+        },
+        {
           "address": "aws_wafv2_web_acl_rule.additional",
           "type": "aws_wafv2_web_acl_rule",
           "name": "additional",
           "values": {
             "name": "header-check", "priority": 10,
+            "visibility_config": [{ "metric_name": "header-metrics", "cloudwatch_metrics_enabled": false, "sampled_requests_enabled": false }],
             "web_acl_arn": "arn:aws:wafv2:us-east-1:000000000000:global/webacl/example/acl",
             "action": [{ "count": [{}] }],
             "statement": [{ "byte_match_statement": [{ "search_string": "SYNTHETIC_PRIVATE_MATCH_VALUE" }] }]

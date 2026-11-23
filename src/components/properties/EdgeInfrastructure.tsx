@@ -1,4 +1,4 @@
-import type { CachePolicyDetails, CloudFrontDetails, WafDetails, WafStatement } from '../../domain';
+import type { CachePolicyDetails, CloudFrontDetails, WafDetails, WafIpSetDetails, WafStatement } from '../../domain';
 import type { Translate } from '../../i18n/messages';
 import { Entry, Fields, List } from './InfrastructureFields';
 
@@ -27,8 +27,10 @@ export function CloudFront({ details, t }: { details: CloudFrontDetails; t: Tran
       <>
         <strong>{behavior.pathPattern ?? t('infra.defaultBehavior')}</strong>
         <Fields t={t} fields={[
-          ['infra.cacheOrigin', behavior.originId], ['infra.originRequestPolicy', behavior.originRequestPolicyId],
+          ['infra.cacheOrigin', behavior.originId], ['infra.viewerProtocol', behavior.viewerProtocolPolicy],
+          ['infra.behaviorCompression', behavior.compress], ['infra.originRequestPolicy', behavior.originRequestPolicyId],
         ]} />
+        <Entry name={t('infra.allowedMethods')} values={behavior.allowedMethods} />
         {behavior.cachePolicy && <CachePolicy policy={behavior.cachePolicy} t={t} />}
       </>
     ))}</List>
@@ -52,18 +54,46 @@ function Statements({ items, t }: { items: readonly WafStatement[] | undefined; 
   ))}</List>;
 }
 
+function Visibility({ config, t }: { config: WafDetails['visibility']; t: Translate }) {
+  if (!config) return null;
+  return <section>
+    <h3>{t('infra.wafVisibility')}</h3>
+    <Fields t={t} fields={[
+      ['infra.wafMetricName', config.metricName], ['infra.wafMetrics', config.cloudWatchMetricsEnabled],
+      ['infra.wafSampling', config.sampledRequestsEnabled],
+    ]} />
+  </section>;
+}
+
+function IpSet({ set, t }: { set: WafIpSetDetails; t: Translate }) {
+  const { addresses } = set;
+  return <>
+    <strong>{set.name ?? set.reference}</strong>
+    <Fields t={t} fields={[
+      ['infra.wafReference', set.name ? set.reference : undefined], ['infra.wafIpVersion', set.ipAddressVersion],
+    ]} />
+    {addresses && <details open={addresses.length <= 12}>
+      <summary>{t('infra.wafAddresses', { count: addresses.length })}</summary>
+      {addresses.length > 0 && <span>{addresses.join(', ')}</span>}
+    </details>}
+  </>;
+}
+
 export function Waf({ details, t }: { details: WafDetails; t: Translate }) {
   return <section>
     <h3>{t('infra.waf')}</h3>
     <Fields t={t} fields={[
       ['infra.webAclReference', details.id], ['infra.wafScope', details.scope], ['infra.wafDefault', details.defaultAction],
     ]} />
+    <Visibility config={details.visibility} t={t} />
+    <List title={t('infra.wafIpSets')}>{details.ipSets?.map((set) => <IpSet set={set} t={t} />)}</List>
     <List title={t('infra.wafRules')}>{details.rules?.map((rule) => (
       <>
         <strong>{rule.name}</strong>
         <Fields t={t} fields={[
           ['infra.wafPriority', rule.priority], ['infra.wafAction', rule.action], ['infra.wafOverrideAction', rule.overrideAction],
         ]} />
+        <Visibility config={rule.visibility} t={t} />
         <Statements items={rule.statements} t={t} />
       </>
     ))}</List>

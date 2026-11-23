@@ -100,3 +100,36 @@ test('canvas folds keep nested state, preserve the file, and are shared by expor
   await page.getByTestId('tb-undo').click();
   await expect(node).toHaveAttribute('x', String(oldX));
 });
+
+test('group fold controls shrink with zoom and remain anchored and usable', async ({ page }) => {
+  await freshApp(page, 'en', { inspector: false });
+  const [picker] = await Promise.all([page.waitForEvent('filechooser'), act(page, 'tb-import')]);
+  await picker.setFiles({
+    name: 'zoom.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify({
+      containers: [{ id: 'pool', kind: 'cluster', label: 'Compute' }],
+      nodes: [{ id: 'worker', parent: 'pool', service: 'server' }],
+    })),
+  });
+  const fold = page.getByTestId('fold-area-pool');
+  await expect(fold).toBeVisible();
+  await page.getByTestId('zoom-level').click();
+  await expect(page.getByTestId('zoom-level')).toHaveText('100%');
+  const normal = (await fold.boundingBox())!;
+  const normalGlyph = (await fold.locator('svg').boundingBox())!;
+
+  for (let i = 0; i < 6; i++) await page.getByTestId('zoom-out').click();
+  const small = (await fold.boundingBox())!;
+  const smallGlyph = (await fold.locator('svg').boundingBox())!;
+  const group = (await page.locator('.diagram [data-container="pool"] > rect').first().boundingBox())!;
+  expect(small.width).toBeLessThan(normal.width * 0.7);
+  expect(smallGlyph.width).toBeLessThan(normalGlyph.width * 0.7);
+  expect(Math.abs(group.x + group.width - (small.x + small.width))).toBeLessThan(3);
+  expect(Math.abs(group.y - small.y)).toBeLessThan(3);
+
+  await fold.click();
+  await expect(fold).toHaveAttribute('aria-expanded', 'false');
+  await fold.press('Enter');
+  await expect(fold).toHaveAttribute('aria-expanded', 'true');
+});

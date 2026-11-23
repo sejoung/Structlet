@@ -121,6 +121,16 @@ export const infrastructureEn = {
   'infra.wafCountries': 'Country codes',
   'infra.wafActionOverrides': 'Rule action overrides',
   'infra.wafScopeDown': 'Scope-down conditions',
+  'infra.viewerProtocol': 'Viewer protocol policy',
+  'infra.allowedMethods': 'Allowed HTTP methods',
+  'infra.behaviorCompression': 'Automatic compression',
+  'infra.wafVisibility': 'Monitoring',
+  'infra.wafMetricName': 'Metric name',
+  'infra.wafMetrics': 'CloudWatch metrics',
+  'infra.wafSampling': 'Request sampling',
+  'infra.wafIpSets': 'Referenced IP sets',
+  'infra.wafIpVersion': 'IP version',
+  'infra.wafAddresses': 'CIDR addresses ({count})',
 } as const;
 
 export const infrastructureKo: Record<keyof typeof infrastructureEn, string> = {
@@ -246,4 +256,14 @@ export const infrastructureKo: Record<keyof typeof infrastructureEn, string> = {
   'infra.wafCountries': '국가 코드',
   'infra.wafActionOverrides': '개별 규칙 동작 재정의',
   'infra.wafScopeDown': '적용 범위를 좁히는 조건',
+  'infra.viewerProtocol': '뷰어 프로토콜 정책',
+  'infra.allowedMethods': '허용 HTTP 메서드',
+  'infra.behaviorCompression': '자동 압축',
+  'infra.wafVisibility': '모니터링',
+  'infra.wafMetricName': '메트릭 이름',
+  'infra.wafMetrics': 'CloudWatch 메트릭',
+  'infra.wafSampling': '요청 샘플링',
+  'infra.wafIpSets': '참조된 IP Set',
+  'infra.wafIpVersion': 'IP 버전',
+  'infra.wafAddresses': 'CIDR 주소 {count}개',
 };

@@ -1,5 +1,5 @@
-import type { WafDetails, WafRuleDetails, WafStatement } from '../../domain';
-import { blocks, natural, present, text, texts } from './infrastructure-values';
+import { WAF_IP_VERSIONS, type WafDetails, type WafIpSetDetails, type WafRuleDetails, type WafStatement } from '../../domain';
+import { block, blocks, boolean, natural, present, text, texts } from './infrastructure-values';
 import type { TerraformResource } from './terraform-resource';
 
 const ACTIONS = ['allow', 'block', 'count', 'captcha', 'challenge'] as const;
@@ -41,6 +41,15 @@ function statements(value: unknown, depth = 0): WafStatement[] {
     key.endsWith('_statement') ? blocks(field).map((v) => statementDetails(key.slice(0, -10), v, depth)) : []));
 }
 
+function visibility(value: unknown): WafDetails['visibility'] {
+  const v = block(value);
+  return present({
+    metricName: text(v.metric_name),
+    cloudWatchMetricsEnabled: boolean(v.cloudwatch_metrics_enabled),
+    sampledRequestsEnabled: boolean(v.sampled_requests_enabled),
+  });
+}
+
 function rule(v: Record<string, unknown>, group = false): WafRuleDetails | undefined {
   const name = text(group ? v.rule_name : v.name);
   const priority = natural(v.priority);
@@ -51,11 +60,42 @@ function rule(v: Record<string, unknown>, group = false): WafRuleDetails | undef
   }]) : statements(v.statement);
   return {
     name, priority, action: action(v.action, ACTIONS), overrideAction: action(v.override_action, OVERRIDES),
-    statements: conditions.length ? conditions : undefined,
+    statements: conditions.length ? conditions : undefined, visibility: visibility(v.visibility_config),
   };
 }
 
+function knownIpSets(resources: readonly TerraformResource[]): Map<string, WafIpSetDetails> {
+  const sets = new Map<string, WafIpSetDetails>();
+  for (const r of resources) {
+    if (r.type !== 'aws_wafv2_ip_set') continue;
+    const v = r.values ?? {};
+    const reference = r.sensitive_values?.arn ? undefined : text(v.arn);
+    if (!reference) continue;
+    sets.set(reference, {
+      reference,
+      name: text(v.name),
+      ipAddressVersion: WAF_IP_VERSIONS.find((version) => version === v.ip_address_version),
+      addresses: !r.sensitive_values?.addresses && Array.isArray(v.addresses) ? texts(v.addresses) : undefined,
+    });
+  }
+  return sets;
+}
+
+function referencedIpSets(rules: readonly WafRuleDetails[], known: ReadonlyMap<string, WafIpSetDetails>): WafIpSetDetails[] {
+  const references = new Set<string>();
+  const visit = (items: readonly WafStatement[] | undefined) => {
+    for (const item of items ?? []) {
+      if (item.kind === 'ip_set_reference' && item.reference) references.add(item.reference);
+      visit(item.children);
+      visit(item.scopeDown);
+    }
+  };
+  for (const rule of rules) visit(rule.statements);
+  return [...references].flatMap((reference) => known.get(reference) ?? []);
+}
+
 export function wafIndex(resources: readonly TerraformResource[]) {
+  const known = knownIpSets(resources);
   const external = new Map<string, WafRuleDetails[]>();
   for (const r of resources) {
     const group = r.type === 'aws_wafv2_web_acl_rule_group_association';
@@ -78,9 +118,12 @@ export function wafIndex(resources: readonly TerraformResource[]) {
     }
     for (const item of external.get(arn ?? '') ?? []) indexed.set(item.name, item);
     const rules = [...indexed.values()].sort((a, b) => a.priority - b.priority);
+    const ipSets = referencedIpSets(rules, known);
     return present({
       id: arn ?? text(v.id), scope: text(v.scope), defaultAction: action(v.default_action, DEFAULT_ACTIONS),
+      visibility: visibility(v.visibility_config),
       rules: rules.length ? rules : undefined,
+      ipSets: ipSets.length ? ipSets : undefined,
     });
   };
 }

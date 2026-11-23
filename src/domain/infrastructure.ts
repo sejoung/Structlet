@@ -35,10 +35,10 @@ function choice<const T extends string[]>(...options: T): Reader<T[number]> {
   return (value, path) => options.includes(value as T[number]) ? value as T[number] : invalid(path, `expected ${options.join(' or ')}`);
 }
 
-function list<T>(item: Reader<T>): Reader<readonly T[]> {
-  return (value, path) => Array.isArray(value) && value.length <= 1024
+function list<T>(item: Reader<T>, maximum = 1024): Reader<readonly T[]> {
+  return (value, path) => Array.isArray(value) && value.length <= maximum
     ? value.map((entry, index) => item(entry, `${path}[${index}]`))
-    : invalid(path, 'expected an array of at most 1024 items');
+    : invalid(path, `expected an array of at most ${maximum} items`);
 }
 
 function shape<F extends Fields, O extends Fields>(required: F, optional: O): Reader<Shape<F, O>> {
@@ -108,8 +108,11 @@ const cachePolicy = shape({}, {
   id: text, name: text, minTtl: count(0), defaultTtl: count(0), maxTtl: count(0),
   headers: cacheKey, cookies: cacheKey, queryStrings: cacheKey, gzip: boolean, brotli: boolean,
 });
+export const CLOUDFRONT_VIEWER_PROTOCOL_POLICIES = ['allow-all', 'https-only', 'redirect-to-https'] as const;
+
 const cacheBehavior = shape({}, {
   pathPattern: text, originId: text, cachePolicy, originRequestPolicyId: text,
+  viewerProtocolPolicy: choice(...CLOUDFRONT_VIEWER_PROTOCOL_POLICIES), allowedMethods: strings, compress: boolean,
 });
 const cloudFront = shape({}, { webAclId: text, cacheBehaviors: list(cacheBehavior) });
 const action = choice('allow', 'block', 'count', 'captcha', 'challenge');
@@ -130,11 +133,16 @@ function readWafStatement(value: unknown, path: string, depth = 0): WafStatement
   return shape({ kind: text }, { ...wafStatementFields, children: nested, scopeDown: nested })(value, path);
 }
 
+const wafVisibility = shape({}, { metricName: text, cloudWatchMetricsEnabled: boolean, sampledRequestsEnabled: boolean });
+export const WAF_IP_VERSIONS = ['IPV4', 'IPV6'] as const;
+const wafIpSet = shape({ reference: text }, {
+  name: text, ipAddressVersion: choice(...WAF_IP_VERSIONS), addresses: list(text, 10_000),
+});
 const wafRule = shape({ name: text, priority: count(0) }, {
-  action, overrideAction: choice('none', 'count'), statements: list(readWafStatement),
+  action, overrideAction: choice('none', 'count'), statements: list(readWafStatement), visibility: wafVisibility,
 });
 const waf = shape({}, {
-  id: text, scope: text, defaultAction: choice('allow', 'block'), rules: list(wafRule),
+  id: text, scope: text, defaultAction: choice('allow', 'block'), rules: list(wafRule), visibility: wafVisibility, ipSets: list(wafIpSet),
 });
 const infrastructure = shape({}, {
   securityGroupRules: list(securityRule), iamStatements: list(iamStatement), iamPolicyRefs: strings,
@@ -158,6 +166,7 @@ export type CloudFrontDetails = Read<typeof cloudFront>;
 export type CachePolicyDetails = Read<typeof cachePolicy>;
 export type WafDetails = Read<typeof waf>;
 export type WafRuleDetails = Read<typeof wafRule>;
+export type WafIpSetDetails = Read<typeof wafIpSet>;
 
 export function readInfrastructure(value: unknown, path = 'infrastructure'): InfrastructureDetails {
   return infrastructure(value, path);
