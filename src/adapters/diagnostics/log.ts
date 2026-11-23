@@ -1,8 +1,3 @@
-/**
- * An in-page event log: what the app did and what failed, by short event names such as
- * `files.exported`. Nothing leaves the page by itself; usage statistics (ADR 0017) forward
- * listed entries only, with the user's consent. Recent entries are kept for diagnostics.
- */
 export type LogLevel = 'info' | 'warn' | 'error';
 export type LogValue = string | number | boolean | null | undefined;
 
@@ -25,7 +20,6 @@ function write(level: LogLevel, event: string, details: Record<string, LogValue>
     try {
       l(entry);
     } catch {
-      // a listener's failure must not break the app
     }
   }
 }
@@ -45,7 +39,6 @@ export function recentEntries(): readonly LogEntry[] {
   return [...entries];
 }
 
-/** Error name and message as log details; `withMessage: false` keeps user text out. */
 export function errorDetails(error: unknown, withMessage = true): Record<string, LogValue> {
   const e = error instanceof Error ? error : new Error(String(error));
   const reason = (e as { reason?: unknown }).reason;

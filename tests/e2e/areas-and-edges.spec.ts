@@ -7,7 +7,6 @@ test('dragging an area moves its children and edges; one undo restores', async (
   const before = await center(page, 'node-api');
   const edgeBefore = await page.locator('.diagram path[data-edge="e-api-db"]').getAttribute('d');
 
-  // Grab the VPC by its header and drag it.
   const vpc = await page.locator('[data-hit="box"][data-id="vpc"]').boundingBox();
   const grab = { x: vpc!.x + 120, y: vpc!.y + 10 };
   await drag(page, grab, { x: grab.x + 80, y: grab.y + 40 });
@@ -51,7 +50,6 @@ test('wrapping selected nodes in a new area', async ({ page }) => {
 test('manual route edits survive moving a node and can be reset', async ({ page }) => {
   await freshApp(page);
   await openSample(page);
-  // Select the worker → payment edge by clicking its label.
   await page.locator('[data-hit="edge"][data-id="e-worker-payment"]').last().click();
   await expect(page.getByTestId('prop-routing')).toHaveText('Automatic');
   const segments = page.locator('[data-hit="segment"][data-id="e-worker-payment"]');
@@ -72,14 +70,12 @@ test('manual route edits survive moving a node and can be reset', async ({ page 
   expect(edited.routingMode).toBe('manual');
   expect(edited.waypoints.length).toBeGreaterThan(0);
 
-  // Move the payment node: the path changes but the user's waypoints are kept.
   const p = await center(page, 'node-payment');
   await drag(page, p, { x: p.x + 60, y: p.y + 80 });
   const moved = await page.locator('.diagram path[data-edge="e-worker-payment"]').getAttribute('d');
   expect(moved).not.toBe(manual);
   expect((await stored()).waypoints).toEqual(edited.waypoints);
 
-  // Undo the node move, then reset the route.
   await page.keyboard.press('ControlOrMeta+z');
   expect(await page.locator('.diagram path[data-edge="e-worker-payment"]').getAttribute('d')).toBe(manual);
   await page.locator('[data-hit="edge"][data-id="e-worker-payment"]').last().click();

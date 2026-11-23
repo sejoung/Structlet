@@ -5,21 +5,18 @@ on:
 permissions:
   contents: read
 concurrency:
-  # A newer push to the same branch makes the older run pointless.
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 jobs:
-  # Type check, unit tests and both builds; independent of the browser tests, so they run side by side.
   checks:
     runs-on: ubuntu-24.04
     env:
       CI: 'true'
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          # Nothing pushes back, so the token is not left in the git config.
           persist-credentials: false
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -27,31 +24,27 @@ jobs:
       - run: npm run check
   e2e:
     runs-on: ubuntu-24.04
-    # The official image has the browsers and OS packages, so nothing is installed per run.
-    # Keep this tag aligned with the Playwright version in package-lock.json (scripts/check-playwright-image.mjs).
     container:
       image: mcr.microsoft.com/playwright:v1.65.1-noble
       options: --init --ipc=host
     env:
       CI: 'true'
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
       - name: Check preinstalled Playwright version
         run: node scripts/check-playwright-image.mjs
-      # Builds the single-file page, then serves two production builds with Google mocked.
       - run: npm run e2e
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: failure()
         with:
           name: e2e-results
           path: test-results/
           if-no-files-found: ignore
-          # Failure traces are only useful right after a run.
           retention-days: 3

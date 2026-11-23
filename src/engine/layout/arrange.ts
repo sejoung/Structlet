@@ -1,10 +1,5 @@
 import type { Id, Point } from '../../domain';
 
-/**
- * Arranges sized items relative to (0,0). `flow` ranks items by the longest
- * path of the edges between them (left to right), `flow-down` does the same
- * top to bottom, `grid` fills rows. Deterministic for the same input.
- */
 
 export const LAYOUT_MODES = ['flow', 'flow-down', 'grid'] as const;
 export type LayoutMode = (typeof LAYOUT_MODES)[number];
@@ -20,13 +15,11 @@ export interface LayoutLink {
   readonly to: Id;
 }
 
-export const LAYOUT_GAP = { primary: 72, secondary: 40 } as const;
+export const LAYOUT_GAP = { primary: 72, secondary: 56 } as const;
 
-/** Longest-path ranks; edges that would close a cycle are ignored. */
 export function ranks(ids: readonly Id[], links: readonly LayoutLink[]): Map<Id, number> {
   const out = new Map<Id, Id[]>(ids.map((id) => [id, []]));
   for (const l of links) if (l.from !== l.to && out.has(l.from) && out.has(l.to)) out.get(l.from)!.push(l.to);
-  // Drop back edges found by DFS in input order.
   const state = new Map<Id, 1 | 2>();
   const dag = new Map<Id, Id[]>(ids.map((id) => [id, []]));
   const visit = (id: Id) => {
@@ -65,7 +58,6 @@ function countCrossings(layers: Id[][], links: readonly LayoutLink[]): number {
   return total;
 }
 
-/** Orders items inside each layer by the barycenter of their neighbours, keeping the order with fewest crossings. */
 export function orderLayers(layers: Id[][], links: readonly LayoutLink[]): Id[][] {
   const neighbours = new Map<Id, Id[]>();
   for (const l of links) {
@@ -100,34 +92,35 @@ export function orderLayers(layers: Id[][], links: readonly LayoutLink[]): Id[][
 }
 
 export function arrange(items: readonly LayoutItem[], links: readonly LayoutLink[], mode: LayoutMode, gap = LAYOUT_GAP): Map<Id, Point> {
-  const result = new Map<Id, Point>();
-  if (items.length === 0) return result;
+  if (items.length === 0) return new Map();
   const size = new Map(items.map((i) => [i.id, i]));
-  if (mode === 'grid') {
-    const cols = Math.ceil(Math.sqrt(items.length));
-    const colW: number[] = [];
-    const rowH: number[] = [];
-    items.forEach((it, k) => {
-      const c = k % cols;
-      const r = Math.floor(k / cols);
-      colW[c] = Math.max(colW[c] ?? 0, it.width);
-      rowH[r] = Math.max(rowH[r] ?? 0, it.height);
-    });
-    items.forEach((it, k) => {
-      const c = k % cols;
-      const r = Math.floor(k / cols);
-      const x = colW.slice(0, c).reduce((s, v) => s + v + gap.secondary, 0);
-      const y = rowH.slice(0, r).reduce((s, v) => s + v + gap.secondary, 0);
-      result.set(it.id, { x: x + (colW[c]! - it.width) / 2, y: y + (rowH[r]! - it.height) / 2 });
-    });
-    return result;
-  }
   const ids = items.map((i) => i.id);
-  const rank = ranks(ids, links);
+  const validLinks = links.filter((link) => size.has(link.from) && size.has(link.to));
+  if (mode === 'grid') return arrangeGrid(ids, size, validLinks, gap.secondary);
+  const rank = ranks(ids, validLinks);
   const layerCount = Math.max(...rank.values()) + 1;
   const layers: Id[][] = Array.from({ length: layerCount }, () => []);
   for (const id of ids) layers[rank.get(id)!]!.push(id);
-  const ordered = orderLayers(layers, links);
+  const ordered = orderLayers(layers, validLinks);
+  const place = (layers: Id[][]) => placeFlow(layers, size, mode, gap);
+  let best = place(ordered);
+  let cost = wireLength(best, size, validLinks) + countCrossings(ordered, validLinks) * gap.primary;
+  if (ids.length <= 80) for (const layer of ordered) {
+    for (let i = 1; i < layer.length; i++) {
+      [layer[i - 1], layer[i]] = [layer[i]!, layer[i - 1]!];
+      const candidate = place(ordered);
+      const score = wireLength(candidate, size, validLinks) + countCrossings(ordered, validLinks) * gap.primary;
+      if (score < cost) {
+        best = candidate;
+        cost = score;
+      } else [layer[i - 1], layer[i]] = [layer[i]!, layer[i - 1]!];
+    }
+  }
+  return best;
+}
+
+function placeFlow(ordered: Id[][], size: ReadonlyMap<Id, LayoutItem>, mode: LayoutMode, gap: typeof LAYOUT_GAP): Map<Id, Point> {
+  const result = new Map<Id, Point>();
   const horizontal = mode === 'flow';
   const along = (id: Id) => (horizontal ? size.get(id)!.width : size.get(id)!.height);
   const across = (id: Id) => (horizontal ? size.get(id)!.height : size.get(id)!.width);
@@ -145,4 +138,77 @@ export function arrange(items: readonly LayoutItem[], links: readonly LayoutLink
     primary += layerThickness[i]! + gap.primary;
   });
   return result;
+}
+
+
+function arrangeGrid(ids: Id[], size: ReadonlyMap<Id, LayoutItem>, links: readonly LayoutLink[], gap: number): Map<Id, Point> {
+  const cols = Math.ceil(Math.sqrt(ids.length));
+  const place = () => placeGrid(ids, size, cols, gap);
+  let best = place();
+  if (links.length === 0 || ids.length > 160) return best;
+
+  let cost = wireLength(best, size, links);
+  const optimize = (a: number, b: number) => {
+    if (a === b || b >= ids.length) return;
+    [ids[a], ids[b]] = [ids[b]!, ids[a]!];
+    const candidate = place();
+    const score = wireLength(candidate, size, links);
+    if (score < cost) {
+      best = candidate;
+      cost = score;
+    } else [ids[a], ids[b]] = [ids[b]!, ids[a]!];
+  };
+  for (let pass = 0; pass < 2; pass++) {
+    for (let i = 0; i < ids.length; i++) {
+      if (ids.length <= 18) {
+        for (let j = i + 1; j < ids.length; j++) optimize(i, j);
+      } else {
+        optimize(i, i + 1);
+        optimize(i, i + cols);
+      }
+    }
+  }
+  return best;
+}
+
+function placeGrid(ids: readonly Id[], size: ReadonlyMap<Id, LayoutItem>, cols: number, gap: number): Map<Id, Point> {
+  const widths: number[] = [];
+  const heights: number[] = [];
+  ids.forEach((id, i) => {
+    const item = size.get(id)!;
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    widths[col] = Math.max(widths[col] ?? 0, item.width);
+    heights[row] = Math.max(heights[row] ?? 0, item.height);
+  });
+  const starts = (lengths: number[]) => {
+    let next = 0;
+    return lengths.map((length) => {
+      const start = next;
+      next += length + gap;
+      return start;
+    });
+  };
+  const xs = starts(widths);
+  const ys = starts(heights);
+  return new Map(ids.map((id, i) => {
+    const item = size.get(id)!;
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    return [id, { x: xs[col]! + (widths[col]! - item.width) / 2, y: ys[row]! + (heights[row]! - item.height) / 2 }];
+  }));
+}
+
+function wireLength(positions: ReadonlyMap<Id, Point>, sizes: ReadonlyMap<Id, LayoutItem>, links: readonly LayoutLink[]): number {
+  let cost = 0;
+  for (const { from, to } of links) {
+    const a = positions.get(from)!;
+    const b = positions.get(to)!;
+    const sa = sizes.get(from)!;
+    const sb = sizes.get(to)!;
+    const x = Math.abs(a.x + sa.width / 2 - b.x - sb.width / 2);
+    const y = Math.abs(a.y + sa.height / 2 - b.y - sb.height / 2);
+    cost += x + y;
+  }
+  return cost;
 }

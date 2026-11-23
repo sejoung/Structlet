@@ -18,10 +18,6 @@ import {
 } from '../../domain';
 import { arr, bool, FormatError, id, num, obj, oneOf, str, nullableId, type Json } from './reader';
 
-/**
- * The `.structlet` file: versioned JSON. Saved files always carry resolved
- * positions; automatic edge routes are not stored, manual waypoints are.
- */
 
 export const FILE_EXTENSION = '.structlet';
 export const MIME_TYPE = 'application/vnd.structlet+json';
@@ -113,7 +109,6 @@ function annotation(v: unknown, path: string): Annotation {
   };
 }
 
-/** Parses and validates a `.structlet` file. Never throws. */
 export function parseStructlet(text: string): ParseResult {
   if (text.length > MAX_FILE_BYTES) return { ok: false, errors: [`File is larger than ${MAX_FILE_BYTES / 1024 / 1024} MB`] };
   let raw: unknown;
@@ -151,7 +146,6 @@ function endpointJson(e: Endpoint): Json {
   return e.kind === 'free' ? { kind: 'free', x: e.x, y: e.y } : { kind: 'attached', objectId: e.objectId, side: e.side, offset: e.offset };
 }
 
-/** Stable, readable JSON for a document. */
 export function serializeStructlet(doc: Document): string {
   const file = {
     format: 'structlet',

@@ -9,7 +9,6 @@ const TOOLS: { tool: CanvasTool; icon: IconName; key: string }[] = [
   { tool: 'connect', icon: 'connector', key: 'C' },
 ];
 
-/** Floating tool switch: select and edit, move the view only, or draw connections. */
 export function ToolBar({ t, tool, onTool }: { t: Translate; tool: CanvasTool; onTool(tool: CanvasTool): void }) {
   return (
     <div className="toolbar-float" role="toolbar" aria-label={t('tool.label')} data-testid="tools">

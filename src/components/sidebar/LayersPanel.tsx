@@ -6,10 +6,6 @@ import type { Translate } from '../../i18n/messages';
 import { GlyphIcon, ServiceTile } from '../GlyphIcon';
 import { Icon } from '../ui/Icon';
 
-/**
- * The explicit area hierarchy as a tree. Guide lines take the color of each
- * enclosing area, so nesting reads the same way it looks on the canvas.
- */
 
 type Row =
   | { kind: 'box'; id: Id; depth: number; guides: string[]; area: boolean; hasChildren: boolean }
@@ -38,7 +34,6 @@ export function LayersPanel({ t, editor, doc, selection, appearance }: Props) {
     const out: Row[] = [];
     const walk = (parent: Id | null, depth: number, guides: string[]) => {
       const kids = index.children.get(parent) ?? [];
-      // Areas first, then services, in document order.
       const ordered = [...kids.filter((k) => index.containers.has(k)), ...kids.filter((k) => index.nodes.has(k))];
       for (const id of ordered) {
         const area = index.containers.get(id);
@@ -82,7 +77,6 @@ export function LayersPanel({ t, editor, doc, selection, appearance }: Props) {
     return index.annotations.get(id)?.text.split('\n')[0] || id;
   };
 
-  /** The editable text: label for boxes and connections, text for notes. */
   const rawLabel = (id: Id): string => (index.nodes.get(id) ?? index.containers.get(id) ?? index.edges.get(id))?.label ?? index.annotations.get(id)?.text ?? '';
 
   const drop = (e: DragEvent, target: Id | null) => {

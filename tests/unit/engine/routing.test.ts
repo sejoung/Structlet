@@ -34,14 +34,12 @@ describe('manual routing', () => {
     const source = end({ x: 64, y: 32 }, 'right');
     const target = end({ x: 400, y: 232 }, 'left');
     const auto = routeAuto(source, target, []);
-    // Drag the vertical middle segment 60px to the right.
     const vertical = auto.findIndex((p, i) => i > 0 && p.x === auto[i - 1]!.x) - 1;
     const waypoints = dragSegment(auto, vertical, { x: 60, y: 999 });
     const edited = routeManual(source, target, waypoints);
     expect(edited.some((p) => p.x === auto[vertical]!.x + 60)).toBe(true);
     expect(interiorPoints(edited)).toEqual(waypoints);
 
-    // Move the target down: the user's waypoints stay on the path.
     const moved = routeManual(source, end({ x: 400, y: 300 }, 'left'), waypoints);
     expect(orthogonal(moved)).toBe(true);
     for (const w of waypoints) expect(moved).toContainEqual(w);

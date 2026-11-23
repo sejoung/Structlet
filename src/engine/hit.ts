@@ -2,7 +2,6 @@ import type { Id, Point, Rect } from '../domain';
 import { containsPoint, containsRect, distanceToSegment, inflate } from './geometry';
 import type { Scene } from './scene';
 
-/** Deepest container containing the point, skipping excluded ids. */
 export function containerAt(scene: Scene, p: Point, exclude: ReadonlySet<Id> = new Set()): Id | null {
   let best: { id: Id; depth: number } | null = null;
   for (const c of scene.containers) {
@@ -12,7 +11,6 @@ export function containerAt(scene: Scene, p: Point, exclude: ReadonlySet<Id> = n
   return best?.id ?? null;
 }
 
-/** Node or container under a point; nodes win over containers. */
 export function boxAt(scene: Scene, p: Point, exclude: ReadonlySet<Id> = new Set(), slop = 0): Id | null {
   for (let i = scene.nodes.length - 1; i >= 0; i--) {
     const node = scene.nodes[i]!;
@@ -31,7 +29,6 @@ export function edgeAt(scene: Scene, p: Point, tolerance: number): { id: Id; seg
   return null;
 }
 
-/** Ids fully inside a marquee rectangle (boxes, annotations) or crossing it (edges). */
 export function idsInRect(scene: Scene, r: Rect): Id[] {
   const ids: Id[] = [];
   for (const c of scene.containers) if (containsRect(r, c.rect)) ids.push(c.id);

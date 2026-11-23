@@ -1,9 +1,8 @@
-/* Structlet editor chrome. One accent (cyanotype blue), graphite neutrals, 8px rhythm. */
 :root {
   --surface: #ffffff;
   --surface-2: #f5f6f8;
   --surface-3: #eceef2;
-  --canvas: #eef0f4; /* also CANVAS_LIGHT in App.tsx */
+  --canvas: #eef0f4;
   --dot: #d3d7df;
   --ink: #171b26;
   --ink-2: #4a5164;
@@ -33,7 +32,7 @@
   --surface: #171a21;
   --surface-2: #1e222b;
   --surface-3: #262b35;
-  --canvas: #101318; /* also CANVAS_DARK in App.tsx */
+  --canvas: #101318;
   --dot: #252a34;
   --ink: #e7e9ef;
   --ink-2: #b3b9c6;
@@ -58,7 +57,6 @@ kbd { font: inherit; font-size: 11px; color: var(--ink-2); background: var(--sur
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .count { font-size: 11px; font-weight: 500; color: var(--muted); background: var(--surface-2); border-radius: 999px; padding: 0 6px; line-height: 18px; }
 
-/* Controls */
 button { cursor: pointer; }
 button:disabled { cursor: default; opacity: 0.4; }
 select, input[type='search'], input[type='number'], input[type='text'], textarea {
@@ -95,7 +93,6 @@ select:hover, input:hover, textarea:hover { border-color: var(--line-strong); }
 .switch input:checked + .switch-track::after { transform: translateX(12px); }
 .switch input:focus-visible + .switch-track { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-/* Menus */
 .menu { position: relative; }
 .menu-button { display: inline-flex; align-items: center; gap: 4px; height: var(--control-h); padding: 0 10px; border: 0; border-radius: var(--radius); background: transparent; color: var(--ink); font-weight: 500; }
 .menu-button:hover, .menu-button[aria-expanded='true'] { background: var(--surface-3); }
@@ -112,13 +109,11 @@ select:hover, input:hover, textarea:hover { border-color: var(--line-strong); }
 .menu-icon { width: 16px; display: inline-grid; place-items: center; color: var(--ink-2); }
 .menu-label { flex: 1; }
 
-/* Layout */
 .app { display: grid; grid-template-rows: 48px minmax(0, 1fr); height: 100%; }
 .workspace { display: flex; min-height: 0; }
 .workspace > .sidebar, .workspace > .inspector { flex: none; }
 .stage { position: relative; flex: 1; min-width: 0; min-height: 0; display: grid; }
 
-/* Top bar */
 .topbar { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px; padding: 0 10px; border-bottom: 1px solid var(--line); background: var(--surface); }
 .topbar-start, .topbar-end, .topbar-center { display: flex; align-items: center; gap: 4px; min-width: 0; }
 .topbar-end { justify-content: flex-end; gap: 6px; }
@@ -126,18 +121,15 @@ select:hover, input:hover, textarea:hover { border-color: var(--line-strong); }
 .brand { display: grid; place-items: center; width: 32px; height: 32px; color: var(--accent); }
 .brand-mark { width: 20px; height: 20px; }
 .doc-title { display: flex; align-items: center; gap: 4px; min-width: 0; padding-left: 6px; margin-left: 2px; border-left: 1px solid var(--line); }
-/* The field grows with the title: a hidden copy in the same grid cell sets its width. */
 .title-field { display: inline-grid; min-width: 0; max-width: min(360px, 28vw); }
 .title-field::after { content: attr(data-value) ' '; grid-area: 1 / 1; visibility: hidden; height: 0; overflow: hidden; white-space: pre; padding: 0 9px; font-weight: 600; font-size: 14px; }
 .title-input { grid-area: 1 / 1; width: 100%; min-width: 96px; border: 1px solid transparent; background: transparent; height: var(--control-h); border-radius: var(--radius); padding: 0 8px; font-weight: 600; font-size: 14px; text-overflow: ellipsis; }
 .title-input:hover { border-color: var(--line); }
 .title-input:focus { border-color: var(--accent); outline: none; background: var(--surface); }
-/* Where the diagram is saved: this browser, or Google Drive once linked. */
 .save-status { display: flex; align-items: center; gap: 4px; flex: none; }
 .save-state { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 6px; color: var(--muted); font-size: 12px; white-space: nowrap; cursor: default; }
 .save-state.saving svg { color: var(--warn); }
 
-/* Sidebar */
 .sidebar { display: grid; grid-template-columns: 56px 256px; border-right: 1px solid var(--line); background: var(--surface); min-height: 0; }
 .rail { display: flex; flex-direction: column; gap: 2px; padding: 8px 6px; border-right: 1px solid var(--line); background: var(--surface-2); }
 .rail-button { display: grid; justify-items: center; gap: 2px; padding: 7px 0 5px; border: 0; border-radius: 8px; background: transparent; color: var(--ink-2); font-size: 10.5px; }
@@ -179,7 +171,6 @@ select:hover, input:hover, textarea:hover { border-color: var(--line-strong); }
 .area-tag.large { width: 28px; height: 28px; border-radius: 6px; }
 .note-sample { flex: none; display: grid; place-items: center; width: 34px; height: 26px; border-radius: 4px; background: var(--surface-3); color: var(--ink-2); }
 
-/* Layers */
 .layer-root { margin: 0 2px 4px; padding: 4px 8px; border: 1px dashed transparent; border-radius: 6px; color: var(--muted); font-size: 12px; }
 .layer-root.drop { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
 .tree { display: grid; grid-template-columns: minmax(0, 1fr); outline: none; border-radius: 6px; }
@@ -202,7 +193,6 @@ button.twisty:hover { background: var(--surface-3); color: var(--ink); }
 .layer-group { display: flex; align-items: center; gap: 4px; height: 28px; margin-top: 8px; padding: 0 4px; border: 0; background: transparent; color: var(--ink-2); font-weight: 600; font-size: 12px; text-align: left; border-radius: 6px; }
 .layer-group:hover { background: var(--surface-2); }
 
-/* Inspector */
 .inspector { display: grid; grid-template-rows: auto minmax(0, 1fr); width: 288px; border-left: 1px solid var(--line); background: var(--surface); min-height: 0; }
 .inspector-head { display: flex; align-items: center; gap: 10px; min-height: 60px; padding: 10px 10px 10px 14px; border-bottom: 1px solid var(--line); }
 .inspector-icon { flex: none; display: inline-grid; place-items: center; }
@@ -246,7 +236,6 @@ button.twisty:hover { background: var(--surface-3); color: var(--ink); }
 .finding svg { flex: none; margin-top: 1px; color: var(--muted); }
 .finding.warning svg { color: var(--warn); }
 
-/* Canvas */
 .canvas { position: relative; overflow: hidden; background-color: var(--canvas); background-image: radial-gradient(var(--dot) 1px, transparent 1px); min-width: 0; min-height: 0; }
 .canvas-svg { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; user-select: none; display: block; }
 .canvas-svg:focus, .canvas-svg:focus-visible { outline: none; }
@@ -288,7 +277,6 @@ button.twisty:hover { background: var(--surface-3); color: var(--ink); }
 .toast .icon-button { color: inherit; opacity: 0.8; width: 26px; height: 26px; }
 .toast .icon-button:hover { background: rgba(255, 255, 255, 0.12); color: inherit; }
 
-/* Dialogs */
 .dialog { border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; width: min(560px, 92vw); background: var(--surface); color: var(--ink); box-shadow: var(--float); }
 .dialog::backdrop { background: rgba(17, 24, 39, 0.35); }
 .dialog h2 { font-size: 15px; margin-bottom: 8px; }
@@ -351,13 +339,11 @@ button.twisty:hover { background: var(--surface-3); color: var(--ink); }
   * { transition: none !important; }
 }
 
-/* Collapsible panels */
 .sidebar.collapsed { grid-template-columns: 56px; }
 .app.presenting .sidebar, .app.summary .sidebar { display: none; }
 .fold-control { position: absolute; z-index: 3; width: 20px; height: 20px; display: grid; place-items: center; padding: 0; border: 1px solid var(--line-strong); border-radius: 4px; background: var(--surface); color: var(--ink-2); }
 .fold-control:hover, .fold-control:focus-visible { background: var(--accent-soft); color: var(--accent); }
 
-/* Tools */
 .toolbar-float { position: absolute; left: 12px; top: 12px; z-index: 4; display: flex; gap: 2px; padding: 3px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--float); }
 .toolbar-float .icon-button { width: 30px; height: 30px; }
 .canvas.tool-hand .canvas-svg, .canvas.tool-hand .hit-area, .canvas.tool-hand .hit-edge { cursor: grab; }
@@ -371,7 +357,6 @@ button.twisty:hover { background: var(--surface-3); color: var(--ink); }
 .badge-anchor { position: relative; display: inline-flex; }
 .toggle-badge { position: absolute; top: -3px; right: -4px; min-width: 14px; height: 14px; padding: 0 3px; border-radius: 999px; background: var(--warn); color: var(--surface); font-size: 9.5px; font-weight: 600; line-height: 14px; text-align: center; pointer-events: none; box-shadow: 0 0 0 2px var(--surface); }
 
-/* Google Drive */
 .drive-button { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 9px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--ink-2); white-space: nowrap; font-size: 12px; }
 .drive-button:hover { border-color: var(--line-strong); background: var(--surface-2); color: var(--ink); }
 .drive-button.linked { border-color: transparent; background: var(--surface-2); }

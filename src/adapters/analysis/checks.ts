@@ -1,10 +1,6 @@
 import { ancestors, indexDocument, type Document, type Id } from '../../domain';
 import { findService, ROLE_COLORS } from '../catalog/services';
 
-/**
- * Local architecture checks. They run on the document only, with no cloud
- * access, and point at common review findings.
- */
 
 export type CheckSeverity = 'warning' | 'info';
 export type CheckCode =
@@ -25,7 +21,6 @@ const DATA = new Set<string>([ROLE_COLORS.data, ROLE_COLORS.storage]);
 const CLIENT = new Set<string>([ROLE_COLORS.client, ROLE_COLORS.external]);
 const PUBLIC = /public|퍼블릭|공개|dmz/i;
 
-/** `known` lets services that only exist in an icon pack count as known. */
 export function runChecks(doc: Document, known: (serviceId: string) => boolean = () => false): Finding[] {
   const index = indexDocument(doc);
   const findings: Finding[] = [];

@@ -1,9 +1,5 @@
 import type { Collection, CollectionItem, Document, Id } from './model';
 
-/**
- * A reversible change to one object. `before: null` inserts, `after: null`
- * deletes. `index` remembers the z-order position for inserts and deletes.
- */
 export type ObjectChange = {
   [C in Collection]: {
     readonly collection: C;
@@ -69,7 +65,6 @@ export function invertPatch(patch: Patch): Patch {
   };
 }
 
-/** Concatenates patches, collapsing repeated changes to the same object. */
 export function composePatches(...patches: Patch[]): Patch {
   const changes: Change[] = [];
   const position = new Map<string, number>();

@@ -4,7 +4,6 @@ import type { Translate } from '../../i18n/messages';
 import { GlyphIcon } from '../GlyphIcon';
 import { Icon, type IconName } from '../ui/Icon';
 
-/** Area kinds with their boundary color and header symbol. */
 export function AreasPanel({ t, glyph, color, wrapping, onAdd }: { t: Translate; glyph(kind: ContainerKind): Glyph | null; color(kind: ContainerKind): string; wrapping: number; onAdd(kind: ContainerKind): void }) {
   return (
     <div className="panel-body">

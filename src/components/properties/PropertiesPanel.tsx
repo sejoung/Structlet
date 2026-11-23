@@ -36,7 +36,6 @@ const ALIGN: { mode: AlignMode; icon: IconName; key: string }[] = [
   { mode: 'bottom', icon: 'alignBottom', key: 'bottom' },
 ];
 
-/** Inspector: what is selected, its properties, and what can be done with it. */
 export function PropertiesPanel(props: PropertiesProps) {
   const { t, editor, snapshot, scene, appearance } = props;
   const doc = snapshot.document;

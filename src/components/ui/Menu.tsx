@@ -8,7 +8,6 @@ export interface MenuItem {
   readonly shortcut?: string;
   readonly checked?: boolean;
   readonly disabled?: boolean;
-  /** Draws a divider above the item. */
   readonly separated?: boolean;
   readonly heading?: string;
   onSelect(): void;
@@ -21,11 +20,9 @@ interface MenuProps {
   readonly testId: string;
   readonly className?: string;
   readonly align?: 'start' | 'end';
-  /** Called when the menu opens, e.g. to load what its items need. */
   readonly onOpen?: () => void;
 }
 
-/** A button that opens a list of actions. Arrow keys move, Escape closes, clicking outside closes. */
 export function Menu({ label, ariaLabel, items, testId, className = '', align = 'start', onOpen }: MenuProps) {
   const [open, setOpen] = useState(false);
   const id = useId();

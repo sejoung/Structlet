@@ -8,7 +8,6 @@ import { useDrive, type DriveController, type DriveServices } from './use-drive'
 
 interface Options {
   services: DriveServices | undefined;
-  /** Drive is configured but this page cannot use it (opened from a file). */
   webOnly: boolean;
   editor: Editor;
   t: Translate;
@@ -17,7 +16,6 @@ interface Options {
   onOpened(doc: Document): void;
 }
 
-/** The Drive parts of the screen: the top-bar entry and its dialogs. */
 export function useDriveBar(options: Options): { bar: DriveBar | undefined; dialogs: ReactNode; controller: DriveController | null } {
   const { t, editor } = options;
   const controller = useDrive(options);

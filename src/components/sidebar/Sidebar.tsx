@@ -20,7 +20,6 @@ interface Props {
   t: Translate;
   tab: SidebarTab;
   onTab(tab: SidebarTab): void;
-  /** Whether the panel next to the rail is shown. */
   open: boolean;
   onOpen(open: boolean): void;
   editor: Editor;
@@ -37,7 +36,6 @@ interface Props {
   onAddNote(kind: AnnotationKind): void;
 }
 
-/** Icon rail with one panel at a time: what to add, and the layers of what is there. */
 export function Sidebar(props: Props) {
   const { t, tab } = props;
   return (
@@ -54,7 +52,6 @@ export function Sidebar(props: Props) {
             data-testid={`rail-${x.id}`}
             title={t(`rail.${x.id}`)}
             onClick={() => {
-              // Clicking the open tab again folds the panel away, like an editor side bar.
               if (props.open && tab === x.id) props.onOpen(false);
               else {
                 props.onTab(x.id);

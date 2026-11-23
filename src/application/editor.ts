@@ -45,10 +45,6 @@ export type IdGenerator = (kind: IdKind) => Id;
 
 export type EditResult = { ok: true } | { ok: false; error: string };
 
-/**
- * Editing use cases on top of a session. Each method is one undo step.
- * Geometry decisions (drop targets, alignment) are made by the caller.
- */
 export class Editor {
   constructor(
     readonly session: EditorSession,
@@ -82,7 +78,6 @@ export class Editor {
     return id;
   }
 
-  /** Wraps the selected boxes in a new area. Returns null when nothing is selected. */
   wrapInArea(ids: readonly Id[], kind: ContainerKind, label: string): Id | null {
     const id = this.newId('container');
     const result = this.run((d) => wrapInContainer(d, ids, { id, kind, label, width: 0, height: 0, style: CONTAINER_PRESETS[kind] }, 32), { select: [id] });
@@ -104,7 +99,6 @@ export class Editor {
     return id;
   }
 
-  /** Next free flow-step number in the document. */
   nextStepNumber(): number {
     const used = this.doc.annotations.filter((a) => a.kind === 'step').map((a) => Number.parseInt(a.text, 10)).filter(Number.isFinite);
     return used.length ? Math.max(...used) + 1 : 1;
@@ -114,7 +108,6 @@ export class Editor {
     return this.run((d) => moveInto(d, ids, delta.x, delta.y, parents));
   }
 
-  /** Keyboard nudges of the same selection merge into one undo step. */
   nudge(ids: readonly Id[], delta: Point): EditResult {
     return this.run((d) => moveBy(d, ids, delta.x, delta.y), { coalesceKey: `nudge:${ids.join(',')}` });
   }
@@ -123,7 +116,6 @@ export class Editor {
     return this.run((d) => moveEach(d, deltas));
   }
 
-  /** Patch for a move, for previews during a drag. */
   previewMove(ids: readonly Id[], delta: Point): void {
     try {
       this.session.preview(moveInto(this.doc, ids, delta.x, delta.y, new Map()));
@@ -190,7 +182,6 @@ export class Editor {
     });
   }
 
-  /** Stores a manual route for an edge. An empty list returns it to automatic routing. */
   setRoute(edgeId: Id, waypoints: readonly Point[]): EditResult {
     const rounded = waypoints.map((p) => ({ x: Math.round(p.x), y: Math.round(p.y) }));
     return this.update('edges', edgeId, rounded.length ? { routingMode: 'manual', waypoints: rounded } : { routingMode: 'auto', waypoints: [] });
@@ -208,17 +199,14 @@ export class Editor {
     return this.update('edges', edgeId, { routingMode: 'auto', waypoints: [] });
   }
 
-  /** Applies a computed layout: moves, then grows areas, as one undo step. */
   applyLayout(moves: ReadonlyMap<Id, Point>, grow: ReadonlyMap<Id, Rect>): EditResult {
     return this.run((d) => sequence(d, (x) => moveEach(x, moves), ...[...grow].map(([id, rect]) => (x: Document) => setBounds(x, id, rect))));
   }
 
-  /** Applies a complete geometry update as one undoable operation. */
   applyDocumentLayout(next: Document): EditResult {
     return this.run((doc) => diffDocuments(doc, next));
   }
 
-  /** Replaces the document with an imported version as one undo step; the document id is kept. */
   importDocument(next: Document, created: readonly Id[]): EditResult {
     return this.run((d) => diffDocuments(d, { ...next, id: d.id, formatVersion: d.formatVersion }), { select: created.filter((id) => findCollection(next, id) !== 'edges') });
   }
@@ -229,7 +217,6 @@ export class Editor {
     return created;
   }
 
-  /** Switches a node between icon and box style, or picks a size preset. */
   setNodeStyle(id: Id, variant: NodeVariant, size: 's' | 'm' | 'l' = 'm'): EditResult {
     return this.update('nodes', id, { variant, ...NODE_SIZES[variant][size] });
   }

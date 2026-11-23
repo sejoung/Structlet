@@ -55,9 +55,7 @@ describe('hierarchy and local coordinates', () => {
     expect(rectOf(moved, 'a')).toMatchObject({ x: 230, y: 230 });
     expect(rectOf(moved, 'c')).toMatchObject({ x: 550, y: 230 });
     expect(moved.nodes.find((n) => n.id === 'a')).toBe(doc.nodes.find((n) => n.id === 'a'));
-    // Edge a→c lies wholly inside the moved area: its manual waypoints follow.
     expect(moved.edges.find((e) => e.id === 'ac')!.waypoints).toEqual([{ x: 350, y: 430 }]);
-    // Edge a→b leaves the area: untouched.
     expect(moved.edges.find((e) => e.id === 'ab')).toBe(doc.edges.find((e) => e.id === 'ab'));
   });
 
@@ -86,7 +84,6 @@ describe('hierarchy and local coordinates', () => {
     const doc = build();
     expect(() => setParent(doc, ['vpc'], 'subnet')).toThrow(CommandError);
     expect(() => setParent(doc, ['vpc'], 'vpc')).toThrow(CommandError);
-    // moveInto keeps the old parent instead of failing the whole drag.
     const moved = applyPatch(doc, moveInto(doc, ['vpc'], 5, 0, new Map([['vpc', 'subnet']])));
     expect(moved.containers.find((c) => c.id === 'vpc')).toMatchObject({ parentId: null, x: 105 });
   });

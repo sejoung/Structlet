@@ -1,7 +1,6 @@
 import { DriveAuthError } from './types';
 
 const LOAD_TIMEOUT_MS = 15_000;
-// One download per script; a failed or stalled one is forgotten so the next call retries.
 const scripts = new Map<string, Promise<void>>();
 
 export function loadScript(src: string): Promise<void> {

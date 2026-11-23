@@ -1,6 +1,5 @@
 import type { Point, Rect } from '../domain';
 
-/** screen = world * zoom + pan */
 export interface Viewport {
   readonly panX: number;
   readonly panY: number;
@@ -19,16 +18,17 @@ export function worldToScreen(v: Viewport, p: Point): Point {
   return { x: p.x * v.zoom + v.panX, y: p.y * v.zoom + v.panY };
 }
 
-/** Zooms by `factor` keeping the world point under `anchor` (screen) fixed. */
 export function zoomAt(v: Viewport, anchor: Point, factor: number): Viewport {
-  const zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, v.zoom * factor));
+  const zoom = Math.min(MAX_ZOOM, Math.max(Math.min(MIN_ZOOM, v.zoom), v.zoom * factor));
   const w = screenToWorld(v, anchor);
   return { zoom, panX: anchor.x - w.x * zoom, panY: anchor.y - w.y * zoom };
 }
 
 export function fitView(bounds: Rect | null, size: { width: number; height: number }, padding = 48): Viewport {
   if (!bounds || bounds.width <= 0 || bounds.height <= 0) return DEFAULT_VIEWPORT;
-  const zoom = Math.min(1.5, Math.max(MIN_ZOOM, Math.min((size.width - padding * 2) / bounds.width, (size.height - padding * 2) / bounds.height)));
+  const width = Math.max(1, size.width - padding * 2);
+  const height = Math.max(1, size.height - padding * 2);
+  const zoom = Math.min(1.5, width / bounds.width, height / bounds.height);
   return {
     zoom,
     panX: (size.width - bounds.width * zoom) / 2 - bounds.x * zoom,

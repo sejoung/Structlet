@@ -5,9 +5,7 @@ import { readItem, removeItem, writeItem } from '../storage/web-storage';
 import type { DriveItem } from './types';
 
 export const DRIVE_FILE_KEY = 'structlet.drive.file';
-/** The diagram as last synced, needed to merge after a reload; it never holds a token. */
 export const DRIVE_BASE_KEY = 'structlet.drive.base';
-/** The folder new diagrams are saved to. */
 export const DRIVE_FOLDER_KEY = 'structlet.drive.folder';
 
 const isFile = (value: unknown): value is RemoteFile => {
@@ -15,7 +13,6 @@ const isFile = (value: unknown): value is RemoteFile => {
   return typeof f?.id === 'string' && typeof f.name === 'string' && typeof f.version === 'string' && Boolean(f.id && f.version);
 };
 
-/** The linked Drive file and its base diagram, kept together in browser storage or not at all. */
 export class LocalDriveLinks implements RemoteLinks {
   read(): RemoteLink | null {
     const file = readItem(DRIVE_FILE_KEY);
@@ -38,7 +35,6 @@ export class LocalDriveLinks implements RemoteLinks {
     }
   }
 
-  /** A new version beside an old base would merge against the wrong diagram after a reload. */
   write(link: RemoteLink | null): void {
     if (link) {
       const { id, name, version } = link.file;
@@ -50,7 +46,6 @@ export class LocalDriveLinks implements RemoteLinks {
   }
 }
 
-/** A folder to save into, with the account it belongs to when known. */
 export interface SavedFolder extends DriveItem {
   readonly account?: string;
 }

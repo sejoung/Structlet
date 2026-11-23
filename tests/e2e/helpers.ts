@@ -1,9 +1,5 @@
 import { expect, type Page } from '@playwright/test';
 
-/**
- * A first visit, except that the inspector starts open: most tests edit through it.
- * Pass `{ inspector: false }` for the real first-visit layout (inspector folded).
- */
 export async function freshApp(page: Page, language: 'ko' | 'en' = 'en', { inspector = true }: { inspector?: boolean } = {}) {
   await page.goto('/');
   await page.evaluate(([l, open]) => {
@@ -32,14 +28,12 @@ export async function nodeIds(page: Page): Promise<string[]> {
   return page.locator('[data-testid^="node-"]').evaluateAll((els) => els.map((e) => e.getAttribute('data-testid')!.slice(5)));
 }
 
-/** Menu that holds each toolbar action in the redesigned top bar. */
 const MENU: Record<string, string> = {
   'tb-new': 'menu-file', 'tb-open': 'menu-file', 'tb-import': 'menu-file', 'tb-save': 'menu-file', 'tb-save-as': 'menu-file',
   'tb-svg': 'menu-export', 'tb-png': 'menu-export',
   'tb-icon-packs': 'menu-settings', 'tb-theme-dark': 'menu-settings', 'tb-theme-light': 'menu-settings', 'tb-theme-system': 'menu-settings', 'tb-lang-ko': 'menu-settings', 'tb-lang-en': 'menu-settings', 'tb-usage-stats': 'menu-settings',
 };
 
-/** Clicks a toolbar action, opening its menu first. */
 export async function act(page: Page, id: string) {
   if (id.startsWith('menu-')) return page.getByTestId(id).click();
   const menu = MENU[id];
@@ -53,7 +47,6 @@ export async function openSample(page: Page) {
   await expect(page.locator('[data-testid^="node-"]')).toHaveCount(11);
 }
 
-/** Open Help in a fresh tab, leaving the editor page available. */
 export async function openManual(page: Page) {
   const [guide] = await Promise.all([page.waitForEvent('popup'), page.getByTestId('tb-help').click()]);
   await expect(guide.getByRole('main')).toBeVisible();

@@ -1,6 +1,6 @@
 import type { Point, Rect } from '../../domain';
-import { inflate, intersects, isHorizontalSide, normal, segmentHitsRect, simplify, union } from '../geometry';
-import { orthogonalSearch } from './astar';
+import { inflate, intersects, isHorizontalSide, normal, polylineLength, segmentHitsRect, simplify, union } from '../geometry';
+import { BEND_COST, CROSS_COST, crossCount, orthogonalSearch } from './astar';
 import { stubPoint, type ResolvedEnd } from './ports';
 
 export const OBSTACLE_MARGIN = 12;
@@ -18,23 +18,6 @@ function clear(points: readonly Point[], obstacles: readonly Rect[]): boolean {
   return true;
 }
 
-/** Runs on top of an already routed line for more than a few pixels. */
-function overlapsRouted(points: readonly Point[], routed: readonly (readonly [Point, Point])[]): boolean {
-  for (let i = 1; i < points.length; i++) {
-    const a = points[i - 1]!;
-    const b = points[i]!;
-    for (const [p, q] of routed) {
-      if (a.y === b.y && p.y === q.y && Math.abs(a.y - p.y) < 1) {
-        if (Math.min(Math.max(a.x, b.x), Math.max(p.x, q.x)) - Math.max(Math.min(a.x, b.x), Math.min(p.x, q.x)) > 8) return true;
-      } else if (a.x === b.x && p.x === q.x && Math.abs(a.x - p.x) < 1) {
-        if (Math.min(Math.max(a.y, b.y), Math.max(p.y, q.y)) - Math.max(Math.min(a.y, b.y), Math.min(p.y, q.y)) > 8) return true;
-      }
-    }
-  }
-  return false;
-}
-
-/** Goes back on itself (a 180° turn), which looks like a spike. */
 function hasReversal(points: readonly Point[]): boolean {
   for (let i = 1; i < points.length - 1; i++) {
     const a = points[i - 1]!;
@@ -46,7 +29,6 @@ function hasReversal(points: readonly Point[]): boolean {
   return false;
 }
 
-/** The plain elbow or Z shape between the two stub points (ports excluded). */
 function defaultShape(source: ResolvedEnd, target: ResolvedEnd): Point[] {
   const s = stubPoint(source);
   const e = stubPoint(target);
@@ -67,25 +49,33 @@ function defaultShape(source: ResolvedEnd, target: ResolvedEnd): Point[] {
   return middle;
 }
 
-/**
- * Automatic orthogonal route. Keeps the default shape when it is clear of
- * obstacles; otherwise searches around them. Falls back to the default shape
- * when the area is too crowded or no path exists.
- */
 export function routeAuto(source: ResolvedEnd, target: ResolvedEnd, obstacleRects: readonly Rect[], crossings: readonly (readonly [Point, Point])[] = []): Point[] {
   const obstacles = obstacleRects.map((r) => inflate(r, OBSTACLE_MARGIN));
   const middle = defaultShape(source, target);
   const shape = simplify([source.point, ...middle, target.point]);
-  if (clear(middle, obstacles) && !hasReversal(shape) && !overlapsRouted(middle, crossings)) return shape;
   const s = stubPoint(source);
   const e = stubPoint(target);
+  const penalty = (path: readonly Point[]) => path.slice(1).reduce((cost, p, i) =>
+    cost + crossCount(path[i]!, p, crossings) * CROSS_COST, 0);
+  const score = (path: readonly Point[]) => polylineLength(path) + Math.max(0, path.length - 2) * BEND_COST + penalty(path);
+  let direct: Point[] | undefined;
+  let directCost = Number.POSITIVE_INFINITY;
+  for (const route of [middle, [s, { x: e.x, y: s.y }, e], [s, { x: s.x, y: e.y }, e]]) {
+    const candidate = simplify([source.point, ...route, target.point]);
+    if (hasReversal(candidate) || !clear(route, obstacles)) continue;
+    const cost = score(candidate);
+    if (cost < directCost) {
+      direct = candidate;
+      directCost = cost;
+    }
+  }
+  if (direct && penalty(direct) < CROSS_COST * 2) return direct;
   const area = inflate(union([
     { x: s.x, y: s.y, width: 0, height: 0 },
     { x: e.x, y: e.y, width: 0, height: 0 },
   ])!, SEARCH_PADDING);
   const nearby = obstacles.filter((o) => intersects(o, area));
-  if (nearby.length > MAX_OBSTACLES) return shape;
-  const found = orthogonalSearch({
+  const found = nearby.length <= MAX_OBSTACLES ? orthogonalSearch({
     start: s,
     startDir: source.side ? normal(source.side) : null,
     end: e,
@@ -93,16 +83,33 @@ export function routeAuto(source: ResolvedEnd, target: ResolvedEnd, obstacleRect
     obstacles: nearby,
     area,
     crossings: crossings.filter(([a, b]) => intersects(area, { x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), width: Math.abs(a.x - b.x) + 0.01, height: Math.abs(a.y - b.y) + 0.01 })),
-  });
-  if (!found) return shape;
-  return simplify([source.point, ...found, target.point]);
+  }) : null;
+  if (!found) {
+    if (direct) return direct;
+    const crowd = union(nearby);
+    if (!crowd) return shape;
+    const lanes = inflate(crowd, 8);
+    const bends = [
+      ...[lanes.x, lanes.x + lanes.width, s.x, e.x].map((x) => [s, { x, y: s.y }, { x, y: e.y }, e]),
+      ...[lanes.y, lanes.y + lanes.height, s.y, e.y].map((y) => [s, { x: s.x, y }, { x: e.x, y }, e]),
+    ];
+    let best = shape;
+    let bestCost = Number.POSITIVE_INFINITY;
+    for (const route of bends) {
+      const candidate = simplify([source.point, ...route, target.point]);
+      if (hasReversal(candidate) || !clear(route, obstacles)) continue;
+      const cost = score(candidate);
+      if (cost < bestCost) {
+        best = candidate;
+        bestCost = cost;
+      }
+    }
+    return best;
+  }
+  const searched = simplify([source.point, ...found, target.point]);
+  return direct && directCost <= score(searched) ? direct : searched;
 }
 
-/**
- * Manual orthogonal route through user waypoints. Consecutive points that are
- * not aligned get one elbow, leaving each point at a right angle to how the
- * route arrived there, and entering the target stub across its side.
- */
 export function routeManual(source: ResolvedEnd, target: ResolvedEnd, waypoints: readonly Point[], obstacleRects: readonly Rect[] = []): Point[] {
   const obstacles = obstacleRects.map((r) => inflate(r, OBSTACLE_MARGIN));
   const s = stubPoint(source);
@@ -129,7 +136,6 @@ export function routeManual(source: ResolvedEnd, target: ResolvedEnd, waypoints:
       continue;
     }
     let leave: 'h' | 'v' = arrival === 'h' ? 'v' : 'h';
-    // Into the target stub, travel across the target side last.
     if (i === fixed.length - 1 && endAxis) leave = endAxis === 'h' ? 'h' : 'v';
     if (i === 1 && source.side) leave = arrival === 'h' ? 'v' : 'h';
     const elbow = leave === 'h' ? { x: b.x, y: a.y } : { x: a.x, y: b.y };
@@ -147,7 +153,6 @@ export function routeManual(source: ResolvedEnd, target: ResolvedEnd, waypoints:
   return simplify(out);
 }
 
-/** A connecting leg of a manual route that goes around boxes; the user's points stay fixed. */
 function searchLeg(a: Point, b: Point, obstacles: readonly Rect[]): Point[] | null {
   const area = inflate(union([{ x: a.x, y: a.y, width: 0, height: 0 }, { x: b.x, y: b.y, width: 0, height: 0 }])!, SEARCH_PADDING / 2);
   const nearby = obstacles.filter((o) => intersects(o, area));

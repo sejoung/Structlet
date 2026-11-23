@@ -15,7 +15,6 @@ interface Deps {
   newId(): string;
 }
 
-/** Loads an icon pack from a zip or folder the user picks, then stores it in this browser. */
 export function createIconPackActions({ store, t, notify, setPacks, setBusy, newId }: Deps) {
   const refresh = async () => setPacks(await store.list());
   return {
@@ -46,7 +45,6 @@ export function createIconPackActions({ store, t, notify, setPacks, setBusy, new
     async toggle(packs: readonly IconPack[], id: string, enabled: boolean) {
       const pack = packs.find((p) => p.id === id);
       if (!pack) return;
-      // Update the view right away; the store write follows.
       setPacks(packs.map((p) => (p.id === id ? { ...p, enabled } : p)));
       await store.put({ ...pack, enabled });
     },

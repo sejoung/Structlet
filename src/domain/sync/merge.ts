@@ -1,36 +1,24 @@
 import type { Collection, Container, Document, Endpoint, Id, Node } from '../model';
 
-/**
- * Three-way merge of diagrams (ADR 0016): what changed on only one side since the common
- * base is taken from that side, per object and per field. Only both sides changing the same
- * field differently, or one deleting what the other changed, is a conflict. The result is a
- * valid document: lines whose ends are gone are dropped, objects whose area is gone move to
- * the nearest surviving area at the same place, and parent cycles keep the local choice.
- */
 export type MergeSide = 'local' | 'remote';
 
 export interface Conflict {
-  /** Stable name for choosing a side: `title`, `nodes:<id>` or `nodes:<id>:<field>`. */
   readonly key: string;
   readonly collection: Collection | 'title';
   readonly id?: Id;
-  /** The field both sides changed; absent when one side deleted the object. */
   readonly field?: string;
-  /** Each side's value or object; undefined where it was deleted. */
   readonly local: unknown;
   readonly remote: unknown;
 }
 
 export interface Merged {
   readonly document: Document;
-  /** Every conflict found. Those without a choice were resolved in favor of `local`. */
   readonly conflicts: Conflict[];
 }
 
 type Choose = (conflict: Conflict) => MergeSide | undefined;
 type Item = Record<string, unknown> & { id: Id };
 
-/** Fields that only make sense together merge as one: a position, a size, a route. */
 const GROUPS: Record<string, readonly string[]> = {
   x: ['x', 'y'],
   y: ['x', 'y'],
@@ -42,7 +30,6 @@ const GROUPS: Record<string, readonly string[]> = {
 const GROUP_NAMES: Record<string, string> = { x: 'position', width: 'size', routingMode: 'route' };
 const COLLECTIONS: Collection[] = ['containers', 'nodes', 'edges', 'annotations'];
 
-/** Structural equality that ignores key order, since parsed and edited objects differ there. */
 export function same(a: unknown, b: unknown): boolean {
   if (a === b) return true;
   if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) return false;
@@ -81,7 +68,6 @@ function mergeList(collection: Collection, base: readonly Item[], local: readonl
   const b = new Map(base.map((o) => [o.id, o]));
   const r = new Map(remote.map((o) => [o.id, o]));
   const l = new Map(local.map((o) => [o.id, o]));
-  // Local order first, then what only the remote side has, in its order.
   const ids = [...local.map((o) => o.id), ...remote.map((o) => o.id).filter((id) => !l.has(id))];
   const out: Item[] = [];
   for (const id of ids) {
@@ -97,7 +83,6 @@ function mergeList(collection: Collection, base: readonly Item[], local: readonl
       out.push(kept);
       continue;
     }
-    // Deleted on one side: fine if the other left it as it was, a conflict if it changed it.
     if (same(was, kept)) continue;
     const found: Conflict = { key: `${collection}:${id}`, collection, id, local: mine, remote: theirs };
     conflicts.push(found);
@@ -108,7 +93,6 @@ function mergeList(collection: Collection, base: readonly Item[], local: readonl
   return out;
 }
 
-/** World origin of a container in the given lookups, following `parentId`. */
 function originIn(containers: ReadonlyMap<Id, Container>, id: Id | null, guard = 0): { x: number; y: number } {
   if (id === null || guard > 64) return { x: 0, y: 0 };
   const c = containers.get(id);
@@ -117,13 +101,11 @@ function originIn(containers: ReadonlyMap<Id, Container>, id: Id | null, guard =
   return { x: p.x + c.x, y: p.y + c.y };
 }
 
-/** Make the merged document valid; see the module comment. */
 function repair(doc: Document, base: Document, local: Document, remote: Document): Document {
   const known = new Map<Id, Container>();
   for (const d of [base, remote, local]) for (const c of d.containers) known.set(c.id, c);
   let containers = [...doc.containers];
   const present = () => new Map(containers.map((c) => [c.id, c]));
-  // Parent cycles: keep the local parent for containers on a cycle.
   for (let pass = 0; pass < 8; pass++) {
     const map = present();
     const onCycle = new Set<Id>();
@@ -145,13 +127,11 @@ function repair(doc: Document, base: Document, local: Document, remote: Document
     containers = containers.map((c) => {
       if (!onCycle.has(c.id)) return c;
       const mine = localById.get(c.id);
-      // The local document has no cycle, so its choice breaks this one.
       if (mine) return mine.parentId === c.parentId ? c : { ...c, parentId: mine.parentId, x: mine.x, y: mine.y };
       const world = originIn(map, c.parentId);
       return { ...c, parentId: null, x: world.x + c.x, y: world.y + c.y };
     });
   }
-  // Missing parents: move up to the nearest surviving ancestor, keeping the world position.
   const fixParent = <T extends Node | Container>(box: T): T => {
     const live = present();
     if (box.parentId === null || live.has(box.parentId)) return box;
@@ -171,10 +151,6 @@ function repair(doc: Document, base: Document, local: Document, remote: Document
   return { ...doc, containers, nodes, edges, annotations };
 }
 
-/**
- * Merge `local` and `remote`, both changed from `base`. `choose` picks a side per conflict;
- * conflicts it leaves open keep the local side.
- */
 export function mergeDocuments(base: Document, local: Document, remote: Document, choose: Choose = () => undefined): Merged {
   const conflicts: Conflict[] = [];
   const title = resolve(base.title, local.title, remote.title, () => ({ key: 'title', collection: 'title' as const }), choose, conflicts);

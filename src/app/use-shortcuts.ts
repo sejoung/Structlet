@@ -19,7 +19,6 @@ interface ShortcutDeps {
   setPresenting(on: boolean): void;
 }
 
-/** Editor keyboard shortcuts. Ignored in dialogs and while typing in a field. */
 export function useShortcuts(deps: ShortcutDeps): void {
   const latest = useRef(deps);
   latest.current = deps;

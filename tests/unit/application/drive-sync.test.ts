@@ -48,7 +48,6 @@ class FakeRemote implements RemoteDocuments {
   async account() {
     return { id: this.accountId, email: `${this.accountId}@example.com` };
   }
-  /** Another device's edit. */
   edit(id: string, fn: (d: Document) => Document) {
     const f = this.files.get(id)!;
     f.document = fn(f.document);
@@ -111,7 +110,6 @@ describe('DriveSync', () => {
     expect(label(session.committedDocument, 'db')).toBe('Remote DB');
     const saved = remote.files.get(file.id)!.document;
     expect([label(saved, 'api'), label(saved, 'db')]).toEqual(['Local API', 'Remote DB']);
-    // Undo takes back the local rename only.
     session.breakCoalescing();
     session.undo();
     expect(label(session.committedDocument, 'db')).toBe('Remote DB');
@@ -126,7 +124,6 @@ describe('DriveSync', () => {
     expect(sync.current.status).toBe('conflict');
     if (sync.current.status !== 'conflict') return;
     expect(sync.current.conflicts.map((c) => c.key)).toEqual(['nodes:api:label']);
-    // Further edits stay local while the conflict is open.
     editor.rename('db', 'Local DB');
     await vi.advanceTimersByTimeAsync(SYNC_DELAY + 10);
     expect(sync.current.status).toBe('conflict');

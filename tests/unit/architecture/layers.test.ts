@@ -3,12 +3,6 @@ import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-/**
- * Checks from docs/adr/0001 that an import graph cannot express. Import direction, allowed
- * packages, cycles and unresolvable imports are checked by dependency-cruiser
- * (`npm run deps`, .dependency-cruiser.cjs); file length and console output by oxlint
- * (`npm run lint`, .oxlintrc.json).
- */
 const SRC = resolve(dirname(fileURLToPath(import.meta.url)), '../../../src');
 
 const LAYERS = ['domain', 'engine', 'application', 'adapters', 'i18n', 'components', 'app'] as const;

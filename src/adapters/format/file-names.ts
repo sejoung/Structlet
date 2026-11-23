@@ -1,4 +1,3 @@
-/** `Plan.structlet` → `Plan (2).structlet`: the first numbered name not in `taken`. */
 export function freeName(name: string, taken: ReadonlySet<string>): string {
   if (!taken.has(name)) return name;
   const dot = name.lastIndexOf('.');
@@ -10,7 +9,6 @@ export function freeName(name: string, taken: ReadonlySet<string>): string {
   }
 }
 
-/** Whether `name` is `wanted` or a numbered copy of it, so a numbered file keeps its number. */
 export function isNameFor(name: string, wanted: string): boolean {
   if (name === wanted) return true;
   const dot = wanted.lastIndexOf('.');

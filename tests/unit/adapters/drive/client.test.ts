@@ -8,7 +8,6 @@ import { sampleDocument } from '../../fixtures';
 
 interface Stored { name: string; version: number; content: string; parents: string[]; mimeType: string }
 
-/** Drive v3 over a map, the way the client calls it. */
 function fakeDrive() {
   const files = new Map<string, Stored>();
   const calls: string[] = [];

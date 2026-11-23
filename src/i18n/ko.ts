@@ -1,7 +1,6 @@
 import { manual } from './manual-ko';
 import type { MessageKey } from './en';
 
-/** Korean messages. */
 export const ko: Record<MessageKey, string> = {
   ...manual,
   'app.untitled': '제목 없는 구성도',

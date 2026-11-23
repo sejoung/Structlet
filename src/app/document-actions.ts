@@ -31,16 +31,13 @@ interface Deps {
   onOpened(doc: Document): void;
   view(): ExportView;
   diagram(doc: Document): DiagramView;
-  /** Google Drive, when this build has it: settle before replacing, save to the linked file. */
   drive?: () => { beforeReplace(): Promise<boolean>; markFresh(): void; linked: boolean; saveNow(): void } | null;
 }
 
 const SOURCE_NAMES: Record<ImportSource, string> = { draft: 'draft JSON', compose: 'docker-compose', terraform: 'Terraform', kubernetes: 'Kubernetes' };
 
-/** File use cases wired to browser adapters. `onOpened` lets the view fit the new document. */
 export function createDocumentActions({ editor, files, newId, appearance, t, notify, onOpened, view, diagram, drive }: Deps): DocumentActions {
   const session = editor.session;
-  /** False when unsaved Drive changes could not be saved first; nothing is replaced then. */
   const replace = async (doc: Document, keepFile = false): Promise<boolean> => {
     const d = drive?.();
     if (d && !(await d.beforeReplace())) return false;
@@ -68,7 +65,6 @@ export function createDocumentActions({ editor, files, newId, appearance, t, not
     }
     log.info('files.imported', { source: result.source });
     const hadContent = doc.nodes.length + doc.containers.length > 0;
-    // Merging into an existing diagram keeps its title; an empty diagram takes the imported one.
     const next = hadContent ? { ...result.document, title: doc.title } : result.document;
     editor.importDocument(next, result.created);
     notify(t('import.done', { count: result.created.length, source: SOURCE_NAMES[result.source] }));

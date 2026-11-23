@@ -5,7 +5,6 @@ import { layoutSelection, type LayoutMode, type Scene } from '../engine';
 import type { PanelActions } from '../components/properties/sections';
 import type { Language } from '../i18n/messages';
 
-/** Panel actions that need engine geometry or catalog data. */
 export function createPanelActions(editor: Editor, scene: () => Scene, language: Language): PanelActions {
   const doc = () => editor.session.committedDocument;
   const layout = (ids: readonly Id[], mode: LayoutMode) => {

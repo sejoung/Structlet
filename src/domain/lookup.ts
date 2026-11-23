@@ -5,13 +5,11 @@ export interface DocumentIndex {
   readonly containers: ReadonlyMap<Id, Container>;
   readonly edges: ReadonlyMap<Id, Edge>;
   readonly annotations: ReadonlyMap<Id, Annotation>;
-  /** Direct children (nodes and containers) per container id; `null` key holds roots. */
   readonly children: ReadonlyMap<Id | null, readonly Id[]>;
 }
 
 const cache = new WeakMap<Document, DocumentIndex>();
 
-/** Builds (and memoizes per immutable document) id lookups. */
 export function indexDocument(doc: Document): DocumentIndex {
   const hit = cache.get(doc);
   if (hit) return hit;
@@ -47,7 +45,6 @@ export function getItem<C extends Collection>(doc: Document, collection: C, id: 
   return indexDocument(doc)[collection].get(id) as CollectionItem[C] | undefined;
 }
 
-/** Node or container with the given id. */
 export function getBox(doc: Document, id: Id): Node | Container | undefined {
   const index = indexDocument(doc);
   return index.nodes.get(id) ?? index.containers.get(id);

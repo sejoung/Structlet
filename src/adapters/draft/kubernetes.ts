@@ -1,13 +1,6 @@
 import { parseAllDocuments } from 'yaml';
 import type { Draft, DraftContainer, DraftEdge, DraftNode } from './draft-format';
 
-/**
- * Kubernetes manifests → draft. Accepts multi-document YAML, `kubectl get -o
- * yaml|json` lists and `helm template` output. The cluster and namespaces
- * become areas; workloads, services, ingresses, config, volumes and
- * autoscalers become nodes. Pods, ReplicaSets and Endpoints that controllers
- * manage are left out; replica counts are written on the workload instead.
- */
 
 type Obj = { apiVersion?: string; kind?: string; metadata?: { name?: string; namespace?: string; labels?: Record<string, string>; ownerReferences?: unknown[] }; spec?: any; type?: string };
 
@@ -35,7 +28,6 @@ function objects(text: string): Obj[] {
   return out;
 }
 
-/** Pod spec and pod labels of a workload. */
 function podOf(o: Obj): { spec: any; labels: Record<string, string> } | null {
   if (o.kind === 'Pod') return { spec: o.spec ?? {}, labels: o.metadata?.labels ?? {} };
   const tpl = o.kind === 'CronJob' ? o.spec?.jobTemplate?.spec?.template : o.spec?.template;

@@ -23,7 +23,6 @@ export interface CanvasOverlay {
 
 const EMPTY_OVERLAY: CanvasOverlay = { marquee: null, guides: [], connect: null };
 
-/** `select` edits; `hand` only moves the view; `connect` draws a line from box to box. */
 export type CanvasTool = 'select' | 'hand' | 'connect';
 
 interface GestureDeps {
@@ -67,7 +66,6 @@ export function useGestures(deps: GestureDeps) {
     try {
       e.currentTarget.setPointerCapture(e.pointerId);
     } catch {
-      // The pointer is no longer active (e.g. already lifted); the gesture still works without capture.
     }
     if (e.pointerType === 'touch') {
       touches.current.set(e.pointerId, screenOf(e));
@@ -88,7 +86,6 @@ export function useGestures(deps: GestureDeps) {
       return;
     }
     if (tool === 'connect') {
-      // Any box starts a line; empty space moves the view.
       const from = hit?.kind === 'box' || hit?.kind === 'connect' ? hit.id : null;
       if (from) {
         const r = scene.rects.get(from);
@@ -185,7 +182,7 @@ export function useGestures(deps: GestureDeps) {
         if (pts.length < 2) return;
         const [a, b] = pts as [Point, Point];
         const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
-        const zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, g.from.zoom * (Math.hypot(a.x - b.x, a.y - b.y) / g.distance)));
+        const zoom = Math.min(MAX_ZOOM, Math.max(Math.min(MIN_ZOOM, g.from.zoom), g.from.zoom * (Math.hypot(a.x - b.x, a.y - b.y) / g.distance)));
         const anchor = { x: (g.mid.x - g.from.panX) / g.from.zoom, y: (g.mid.y - g.from.panY) / g.from.zoom };
         setViewport({ zoom, panX: mid.x - anchor.x * zoom, panY: mid.y - anchor.y * zoom });
         return;

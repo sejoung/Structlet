@@ -10,24 +10,20 @@ const saved = async (page: import('@playwright/test').Page) => {
 test('panels fold away and come back, and the choice is remembered', async ({ page }) => {
   await freshApp(page);
   await openSample(page);
-  // Clicking the open rail tab again folds the left panel.
   await page.getByTestId('rail-services').click();
   await expect(page.locator('#sidebar-panel')).toHaveCount(0);
   await page.getByTestId('rail-layers').click();
   await expect(page.getByTestId('layers')).toBeVisible();
-  // The right panel hides and returns from the same top-bar button, which shows its state.
   await page.getByTestId('toggle-right').click();
   await expect(page.locator('.inspector')).toHaveCount(0);
   await expect(page.getByTestId('toggle-right')).toHaveAttribute('aria-pressed', 'false');
   await page.getByTestId('toggle-right').click();
   await expect(page.locator('.inspector')).toBeVisible();
   await expect(page.getByTestId('toggle-right')).toHaveAttribute('aria-pressed', 'true');
-  // The left toggle sits beside it and works the same way.
   await page.getByTestId('toggle-left').click();
   await expect(page.locator('#sidebar-panel')).toHaveCount(0);
   await page.getByTestId('toggle-left').click();
   await expect(page.locator('#sidebar-panel')).toBeVisible();
-  // ⌘\ hides both; the state survives a reload.
   await page.locator('body').press('ControlOrMeta+Backslash');
   await expect(page.locator('#sidebar-panel')).toHaveCount(0);
   await expect(page.locator('.inspector')).toHaveCount(0);
@@ -51,7 +47,6 @@ test('hand tool only moves the view', async ({ page }) => {
   const after = await saved(page);
   expect(after.nodes).toEqual(before.nodes);
   expect(await page.locator('.sel-outline').count()).toBe(0);
-  // Double-click does not start editing with the hand tool.
   await page.mouse.dblclick(api.x + 120, api.y + 60);
   await expect(page.locator('.inline-editor')).toHaveCount(0);
   await page.getByTestId('tool-select').click();
@@ -69,7 +64,6 @@ test('connect tool draws lines from box to box until Esc', async ({ page }) => {
   const after = await saved(page);
   expect(after.edges).toHaveLength(count + 2);
   expect(after.edges.at(-2)).toMatchObject({ source: { objectId: 'auth' }, target: { objectId: 'db' } });
-  // Dropping on empty canvas makes nothing; dragging empty space pans.
   const t0 = await transform(page);
   await drag(page, { x: 700, y: 820 }, { x: 760, y: 840 });
   expect(await transform(page)).not.toBe(t0);
@@ -94,7 +88,6 @@ test('view mode hides panels and editing, Esc returns', async ({ page }) => {
   await page.keyboard.press('Escape');
   await expect(page.locator('.inspector')).toBeVisible();
   await expect(page.getByTestId('tools')).toBeVisible();
-  // The exit button works too.
   await page.getByTestId('tb-present').click();
   await page.getByTestId('exit-present').click();
   await expect(page.getByTestId('tools')).toBeVisible();
@@ -116,7 +109,6 @@ test('⌘\\ hides both panels; the canvas takes all of the space and the diagram
   await expect(page.locator('.inspector')).toHaveCount(0);
   await expect(page.getByTestId('toggle-left')).toHaveAttribute('aria-pressed', 'false');
   await expect(page.getByTestId('toggle-right')).toHaveAttribute('aria-pressed', 'false');
-  // No leftover strip: the canvas reaches the window's right edge.
   const c = await canvasBox();
   expect(Math.round(c.x + c.width)).toBe(page.viewportSize()!.width);
   const after = await offset();
@@ -168,8 +160,6 @@ test('the inspector starts folded, opens with I, and its toggle counts check fin
   await expect(page.getByTestId('toggle-right')).toHaveAttribute('aria-pressed', 'false');
   await expect(page.getByTestId('findings-badge')).toHaveCount(0);
 
-  // Two services with no line between them are two findings ("Service without connections"):
-  // the folded toggle says so.
   const search = page.getByLabel('Search services');
   await search.fill('server');
   await page.locator('[data-service="server"]').click();
@@ -179,7 +169,6 @@ test('the inspector starts folded, opens with I, and its toggle counts check fin
   await expect(page.getByTestId('findings-badge')).toHaveText('2');
   await expect(page.getByTestId('toggle-right')).toHaveAttribute('aria-label', /2 check findings/);
 
-  // I opens the inspector, where the finding is listed, and the badge steps aside.
   await page.locator('body').press('i');
   await expect(page.locator('.inspector')).toBeVisible();
   await expect(page.getByTestId('checks')).toContainText('Service without connections');
@@ -187,7 +176,6 @@ test('the inspector starts folded, opens with I, and its toggle counts check fin
   await page.locator('body').press('i');
   await expect(page.locator('.inspector')).toHaveCount(0);
 
-  // Typing an I into a field does not fold anything.
   await page.locator('body').press('i');
   await search.fill('i');
   await expect(page.locator('.inspector')).toBeVisible();

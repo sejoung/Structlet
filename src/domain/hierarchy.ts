@@ -1,7 +1,6 @@
 import { indexDocument } from './lookup';
 import type { Container, Document, Id, Node, Point, Rect } from './model';
 
-/** Container ids from the direct parent up to the root. Stops on cycles. */
 export function ancestors(doc: Document, id: Id): Id[] {
   const index = indexDocument(doc);
   const start = index.nodes.get(id) ?? index.containers.get(id);
@@ -18,7 +17,6 @@ export function ancestors(doc: Document, id: Id): Id[] {
   return result;
 }
 
-/** All nodes and containers below a container, depth first. */
 export function descendants(doc: Document, id: Id): Id[] {
   const index = indexDocument(doc);
   const result: Id[] = [];
@@ -35,12 +33,10 @@ export function descendants(doc: Document, id: Id): Id[] {
   return result;
 }
 
-/** Number of container ancestors. */
 export function depth(doc: Document, id: Id): number {
   return ancestors(doc, id).length;
 }
 
-/** World position of a container's local origin, or (0,0) for `null`. */
 export function worldOrigin(doc: Document, parentId: Id | null): Point {
   let x = 0;
   let y = 0;
@@ -61,14 +57,12 @@ export function worldRect(doc: Document, box: Node | Container): Rect {
   return { x: o.x + box.x, y: o.y + box.y, width: box.width, height: box.height };
 }
 
-/** True when making `parentId` the parent of `id` would create a cycle. */
 export function wouldCreateCycle(doc: Document, id: Id, parentId: Id | null): boolean {
   if (parentId === null) return false;
   if (parentId === id) return true;
   return ancestors(doc, parentId).includes(id);
 }
 
-/** Ids of containers that sit on a parent cycle. */
 export function findParentCycles(doc: Document): Id[] {
   const index = indexDocument(doc);
   const onCycle = new Set<Id>();
@@ -90,10 +84,6 @@ export function findParentCycles(doc: Document): Id[] {
   return [...onCycle];
 }
 
-/**
- * Keeps only the topmost ids of a selection: an object whose ancestor is also
- * selected moves with that ancestor and must not be moved twice.
- */
 export function topmost(doc: Document, ids: Iterable<Id>): Id[] {
   const set = new Set(ids);
   return [...set].filter((id) => !ancestors(doc, id).some((a) => set.has(a)));

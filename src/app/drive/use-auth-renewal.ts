@@ -2,13 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import { errorDetails, log } from '../../adapters/diagnostics/log';
 import type { DriveAuth } from '../../adapters/drive/types';
 
-/**
- * Renew Drive access before it runs out (ADR 0016). Google's token model has no refresh
- * token and its popup needs a user gesture, so while the token is in its renewal window the
- * next click anywhere renews it; for a user who already agreed the popup closes by itself.
- * After a failed attempt only the Drive button renews, so a blocked popup is not reopened
- * on every click.
- */
 export function useAuthRenewal(auth: DriveAuth | undefined, active: boolean, onFail: () => void, hint: () => string | undefined) {
   const [expiring, setExpiring] = useState(() => Boolean(auth?.expiring()));
   const [automatic, setAutomatic] = useState(true);

@@ -18,7 +18,6 @@ const ROLE_NAMES: Record<Role, { en: string; ko: string }> = {
 
 const COLOR_ROLE = new Map(Object.entries(ROLE_COLORS).map(([role, color]) => [color as string, role as Role]));
 
-/** Legend text for the roles and line styles a document uses, in legend line syntax. */
 export function buildLegend(doc: Document, language: 'en' | 'ko'): string {
   const roles = new Set<Role>();
   for (const n of doc.nodes) roles.add(COLOR_ROLE.get(findService(n.serviceId)?.color ?? '') ?? 'external');

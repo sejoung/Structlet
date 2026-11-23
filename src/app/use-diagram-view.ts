@@ -40,7 +40,6 @@ export function useDiagramView(doc: Document, appearance: Appearance, t: Transla
   const middle = top.flatMap((id) => {
     const first = groupsUnder(id);
     if (!first.length) return [id];
-    // Skip a chain of single wrappers, such as Cloud → Region → VPC.
     let next = first;
     while (next.length === 1) next = groupsUnder(next[0]!);
     return next.length ? next : first;

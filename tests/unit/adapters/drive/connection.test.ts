@@ -1,4 +1,3 @@
-// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { parseAuthMessage, type AuthChannel, type AuthMessage } from '../../../../src/adapters/drive/auth-channel';
 import { driveConfig, webOrigin } from '../../../../src/adapters/drive/config';

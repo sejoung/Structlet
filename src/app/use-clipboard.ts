@@ -6,17 +6,11 @@ import { extractFragment, getBox, isEmptyFragment, type Fragment, type Id, type 
 interface ClipboardDeps {
   editor: Editor;
   summary?(): boolean;
-  /** Area to paste into: a single selected area, otherwise the area under the view center. */
   pasteParent(): Id | null;
-  /** Text that is not a Structlet fragment (draft JSON, compose, terraform) goes to import. */
   onImportText(text: string): void;
   onPasteUnavailable(): void;
 }
 
-/**
- * Copy, cut and paste through the browser clipboard events, so no clipboard
- * permission is needed. The clipboard holds a small `.structlet` document.
- */
 export function useClipboard(deps: ClipboardDeps) {
   const latest = useRef(deps);
   latest.current = deps;

@@ -2,17 +2,12 @@ import type { ContainerKind } from '../../domain';
 import type { ServiceDefinition } from '../catalog/types';
 import type { IconPack } from './pack';
 
-/**
- * Matching official icon file names to catalog services. The rules and alias
- * tables are Structlet's own data; the icons themselves come from the user.
- */
 
 type PackProvider = IconPack['provider'];
 
 const STOP = new Set(['and', 'for', 'of', 'the', 'service', 'services', 'icon']);
 const VENDOR = /^(amazon|aws|azure|microsoft|google|gcp)-/;
 
-/** File name → normalized key: lower-case words joined by `-`, without vendor prefixes, sizes or ids. */
 export function normalize(path: string): string {
   let s = (path.split(/[\\/]/).pop() ?? path).replace(/\.(svg|png)$/i, '').toLowerCase();
   s = s.replace(/^(arch|res|arch-category|arch-group)_/, '').replace(/^\d+-icon-service-/, '');
@@ -27,7 +22,6 @@ function singular(w: string): string {
   return w;
 }
 
-/** Order-free word key, so `virtual-machines` matches "Virtual Machines" and `cache-redis` "Cache for Redis". */
 export function tokenKey(text: string): string {
   const words = text.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().split(' ').filter(Boolean);
   const kept = words.filter((w, i) => !(i === 0 && /^(amazon|aws|azure|microsoft|google)$/.test(w)) && !STOP.has(w)).map(singular);
@@ -89,7 +83,6 @@ export function createMatcher(provider: PackProvider, catalog: readonly ServiceD
   };
 }
 
-/** Preference among several files for the same icon: SVG, unlabeled, about 48px. */
 export function preference(path: string): number {
   const p = path.toLowerCase();
   let score = p.endsWith('.svg') ? 100 : 0;

@@ -23,7 +23,6 @@ export function Select<T extends string>({ label, value, options, onChange, test
   );
 }
 
-/** Number input that commits on blur or Enter. */
 function NumberInput({ value, onCommit, label, prefix }: { value: number; onCommit(v: number): void; label: string; prefix: string }) {
   const [text, setText] = useState(String(Math.round(value)));
   useEffect(() => setText(String(Math.round(value))), [value]);

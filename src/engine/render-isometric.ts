@@ -1,14 +1,9 @@
 import type { Point, Rect } from '../domain';
 import { AREA_STROKE } from './appearance';
-import { glyphMarkup, escapeXml, ImageSymbols, labelSurface, LIGHT_THEME, markerDefs, pathData, type DiagramTheme } from './render-svg';
+import { glyphMarkup, escapeXml, ImageSymbols, labelLeader, labelSurface, LIGHT_THEME, markerDefs, pathData, type DiagramTheme } from './render-svg';
 import { CONTAINER_HEADER, EDGE_LABEL, NODE_LABEL, type Scene } from './scene';
 import { FONT_FAMILY } from './text';
 
-/**
- * Read-only isometric view of a scene. Areas, lines and service icons lie on
- * the ground plane; services stand up as blocks; text stays upright. Uses the
- * same scene as the 2D canvas, so routes and labels match.
- */
 
 const COS = Math.cos(Math.PI / 6);
 const SIN = 0.5;
@@ -64,7 +59,6 @@ export function renderIsometricBody(scene: Scene, theme: DiagramTheme = LIGHT_TH
     const p = iso({ x: c.rect.x + 8, y: c.rect.y + CONTAINER_HEADER.height / 2 });
     out.push(`<text x="${n(p.x)}" y="${n(p.y)}" font-size="${CONTAINER_HEADER.fontSize}" font-weight="600" fill="${AREA_STROKE[c.style.color] ?? AREA_STROKE.gray}">${escapeXml(c.label)}</text>`);
   }
-  // Back to front, so nearer blocks cover farther ones.
   const nodes = [...scene.nodes].sort((a, b) => a.rect.x + a.rect.y + a.rect.width + a.rect.height - (b.rect.x + b.rect.y + b.rect.width + b.rect.height));
   for (const node of nodes) {
     const r = node.rect;
@@ -88,6 +82,7 @@ export function renderIsometricBody(scene: Scene, theme: DiagramTheme = LIGHT_TH
   for (const e of scene.edges) {
     if (!e.labelBox) continue;
     const p = iso({ x: e.labelBox.x + e.labelBox.width / 2, y: e.labelBox.y + e.labelBox.height / 2 });
+    if (e.labelAnchor) out.push(labelLeader(iso(e.labelAnchor), p, theme));
     const w = e.labelBox.width;
     const h = e.labelBox.height;
     out.push(`<rect x="${n(p.x - w / 2)}" y="${n(p.y - h / 2)}" width="${n(w)}" height="${n(h)}" rx="3" fill="${labelSurface(e, { ...theme, areaFillOpacity: theme.areaFillOpacity + 0.04 })}"/>`);

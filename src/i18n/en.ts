@@ -1,5 +1,4 @@
 import { manual } from './manual-en';
-/** English messages. The key set of this object is the message contract. */
 export const en = {
   ...manual,
   'app.untitled': 'Untitled diagram',

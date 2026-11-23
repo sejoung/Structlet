@@ -1,18 +1,11 @@
 import type { ContainerKind } from '../../domain';
 import type { Provider } from '../catalog/types';
 
-/**
- * An icon pack the user loaded from a provider's official download. Structlet
- * ships no provider icons: packs live only in the user's browser and only
- * service ids are written to documents.
- */
 export interface IconAsset {
   readonly mime: 'image/svg+xml' | 'image/png';
-  /** Base64 file content. */
   readonly data: string;
 }
 
-/** An icon in the pack that matches no catalog service; usable as its own service. */
 export interface ExtraService {
   readonly id: string;
   readonly name: string;
@@ -24,7 +17,6 @@ export interface IconPack {
   readonly provider: Exclude<Provider, 'general' | 'nvidia'>;
   readonly createdAt: string;
   readonly enabled: boolean;
-  /** Service id → icon, for catalog services and extras. */
   readonly icons: Readonly<Record<string, IconAsset>>;
   readonly areas: Readonly<Partial<Record<ContainerKind, IconAsset>>>;
   readonly extras: readonly ExtraService[];

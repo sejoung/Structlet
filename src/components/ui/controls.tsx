@@ -1,7 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { Icon, type IconName } from './Icon';
 
-/** One choice out of a few, shown as joined buttons. */
 export function Segmented<T extends string>({ value, options, onChange, label, testId }: { value: T; options: readonly { value: T; label: string; icon?: IconName }[]; onChange(v: T): void; label: string; testId?: string }) {
   return (
     <div className="segmented" role="radiogroup" aria-label={label} data-testid={testId}>
@@ -15,7 +14,6 @@ export function Segmented<T extends string>({ value, options, onChange, label, t
   );
 }
 
-/** On/off switch backed by a checkbox. */
 export function Switch({ checked, onChange, label, testId }: { checked: boolean; onChange(v: boolean): void; label: string; testId?: string }) {
   return (
     <label className="switch">
@@ -26,7 +24,6 @@ export function Switch({ checked, onChange, label, testId }: { checked: boolean;
   );
 }
 
-/** Square button with only an icon; the label is its tooltip and accessible name. */
 export function IconButton({ icon, label, onClick, disabled, testId, pressed, tone }: { icon: IconName; label: string; onClick(): void; disabled?: boolean; testId?: string; pressed?: boolean; tone?: 'danger' }) {
   return (
     <button type="button" className={`icon-button${tone ? ` ${tone}` : ''}`} aria-label={label} title={label} onClick={onClick} disabled={disabled} data-testid={testId} aria-pressed={pressed}>
@@ -35,7 +32,6 @@ export function IconButton({ icon, label, onClick, disabled, testId, pressed, to
   );
 }
 
-/** Collapsible group of inspector rows. */
 export function Section({ title, children, defaultOpen = true, actions, testId }: { title: string; children: ReactNode; defaultOpen?: boolean; actions?: ReactNode; testId?: string }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
@@ -52,7 +48,6 @@ export function Section({ title, children, defaultOpen = true, actions, testId }
   );
 }
 
-/** Label on the left, control on the right. */
 export function Row({ label, children, htmlFor, stacked }: { label: string; children: ReactNode; htmlFor?: string; stacked?: boolean }) {
   return (
     <div className={stacked ? 'row stacked' : 'row'}>

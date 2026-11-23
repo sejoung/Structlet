@@ -29,7 +29,6 @@ function initialLanguage(): Language {
     const saved = localStorage.getItem(LANGUAGE_KEY);
     if (saved === 'ko' || saved === 'en') return saved;
   } catch {
-    // storage blocked
   }
   return pickLanguage(navigator.language);
 }
@@ -38,7 +37,6 @@ const PREFIX: Record<Parameters<IdGenerator>[0], string> = { node: 'n', containe
 const newId: IdGenerator = (kind) => `${PREFIX[kind]}-${crypto.randomUUID().slice(0, 8)}`;
 
 const language = initialLanguage();
-// Failures are recorded by kind only; their messages may quote what the user typed.
 window.addEventListener('error', (e) => log.error('app.uncaught', { name: e.error instanceof Error ? e.error.name : 'Error' }));
 window.addEventListener('unhandledrejection', (e) => log.error('app.unhandled', { name: e.reason instanceof Error ? e.reason.name : typeof e.reason }));
 
@@ -62,9 +60,6 @@ if (window.location.hash === '#manual') {
 
 function mountEditor() {
   const store = new LocalDocumentStore(window.localStorage);
-  // A diagram linked to Drive whose browser copy was lost (or never written before a reload)
-  // starts from the diagram as last synced: starting empty would read as deleting everything
-  // and that would be saved to Drive on reconnecting (ADR 0016).
   const stored = store.load();
   const linked = new LocalDriveLinks().read();
   const doc = linked && (!stored || stored.id !== linked.base.id) ? linked.base : (stored ?? emptyDocument(newId('document'), createTranslator(language)('app.untitled')));
@@ -73,8 +68,6 @@ function mountEditor() {
   const session = new EditorSession(doc);
   const editor = new Editor(session, newId);
 
-  // Google Drive and usage statistics: only when configured, and only on a web origin, since
-  // Google sign-in cannot work on a page opened from a file (ADR 0016, ADR 0017).
   const google = driveConfig();
   function driveServices() {
     if (!google || !web) return undefined;
@@ -99,7 +92,6 @@ function mountEditor() {
           try {
             localStorage.setItem(LANGUAGE_KEY, l);
           } catch {
-            // ignore
           }
         }}
       />

@@ -8,7 +8,6 @@ export interface Placed {
   readonly rect: Rect;
 }
 
-/** World deltas that align boxes to the selection's edge or center. */
 export function alignDeltas(items: readonly Placed[], mode: AlignMode): Map<Id, Point> {
   const out = new Map<Id, Point>();
   if (items.length < 2) return out;
@@ -30,7 +29,6 @@ export function alignDeltas(items: readonly Placed[], mode: AlignMode): Map<Id, 
   return out;
 }
 
-/** World deltas that make the gaps between boxes equal along an axis. */
 export function distributeDeltas(items: readonly Placed[], axis: DistributeAxis): Map<Id, Point> {
   const out = new Map<Id, Point>();
   if (items.length < 3) return out;

@@ -17,7 +17,6 @@ interface HandlesProps {
   readOnly?: boolean;
 }
 
-/** Selection outlines and edit handles, drawn in world coordinates above the diagram. */
 export function Handles({ scene, selection, hover, zoom, overlay, connecting, readOnly }: HandlesProps) {
   const px = (v: number) => v / zoom;
   const selected = new Set(selection);
@@ -46,13 +45,11 @@ export function Handles({ scene, selection, hover, zoom, overlay, connecting, re
 
   if (readOnly) return <g className="handles">{out}</g>;
 
-  // Locked marker.
   for (const box of [...scene.nodes, ...scene.containers]) {
     if (!box.locked || !selected.has(box.id)) continue;
     out.push(<text key={`lock-${box.id}`} x={box.rect.x + box.rect.width - px(2)} y={box.rect.y - px(6)} fontSize={px(11)} textAnchor="end" fill={ACCENT}>🔒</text>);
   }
 
-  // Resize handles for a single selected area.
   const container = single ? scene.containers.find((c) => c.id === single) : undefined;
   if (container && !container.locked) {
     const r = container.rect;
@@ -64,7 +61,6 @@ export function Handles({ scene, selection, hover, zoom, overlay, connecting, re
     }
   }
 
-  // Connection handles on the hovered node and on a single selected box.
   const connectable = new Set<Id>();
   if (hover && scene.frames.has(hover)) connectable.add(hover);
   if (single && scene.frames.has(single)) connectable.add(single);
@@ -78,7 +74,6 @@ export function Handles({ scene, selection, hover, zoom, overlay, connecting, re
     }
   }
 
-  // Route editing for a single selected edge.
   const edge = single ? scene.edges.find((e) => e.id === single) : undefined;
   if (edge) {
     const pts = edge.points;
@@ -101,7 +96,6 @@ export function Handles({ scene, selection, hover, zoom, overlay, connecting, re
     out.push(<circle key="ep-t" data-hit="endpoint" data-id={edge.id} data-which="target" className="handle endpoint" cx={last.x} cy={last.y} r={px(6)} />);
   }
 
-  // Gesture feedback.
   for (const [i, g] of overlay.guides.entries()) {
     out.push(
       g.axis === 'x' ? <line key={`gd-${i}`} className="guide" x1={g.at} x2={g.at} y1={g.from} y2={g.to} /> : <line key={`gd-${i}`} className="guide" x1={g.from} x2={g.to} y1={g.at} y2={g.at} />,

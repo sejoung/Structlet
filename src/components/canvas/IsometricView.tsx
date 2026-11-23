@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { isometricBounds, renderIsometricBody, zoomAt, type DiagramTheme, type Scene, type Viewport } from '../../engine';
 
-/** Read-only isometric view of the scene with its own pan and zoom. */
 export function IsometricView({ scene, theme, notice }: { scene: Scene; theme: DiagramTheme; notice: string }) {
   const ref = useRef<SVGSVGElement>(null);
   const markup = useMemo(() => renderIsometricBody(scene, theme), [scene, theme]);

@@ -2,7 +2,6 @@ import type { DocumentStore } from '../../application';
 import type { Document } from '../../domain';
 import { parseStructlet, serializeStructlet } from '../format/structlet-format';
 
-/** Minimal part of the Web Storage API, so tests can pass a fake. */
 export interface KeyValueStorage {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
@@ -11,10 +10,6 @@ export interface KeyValueStorage {
 
 export const AUTOSAVE_KEY = 'structlet:autosave:v1';
 
-/**
- * Browser autosave in the `.structlet` format. A stored copy that fails
- * validation is ignored, never half-loaded.
- */
 export class LocalDocumentStore implements DocumentStore {
   constructor(
     private readonly storage: KeyValueStorage,
@@ -37,7 +32,6 @@ export class LocalDocumentStore implements DocumentStore {
     try {
       this.storage.setItem(this.key, serializeStructlet(doc));
     } catch {
-      // Storage full or unavailable: the user can still save a file.
     }
   }
 
@@ -45,7 +39,6 @@ export class LocalDocumentStore implements DocumentStore {
     try {
       this.storage.removeItem(this.key);
     } catch {
-      // ignore
     }
   }
 }

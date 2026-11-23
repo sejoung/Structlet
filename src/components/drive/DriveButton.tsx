@@ -25,11 +25,6 @@ const MARK: Record<SyncState['status'], IconName> = {
 
 export const needsAttention = (s: SyncState) => s.status === 'paused' || s.status === 'conflict' || s.status === 'failed';
 
-/**
- * The Drive part of the save status next to the title. Unlinked, it is a small action that
- * connects or saves to Drive; linked, it replaces the browser status and says where the
- * diagram is saved. It connects, saves to Drive, renews access, or opens the details.
- */
 export function DriveButton({ t, view, actions, onDetails, onConflict }: { t: Translate; view: DriveView; actions: DriveActions; onDetails(): void; onConflict(): void }) {
   const { state } = view;
   const label = view.expiring ? t('drive.short.renew') : !view.connected && state.status === 'unlinked' ? t('drive.button.connect') : t(SHORT[state.status]);

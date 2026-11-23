@@ -2,11 +2,6 @@ import { ANNOTATION_KINDS, AREA_COLORS, CONTAINER_KINDS, LIMITS, NODE_VARIANTS, 
 import { LAYOUT_MODES, type LayoutMode } from '../../engine';
 import { arr, bool, FormatError, id, num, obj, oneOf, str, type Json } from '../format/reader';
 
-/**
- * Draft input: the same objects as a `.structlet` file, but every position is
- * optional, references use short keys and missing fields keep their current
- * value. Written by people, scripts or AI assistants; see docs/draft-format.md.
- */
 
 export interface DraftContainer {
   id: string;

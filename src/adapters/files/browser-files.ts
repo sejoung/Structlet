@@ -1,5 +1,3 @@
-/** Browser file input/output. Created and used only from the app layer. */
-
 export function downloadBlob(blob: Blob, fileName: string): void {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -16,7 +14,6 @@ export function downloadText(text: string, fileName: string, type: string): void
   downloadBlob(new Blob([text], { type }), fileName);
 }
 
-/** Opens the system file picker and resolves with the chosen file's text, or null. */
 export function pickTextFile(accept: string): Promise<{ name: string; text: string } | null> {
   return new Promise((resolve) => {
     const input = document.createElement('input');
@@ -38,7 +35,6 @@ export function pickTextFile(accept: string): Promise<{ name: string; text: stri
   });
 }
 
-/** Opens the picker for several files, or a whole folder, and resolves with their bytes. */
 export function pickFiles(options: { accept?: string; directory?: boolean }): Promise<{ path: string; data: Uint8Array }[] | null> {
   return new Promise((resolve) => {
     const input = document.createElement('input');

@@ -8,7 +8,6 @@ import {
 } from 'lucide';
 import { GlyphIcon } from '../GlyphIcon';
 
-/** Interface icons (Lucide). Diagram glyphs come from the catalog instead. */
 export const ICONS = {
   alignLeft: AlignStartVertical, alignCenter: AlignCenterVertical, alignRight: AlignEndVertical,
   alignTop: AlignStartHorizontal, alignMiddle: AlignCenterHorizontal, alignBottom: AlignEndHorizontal,

@@ -3,10 +3,6 @@ import { getBox, indexDocument } from './lookup';
 import type { Annotation, Collection, Container, Document, Edge, Endpoint, Id, Node, Point } from './model';
 import type { ObjectChange, Patch } from './patch';
 
-/**
- * A copied part of a document. Root boxes have `parentId: null` and world
- * coordinates; their contents keep local coordinates. Used for the clipboard.
- */
 export interface Fragment {
   readonly nodes: readonly Node[];
   readonly containers: readonly Container[];
@@ -40,7 +36,6 @@ export function extractFragment(doc: Document, ids: Iterable<Id>): Fragment {
   const annotations = doc.annotations
     .filter((a) => selected.has(a.id) || (a.targetId !== null && inside.has(a.targetId)))
     .map((a) => (a.targetId !== null && !inside.has(a.targetId) ? { ...a, targetId: null } : a));
-  // Containers must come before their children so the fragment validates in order.
   containers.sort((a, b) => (a.parentId === null ? 0 : 1) - (b.parentId === null ? 0 : 1));
   return { nodes, containers, edges, annotations };
 }
@@ -49,10 +44,6 @@ export function isEmptyFragment(f: Fragment): boolean {
   return f.nodes.length + f.containers.length + f.edges.length + f.annotations.length === 0;
 }
 
-/**
- * Inserts a fragment with fresh ids, its roots placed into `parentId`, shifted
- * by `offset`. Returns the patch and the ids of the inserted roots.
- */
 export function pasteFragment(doc: Document, f: Fragment, newId: (c: Collection) => Id, offset: Point, parentId: Id | null): { patch: Patch; created: Id[] } {
   const origin = worldOrigin(doc, parentId);
   const map = new Map<Id, Id>();

@@ -34,7 +34,6 @@ import type { UsageStats } from '../adapters/analytics/google-analytics';
 import { log } from '../adapters/diagnostics/log';
 import { ConsentBanner } from '../components/drive/DriveDialogs';
 
-/** Canvas surface colors; keep in sync with --canvas in styles.css. */
 const CANVAS_LIGHT = '#eef0f4';
 const CANVAS_DARK = '#101318';
 
@@ -44,7 +43,6 @@ interface AppProps {
   files: LocalFileAccess;
   packStore: IconPackStore;
   drive?: DriveServices;
-  /** Drive is configured but this page has no web origin (opened from a file). */
   driveWebOnly?: boolean;
   stats?: UsageStats;
   newId: IdGenerator;
@@ -82,7 +80,6 @@ export function App({ editor, store, files, packStore, drive: driveServices, dri
       setEditing(null);
     }
   }, [editor]);
-  // Narrow windows give the canvas the room: fold the inspector when the window gets narrow.
   useEffect(() => {
     const q = window.matchMedia?.('(max-width: 1100px)');
     if (!q) return;
@@ -92,7 +89,6 @@ export function App({ editor, store, files, packStore, drive: driveServices, dri
   }, [setPanels]);
   const dismissNotice = useCallback(() => setNotice(null), []);
   const theme = useTheme();
-  // The canvas is not white: edge label boxes take the canvas color (keep in sync with --canvas in styles.css).
   const canvasTheme = useMemo(() => onSurface(theme.diagram, theme.resolved === 'dark' ? CANVAS_DARK : CANVAS_LIGHT), [theme.diagram, theme.resolved]);
   const snapshot = useSession(editor.session);
   const t = useMemo(() => createTranslator(language), [language]);
@@ -113,6 +109,7 @@ export function App({ editor, store, files, packStore, drive: driveServices, dri
   const services = useMemo(() => [...SERVICES, ...packServices(packs)].map(toPalette(language, appearance)), [language, appearance, packs]);
   const search = useCallback((q: string) => searchServices(q, packServices(packs)).map(toPalette(language, appearance)), [language, appearance, packs]);
   const findings = useMemo<PanelFinding[]>(() => runChecks(snapshot.committed, (id) => !!appearance.service(id)).map((f) => ({ severity: f.severity, ids: f.ids, message: `${t(`checks.${f.code}`)} · ${label(snapshot.committed, f.ids[0]!)}` })), [snapshot.committed, t]);
+  const stageRef = useRef<HTMLElement>(null);
   const sizeRef = useRef(size);
   sizeRef.current = size;
   const sceneRef = useRef(scene);
@@ -123,8 +120,12 @@ export function App({ editor, store, files, packStore, drive: driveServices, dri
   const toolRef = useRef<CanvasTool>('select');
 
   const fitTo = useCallback((doc: Document) => {
-    const s = sizeRef.current;
-    if (s.width > 0) setViewport(fitView(computeDiagramView(doc, appearance, optionsFor(doc)).bounds, s));
+    const stage = stageRef.current;
+    const s = stage ? { width: stage.clientWidth, height: stage.clientHeight } : sizeRef.current;
+    if (s.width === 0 || s.height === 0) return;
+    if (s.width !== sizeRef.current.width || s.height !== sizeRef.current.height) setSize(s);
+    sizeRef.current = s;
+    setViewport(fitView(computeDiagramView(doc, appearance, optionsFor(doc)).bounds, s));
   }, [appearance, optionsFor]);
 
   const driveUi = useDriveBar({ services: driveServices, webOnly: driveWebOnly, editor, t, language, notify: setNotice, onOpened: fitTo });
@@ -144,13 +145,12 @@ export function App({ editor, store, files, packStore, drive: driveServices, dri
   );
   const panelActions = useMemo(() => createPanelActions(editor, () => sceneRef.current, language), [editor, language]);
 
-  // Entering view mode fits the diagram once the canvas has taken the freed space.
   useEffect(() => {
     if (!fitPending.current && !(fitOnResize.current && presenting)) return;
     fitPending.current = false;
     fitOnResize.current = false;
     fitTo(editor.session.committedDocument);
-  }, [size, presenting, fitPending, fitTo, editor]);
+  }, [size, presenting, fitPending, fitTo, editor, snapshot.committed]);
 
   const fitted = useRef(false);
   useEffect(() => {
@@ -236,7 +236,7 @@ export function App({ editor, store, files, packStore, drive: driveServices, dri
   });
 
   const fit = () => fitTo(editor.session.committedDocument);
-  const canvasDiagram = { ...diagram, layout: diagram.settings.layout, hasObjects: !!scene.rects.size,
+  const canvasDiagram = { ...diagram, layout: diagram.settings.layout, hasObjects: !!(scene.rects.size || scene.annotations.length),
     layoutAll: (mode: Parameters<typeof layoutDocument>[1]) => {
       editor.applyDocumentLayout(layoutDocument(editor.session.committedDocument, mode));
       diagram.expandAll();
@@ -248,7 +248,6 @@ export function App({ editor, store, files, packStore, drive: driveServices, dri
     setPanels({ left: show, right: show });
   }
 
-  /** Keeps the diagram centered when the canvas changes size (panels open or close, window resizes). */
   const onCanvasResize = (next: { width: number; height: number }) => {
     const prev = sizeRef.current;
     if (prev.width > 0 && prev.height > 0 && (prev.width !== next.width || prev.height !== next.height)) {
@@ -322,16 +321,14 @@ export function App({ editor, store, files, packStore, drive: driveServices, dri
           onAddArea={addArea}
           onAddNote={addNote}
         />
-        <main
-          className="stage"
+        <main ref={stageRef} className="stage"
           onDragOver={(e) => {
             if (e.dataTransfer.types.includes('Files')) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }
           }}
           onDrop={(e) => {
-            const dropped = e.dataTransfer.files;
             if (!e.dataTransfer.types.includes('Files')) return;
             e.preventDefault();
-            void actions.openDroppedFiles(dropped);
+            void actions.openDroppedFiles(e.dataTransfer.files);
           }}
         >
           <Canvas

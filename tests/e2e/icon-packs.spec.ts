@@ -27,25 +27,20 @@ test('loading an AWS icon pack from a zip changes icons everywhere and survives 
   await expect(page.locator('[data-testid^="pack-pack-"]')).toContainText('2 services, 1 extra icons, 1 area icons');
   await page.getByTestId('packs-close').click();
 
-  // Canvas: queue and worker use the pack, the VPC header too.
   await expect(page.locator('.diagram [data-node="queue"] use')).toHaveCount(1);
   await expect(page.locator('.diagram [data-node="worker"] use')).toHaveCount(1);
   await expect(page.locator('.diagram [data-node="db"] use')).toHaveCount(0);
   await expect(page.locator('.diagram [data-container="vpc"] use')).toHaveCount(1);
-  // Palette shows the image and offers the extra icon as a service.
   await page.getByLabel('Search services').fill('chime');
   await expect(page.locator('[data-service="aws.pack.chime"] img')).toHaveCount(1);
   await page.getByLabel('Search services').fill('');
 
-  // Export embeds each icon once.
   const [svg] = await Promise.all([page.waitForEvent('download'), act(page, 'tb-svg')]);
   const text = readFileSync((await svg.path())!, 'utf8');
   expect(text.match(/<symbol /g)).toHaveLength(3);
-  // The document itself keeps only service ids.
   await page.waitForTimeout(500);
   expect(await page.evaluate(() => localStorage.getItem('structlet:autosave:v1'))).not.toContain('data:image');
 
-  // Stored in IndexedDB: still there after a reload; turning it off restores generic symbols.
   await page.reload();
   await expect(page.locator('.diagram [data-node="queue"] use')).toHaveCount(1);
   await act(page, 'tb-icon-packs');

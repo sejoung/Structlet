@@ -9,12 +9,10 @@ function stored(): ThemeChoice {
     const v = localStorage.getItem(KEY);
     if (v === 'light' || v === 'dark' || v === 'system') return v;
   } catch {
-    // storage blocked
   }
   return 'system';
 }
 
-/** Theme choice, resolved against the OS setting, applied to `<html data-theme>`. */
 export function useTheme(): { choice: ThemeChoice; setChoice(c: ThemeChoice): void; resolved: 'light' | 'dark'; diagram: DiagramTheme } {
   const [choice, setChoiceState] = useState<ThemeChoice>(stored);
   const query = typeof window.matchMedia === 'function' ? window.matchMedia('(prefers-color-scheme: dark)') : null;
@@ -34,7 +32,6 @@ export function useTheme(): { choice: ThemeChoice; setChoice(c: ThemeChoice): vo
     try {
       localStorage.setItem(KEY, c);
     } catch {
-      // ignore
     }
   };
   return { choice, setChoice, resolved, diagram: resolved === 'dark' ? DARK_THEME : LIGHT_THEME };

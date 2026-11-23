@@ -22,7 +22,6 @@ function base64(bytes: Uint8Array): string {
 
 const isIcon = (path: string) => /\.(svg|png)$/i.test(path) && !/(^|\/)(__macosx|\.)/i.test(path);
 
-/** Files from a zip, including zips nested one level (some packages ship that way). */
 export function filesFromZip(bytes: Uint8Array): PackFile[] {
   const out: PackFile[] = [];
   const read = (data: Uint8Array, prefix: string, depth: number) => {
@@ -40,10 +39,6 @@ function title(key: string): string {
   return key.split('-').map((w) => (w.length <= 3 ? w.toUpperCase() : w[0]!.toUpperCase() + w.slice(1))).join(' ');
 }
 
-/**
- * Builds an icon pack from the files of a provider's icon download. With
- * `provider: 'auto'` the provider whose rules match the most files is used.
- */
 export function buildIconPack(files: readonly PackFile[], provider: PackProvider | 'auto', name: string, id: string, now = new Date()): BuildResult {
   const icons = files.filter((f) => isIcon(f.path));
   if (icons.length === 0) return { ok: false, error: 'No SVG or PNG icons found' };

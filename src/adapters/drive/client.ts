@@ -6,34 +6,23 @@ import { memoryCreations, type CreationRecord } from './creations';
 import { failureOf, multipart } from './http';
 
 export const DRIVE_API = 'https://www.googleapis.com/drive/v3/files';
-/** Who the access is for, to tell one Google account's files from another's. */
 export const DRIVE_ABOUT =
   'https://www.googleapis.com/drive/v3/about?fields=user(permissionId,emailAddress)';
 export const DRIVE_UPLOAD = 'https://www.googleapis.com/upload/drive/v3/files';
-/** Requests give up after this long, body included, so a stalled save cannot hang the queue. */
 export const REQUEST_TIMEOUT = 30_000;
-/** Larger files are refused before downloading. */
 export const MAX_FILE_BYTES = MAX_DIAGRAM_BYTES;
 const FILE_FIELDS = 'id,name,version';
-/** Pages of a folder listing read to find a free name. */
 const LIST_PAGES = 10;
-/** A value inside a Drive query string. */
 const quoted = (text: string) => `'${text.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
-/** Upload attempts for one creation; the reserved ID makes repeating it safe. */
 export const CREATE_ATTEMPTS = 3;
-/** Wait before the second attempt, doubled each time. */
 export const CREATE_BACKOFF = 500;
-/** Failures after which an upload may have landed anyway. */
 const RETRY_CREATE: readonly RemoteFailure[] = ['network', 'conflict'];
-/** An upload not seen this long after it started can no longer land. */
 export const LATE_UPLOAD = 10 * 60_000;
 
-/** What one creation attempt sent. */
 interface Sent {
   name: string;
   content: string;
 }
-/** A creation under way: its reserved ID and everything sent to it so far. */
 interface Reservation {
   id: string;
   sent: Sent[];
@@ -44,14 +33,12 @@ interface Created {
   content: string;
 }
 
-/** A downloaded diagram file, or `unreadable` when it is not one this version reads. */
 function read(content: string): Document {
   const result = parseStructlet(content);
   if (!result.ok) throw new RemoteError('unreadable', result.errors.slice(0, 2).join(' · '));
   return result.document;
 }
 
-/** The Drive file name for a diagram: its title, as for downloads. */
 export const driveFileName = (doc: Document): string => fileNameFor(doc.title, FILE_EXTENSION);
 
 interface Reply<T> {
@@ -59,24 +46,15 @@ interface Reply<T> {
   etag: string | null;
 }
 
-/**
- * Diagram files over the Drive v3 REST API, authorized by the token `token` returns. Writes
- * check the file's version first and, when Google exposes an ETag, send it as `If-Match`.
- */
 export class DriveClient implements RemoteDocuments {
-  /** Unfinished creations by folder, kept so saving there again reuses the reserved ID. */
   private readonly reserved = new Map<string, Reservation>();
-  /** Creations running in this page; their own retries look for the file. */
   private creating = 0;
-  /** The account behind each token, asked once per token. */
   private readonly accounts = new Map<string, Promise<RemoteAccount>>();
 
   constructor(
     private readonly token: () => string | null,
     private readonly fetcher: typeof fetch = (...args) => globalThis.fetch(...args),
-    /** Called with a token Drive refused (revoked or expired), so it can be dropped. */
     private readonly onRefused: (token: string) => void = () => {},
-    /** Where the latest creation is remembered until its answer arrives. */
     private readonly creations: CreationRecord = memoryCreations(),
     private readonly now: () => number = Date.now,
   ) {}
@@ -108,7 +86,6 @@ export class DriveClient implements RemoteDocuments {
         return { id, email: data.user?.emailAddress ?? '' };
       });
       this.accounts.set(token, account);
-      // A failed answer is asked again next time.
       account.catch(() => this.accounts.delete(token));
     }
     return account;
@@ -122,13 +99,10 @@ export class DriveClient implements RemoteDocuments {
     const current = await this.metadata(file.id, 'version,mimeType');
     if (current.data.version !== file.version)
       throw new RemoteError('conflict', 'The file changed in Drive.');
-    // A numbered copy of the title's name (`Plan (2).structlet`) keeps its number.
     const name = isNameFor(file.name, driveFileName(doc))
       ? file.name
       : await this.nameInParent(file.id, doc);
     const content = serializeStructlet(doc);
-    // Renaming, or giving an older `application/json` file the diagram type, needs the
-    // metadata part; otherwise the content alone is sent.
     const upload =
       name === file.name && current.data.mimeType === MIME_TYPE
         ? null
@@ -140,7 +114,6 @@ export class DriveClient implements RemoteDocuments {
         method: 'PATCH',
         headers: {
           'Content-Type': upload?.type ?? MIME_TYPE,
-          // Only a validator from the fresh metadata read may guard the write.
           ...(current.etag ? { 'If-Match': current.etag } : {}),
         },
         body: upload?.body ?? content,
@@ -149,13 +122,6 @@ export class DriveClient implements RemoteDocuments {
     return { id: data.id, name: data.name, version: data.version };
   }
 
-  /**
-   * Create the file under an ID reserved from Drive beforehand, so repeating a creation
-   * whose answer was lost finds the file it made instead of making a second one. The
-   * reservation outlives a failed call: saving to the same folder again reuses it. It is
-   * also written down until the answer arrives, so `unconfirmed` can find the file after
-   * the page was closed in between.
-   */
   async create(folderId: string, doc: Document): Promise<RemoteFile> {
     const sent = { name: await this.nameIn(folderId, doc), content: serializeStructlet(doc) };
     this.creating++;
@@ -175,15 +141,12 @@ export class DriveClient implements RemoteDocuments {
 
   async unconfirmed(): Promise<{ file: RemoteFile; document: Document } | null> {
     const pending = this.creations.read();
-    // This page's own creation finds its file itself.
     if (!pending || this.creating) return null;
     const existing = await this.created(pending.id);
     if (!existing) {
-      // An upload still on its way may land; past that, nothing will.
       if (this.now() - pending.at > LATE_UPLOAD) this.forgetUnconfirmed();
       return null;
     }
-    // Only Structlet uploads to a reserved ID, but the folder must be the one chosen.
     if (!existing.parents.includes(pending.folderId)) {
       this.forgetUnconfirmed();
       return null;
@@ -191,10 +154,6 @@ export class DriveClient implements RemoteDocuments {
     return { file: existing.file, document: read(existing.content) };
   }
 
-  /**
-   * Drop unfinished creations once the diagram moves on (another file, stopped syncing). A
-   * later creation reserves a new ID: reusing one could find an earlier late upload's file.
-   */
   forgetUnconfirmed(): void {
     this.reserved.clear();
     this.creations.write(null);
@@ -210,7 +169,6 @@ export class DriveClient implements RemoteDocuments {
       try {
         return await this.upload(reservation.id, folderId, sent);
       } catch (error) {
-        // A lost answer or 409 may mean an earlier upload went through: look before retrying.
         if (!(error instanceof RemoteError && RETRY_CREATE.includes(error.reason))) throw error;
         const existing = await this.created(reservation.id);
         if (existing) return this.adopt(existing, reservation, folderId, doc);
@@ -220,12 +178,6 @@ export class DriveClient implements RemoteDocuments {
     }
   }
 
-  /**
-   * The doc's file name, numbered (`Plan (2).structlet`) when another file in the folder
-   * has it. Structlet sees only files it made or opened (`drive.file`), so files of other
-   * apps may still share the name. A failed listing keeps the plain name: names never
-   * decide which file is written.
-   */
   private async nameIn(folderId: string, doc: Document, except?: string): Promise<string> {
     const base = driveFileName(doc);
     try {
@@ -249,7 +201,6 @@ export class DriveClient implements RemoteDocuments {
     }
   }
 
-  /** A free name for an existing file whose doc was renamed, in its own folder. */
   private async nameInParent(id: string, doc: Document): Promise<string> {
     const parents = await this.request(
       `${DRIVE_API}/${encodeURIComponent(id)}?fields=parents`,
@@ -286,7 +237,6 @@ export class DriveClient implements RemoteDocuments {
     return { id: data.id, name: data.name, version: data.version };
   }
 
-  /** The file at a reserved ID with its raw content, or null while it does not exist. */
   private async created(id: string): Promise<Created | null> {
     const url = `${DRIVE_API}/${encodeURIComponent(id)}`;
     try {
@@ -308,10 +258,6 @@ export class DriveClient implements RemoteDocuments {
     }
   }
 
-  /**
-   * Take over a file an unanswered upload made, if it holds something this creation sent;
-   * anything else at the reserved ID is not ours to overwrite.
-   */
   private async adopt(
     existing: Created,
     reservation: Reservation,
@@ -328,7 +274,6 @@ export class DriveClient implements RemoteDocuments {
     const latest = reservation.sent.at(-1)!;
     if (existing.content === latest.content && existing.file.name === latest.name)
       return existing.file;
-    // An earlier attempt landed; bring it up to what this attempt meant to write.
     return this.save(existing.file, doc);
   }
 
@@ -360,7 +305,6 @@ export class DriveClient implements RemoteDocuments {
       return { data: await read(response), etag: response.headers.get('ETag') };
     } catch (error) {
       if (error instanceof RemoteError) throw error;
-      // Fetch rejects on network failures and aborts; both may succeed when repeated.
       throw new RemoteError(
         'network',
         controller.signal.aborted ? 'Drive did not answer in time.' : (error as Error).message,

@@ -1,8 +1,3 @@
-/**
- * Deterministic text measurement shared by the canvas and exports. Widths are
- * estimates per character class so layout does not depend on a DOM.
- */
-
 export const FONT_FAMILY =
   "Pretendard, 'Apple SD Gothic Neo', 'Noto Sans KR', 'Segoe UI', system-ui, -apple-system, sans-serif";
 
@@ -36,10 +31,6 @@ function breakWord(word: string, maxWidth: number, fontSize: number): string[] {
   return parts;
 }
 
-/**
- * Wraps text at spaces (Korean words stay whole, like `word-break: keep-all`).
- * Words longer than a line are split by character. Explicit newlines are kept.
- */
 export function wrapText(text: string, maxWidth: number, fontSize: number, maxLines = 4): string[] {
   const lines: string[] = [];
   for (const paragraph of text.split('\n')) {

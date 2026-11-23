@@ -4,7 +4,6 @@ import { AREA_STROKE, screenToWorld, union, type Scene, type Viewport } from '..
 const W = 180;
 const H = 120;
 
-/** Overview of the whole diagram with the visible part marked. Click or drag to move the view. */
 export function Minimap({ scene, viewport, size, setViewport, label }: { scene: Scene; viewport: Viewport; size: { width: number; height: number }; setViewport(v: Viewport): void; label: string }) {
   const dragging = useRef(false);
   if (!scene.bounds || size.width === 0) return null;

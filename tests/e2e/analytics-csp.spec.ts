@@ -1,17 +1,20 @@
 import { expect, test, type Page } from '@playwright/test';
 import { act, freshApp, openManual, openSample } from './helpers';
 
-/** Google's tag library, stubbed: it records that it loaded and leaves `dataLayer` to the page. */
 async function mockTag(page: Page) {
   const loads: string[] = [];
-  await page.route('https://www.googletagmanager.com/**', (route) => {
+  await page.context().route('https://www.googletagmanager.com/**', (route) => {
     loads.push(route.request().url());
-    return route.fulfill({ contentType: 'application/javascript', body: 'window.__tagLoaded = true;' });
+    return route.fulfill({ contentType: 'application/javascript', body: 'window.__tagLoaded = true; window.dataLayer.push({ event: "gtm.js" });' });
   });
   return loads;
 }
-const sentEvents = (page: Page) =>
-  page.evaluate(() => ((window as unknown as { dataLayer?: IArguments[] }).dataLayer ?? []).map((a) => [...a]).filter((a) => a[0] === 'event').map((a) => a[1] as string));
+type TagEntry = { readonly [index: number]: unknown; readonly event?: string };
+
+const sentEvents = (page: Page) => page.evaluate(() => {
+  const entries = (window as Window & { dataLayer?: TagEntry[] }).dataLayer ?? [];
+  return entries.flatMap((entry) => entry?.[0] === 'event' && typeof entry[1] === 'string' ? [entry[1]] : []);
+});
 
 test.describe('usage statistics (build with a measurement id)', () => {
   test.use({ baseURL: 'http://127.0.0.1:5185' });
@@ -29,6 +32,8 @@ test.describe('usage statistics (build with a measurement id)', () => {
     await expect.poll(() => loads.length).toBe(1);
     expect(loads[0]).toContain('id=G-E2ETEST01');
     const guide = await openManual(page);
+    await expect.poll(() => guide.evaluate(() => (window as Window & { __tagLoaded?: boolean }).__tagLoaded)).toBe(true);
+    expect(loads).toHaveLength(2);
     const manual = guide.getByRole('main', { name: 'User guide' });
     const [sample] = await Promise.all([guide.waitForEvent('download'), manual.getByRole('button', { name: 'Download sample (.structlet)' }).click()]);
     expect(sample.suggestedFilename()).toBe('three-tier.structlet');
@@ -37,11 +42,13 @@ test.describe('usage statistics (build with a measurement id)', () => {
     const [download] = await Promise.all([page.waitForEvent('download'), act(page, 'tb-svg')]);
     void download;
     await expect.poll(() => sentEvents(page)).toContain('image_exported');
-    // The address sent has no hash or query.
-    const config = await page.evaluate(() => ((window as unknown as { dataLayer: IArguments[] }).dataLayer).map((a) => [...a]).find((a) => a[0] === 'config'));
-    expect(String((config![2] as { page_location: string }).page_location)).toBe('http://127.0.0.1:5185/');
+    const address = await page.evaluate(() => {
+      const entries = (window as Window & { dataLayer?: TagEntry[] }).dataLayer ?? [];
+      const config = entries.find((entry) => entry?.[0] === 'config');
+      return (config?.[2] as { page_location?: string } | undefined)?.page_location;
+    });
+    expect(address).toBe('http://127.0.0.1:5185/');
 
-    // Turning it off in settings stops sending; the choice is remembered.
     await act(page, 'tb-usage-stats');
     await page.reload();
     await expect(page.getByTestId('consent')).toHaveCount(0);

@@ -17,11 +17,6 @@ import {
 } from './scene';
 import { FONT_FAMILY } from './text';
 
-/**
- * Renders a scene to SVG markup. The canvas shows this exact markup and the
- * SVG/PNG exports wrap it, so screen and files use the same icons, labels and
- * paths. Only the theme colors differ between light and dark.
- */
 
 export interface DiagramTheme {
   readonly name: 'light' | 'dark';
@@ -29,7 +24,6 @@ export interface DiagramTheme {
   readonly edgeLabel: string;
   readonly nodeLabel: string;
   readonly annotation: string;
-  /** Color the drawing sits on: the page in exports, the canvas on screen. Edge label boxes use it. */
   readonly background: string;
   readonly boxFill: string;
   readonly legendFill: string;
@@ -70,7 +64,6 @@ export const DARK_THEME: DiagramTheme = {
 };
 
 
-/** The same theme drawn on the editor canvas, whose surface color differs from an exported page. */
 export function onSurface(theme: DiagramTheme, background: string): DiagramTheme {
   return background === theme.background ? theme : { ...theme, background };
 }
@@ -115,16 +108,11 @@ function channel(hex: string, shift: number): number {
   return (Number.parseInt(hex.slice(1, 7), 16) >> shift) & 255;
 }
 
-/** `over` painted on `base` at `alpha`, as an opaque hex color. */
 export function mixColor(base: string, over: string, alpha: number): string {
   const c = (shift: number) => Math.round(channel(base, shift) * (1 - alpha) + channel(over, shift) * alpha).toString(16).padStart(2, '0');
   return `#${c(16)}${c(8)}${c(0)}`;
 }
 
-/**
- * Color behind an edge label: the drawing background with every tinted area
- * under it, so the label box hides the line without standing out.
- */
 export function labelSurface(e: SceneEdge, t: DiagramTheme): string {
   return e.labelTints.reduce((color, tint) => mixColor(color, tint, t.areaFillOpacity), t.background);
 }
@@ -133,10 +121,14 @@ function edgeLabelMarkup(e: SceneEdge, t: DiagramTheme): string {
   if (!e.labelBox) return '';
   const b = e.labelBox;
   return (
-    `<g data-edge-label="${escapeXml(e.id)}"><rect x="${n(b.x)}" y="${n(b.y)}" width="${n(b.width)}" height="${n(b.height)}" rx="3" fill="${labelSurface(e, t)}"/>` +
+    `<g data-edge-label="${escapeXml(e.id)}">${e.labelAnchor ? labelLeader(e.labelAnchor, { x: b.x + b.width / 2, y: b.y + b.height / 2 }, t) : ''}<rect x="${n(b.x)}" y="${n(b.y)}" width="${n(b.width)}" height="${n(b.height)}" rx="3" fill="${labelSurface(e, t)}"/>` +
     textLines(e.label, b.x + b.width / 2, b.y + EDGE_LABEL.padY + EDGE_LABEL.fontSize - 1, EDGE_LABEL.lineHeight, `font-size="${EDGE_LABEL.fontSize}" fill="${t.edgeLabel}" text-anchor="middle"`) +
     '</g>'
   );
+}
+
+export function labelLeader(from: Point, to: Point, theme: DiagramTheme): string {
+  return `<line x1="${n(from.x)}" y1="${n(from.y)}" x2="${n(to.x)}" y2="${n(to.y)}" stroke="${theme.edge}" stroke-width="0.8"/>`;
 }
 
 export function markerDefs(t: DiagramTheme): string {
@@ -149,10 +141,6 @@ export function markerDefs(t: DiagramTheme): string {
 }
 
 
-/**
- * Icon-pack images are defined once per drawing as symbols and placed with
- * `<use>`, so a pack icon used many times is embedded once.
- */
 export class ImageSymbols {
   private ids = new Map<string, string>();
   constructor(private readonly prefix = 'sl-img') {}
@@ -227,7 +215,6 @@ function annotationMarkup(a: SceneAnnotation, t: DiagramTheme): string {
   return out.join('');
 }
 
-/** Diagram content without the outer `<svg>`, in world coordinates. */
 export function renderSceneBody(scene: Scene, theme: DiagramTheme = LIGHT_THEME): string {
   const images = new ImageSymbols();
   const out: string[] = [markerDefs(theme)];
@@ -266,7 +253,6 @@ export interface StandaloneOptions {
   readonly theme?: DiagramTheme;
 }
 
-/** A complete SVG file for the scene, cropped to its bounds. */
 export function renderStandaloneSvg(scene: Scene, options: StandaloneOptions = {}): { svg: string; box: Rect } {
   const theme = options.theme ?? LIGHT_THEME;
   const padding = options.padding ?? 32;

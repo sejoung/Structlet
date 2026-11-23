@@ -1,12 +1,6 @@
 import { parse } from 'yaml';
 import type { Draft, DraftEdge, DraftNode } from './draft-format';
 
-/**
- * docker-compose.yml → draft. Services become nodes (icon from the image),
- * `depends_on` and service names in `environment` become edges, published
- * `ports` get a client node, named volumes become storage nodes and multiple
- * networks become nested areas.
- */
 
 const IMAGE_SERVICES: [RegExp, string][] = [
   [/postgres|mysql|mariadb|mssql|oracle|cockroach/, 'database'],

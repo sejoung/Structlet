@@ -1,9 +1,7 @@
-/** Messages between open tabs of the same origin; nothing is persisted. */
 export type AuthMessage =
   | { type: 'request' }
   | { type: 'token'; token: string; expiresIn: number }
   | { type: 'expired'; token: string }
-  /** `forget`: the tabs also drop what they remember about Drive (ADR 0010). */
   | { type: 'disconnected'; forget: boolean };
 
 export interface AuthChannel {
@@ -11,7 +9,6 @@ export interface AuthChannel {
   listen(receive: (message: AuthMessage) => void): void;
 }
 
-/** Any page of the origin can post, so only well-formed messages are accepted. */
 export function parseAuthMessage(value: unknown): AuthMessage | null {
   if (!value || typeof value !== 'object') return null;
   const data = value as Record<string, unknown>;
@@ -30,7 +27,6 @@ export function parseAuthMessage(value: unknown): AuthMessage | null {
   return null;
 }
 
-/** A channel to the other open tabs, or null where the browser has none. */
 export function openAuthChannel(clientId: string): AuthChannel | null {
   if (typeof BroadcastChannel === 'undefined') return null;
   try {
@@ -40,7 +36,6 @@ export function openAuthChannel(clientId: string): AuthChannel | null {
         try {
           channel.postMessage(message);
         } catch {
-          // Other tabs fall back to reconnecting on their own.
         }
       },
       listen: (receive) => {

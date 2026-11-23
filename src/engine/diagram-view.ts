@@ -11,7 +11,6 @@ export interface DiagramView {
   label(area: Container, services: number): readonly [string, string];
 }
 
-/** Build a temporary diagram for rendering. It must never replace the editable document. */
 export function computeDiagramView(doc: Document, appearance: Appearance, view: DiagramView) {
   if (view.folded.size === 0) return computeScene(doc, appearance);
   const index = indexDocument(doc);

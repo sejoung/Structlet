@@ -33,11 +33,9 @@ interface CanvasProps {
   onFit(): void;
   tool: CanvasTool;
   onTool(tool: CanvasTool): void;
-  /** View mode: no editing handles and no tool switch. */
   presenting: boolean;
 }
 
-/** Objects in reading order for keyboard navigation. */
 function tabOrder(scene: Scene): Id[] {
   return [...scene.containers.map((c) => c.id), ...scene.nodes.map((n) => n.id), ...scene.edges.map((e) => e.id), ...scene.annotations.map((a) => a.id)];
 }
@@ -120,7 +118,6 @@ export function Canvas(props: CanvasProps) {
 
   const onDoubleClick = (e: MouseEvent) => {
     if (tool !== 'select') return;
-    // Pointer capture retargets dblclick to the <svg>, so look up what is under the pointer.
     const under = document.elementFromPoint(e.clientX, e.clientY) ?? (e.target as Element);
     const el = under.closest('[data-hit]') as SVGElement | null;
     const kind = el?.dataset.hit;
@@ -164,7 +161,6 @@ export function Canvas(props: CanvasProps) {
   };
 
   const onKeyDown = (e: ReactKeyboardEvent<SVGSVGElement>) => {
-    // Show the focus ring only for keyboard use; pointer use clears it.
     e.currentTarget.dataset.keyboard = 'true';
     if (!props.presenting && (e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10'))) {
       e.preventDefault();

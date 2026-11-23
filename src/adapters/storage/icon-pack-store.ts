@@ -1,10 +1,5 @@
 import type { IconPack } from '../icon-packs/pack';
 
-/**
- * Icon packs saved in this browser's IndexedDB. Falls back to memory when
- * IndexedDB is unavailable (some browsers on file://), so packs then last
- * until the page closes.
- */
 export class IconPackStore {
   private memory = new Map<string, IconPack>();
   private db: Promise<IDBDatabase | null>;
@@ -23,7 +18,6 @@ export class IconPackStore {
     });
   }
 
-  /** True when packs survive a reload. */
   async persistent(): Promise<boolean> {
     return (await this.db) !== null;
   }

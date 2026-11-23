@@ -14,12 +14,10 @@ function render(doc: Document, appearance: Appearance, options: ExportOptions): 
   return options.view === 'isometric' ? renderIsometricSvg(scene, { theme: options.theme, title: doc.title }) : renderStandaloneSvg(scene, { title: doc.title, theme: options.theme });
 }
 
-/** SVG file text for a document, using the same scene and renderer as the canvas. */
 export function exportSvg(doc: Document, appearance: Appearance, options: ExportOptions = {}): string {
   return `<?xml version="1.0" encoding="UTF-8"?>\n${render(doc, appearance, options).svg}\n`;
 }
 
-/** PNG from the exported SVG, drawn at `scale` for sharp output. Browser only. */
 export async function exportPng(doc: Document, appearance: Appearance, options: ExportOptions = {}, scale = 2): Promise<Blob> {
   const { svg, box } = render(doc, appearance, options);
   const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));

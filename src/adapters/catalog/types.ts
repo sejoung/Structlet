@@ -1,6 +1,5 @@
 import type { Glyph } from '../../engine';
 
-/** Service definitions, separate from the nodes that use them and from icon packs. */
 
 export const PROVIDERS = ['general', 'aws', 'gcp', 'azure', 'k8s', 'nvidia'] as const;
 export type Provider = (typeof PROVIDERS)[number];
@@ -10,7 +9,6 @@ export interface ServiceDefinition {
   readonly provider: Provider;
   readonly name: { readonly en: string; readonly ko: string };
   readonly keywords: readonly string[];
-  /** Generic symbol (Lucide), used when no icon pack provides an image. */
   readonly glyph: Glyph;
   readonly color: string;
   readonly role: Role;
@@ -31,7 +29,6 @@ export const ROLE_COLORS = {
 
 export type Role = keyof typeof ROLE_COLORS;
 
-/** `[id, English name, Korean name, glyph, role, keywords]` */
 export type Row = [id: string, en: string, ko: string, glyph: Glyph, role: Role, keywords?: string];
 
 export function define(provider: Provider, rows: readonly Row[]): ServiceDefinition[] {

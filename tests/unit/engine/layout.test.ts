@@ -40,7 +40,6 @@ describe('layoutSelection', () => {
     expect(moves.has('cache')).toBe(false);
     const after = applyPatch(doc, moveEach(doc, moves));
     const r = (id: string) => worldRect(after, after.nodes.find((n) => n.id === id)!);
-    // api calls auth and db: they end up below it.
     expect(r('auth').y).toBeGreaterThan(r('api').y);
     expect(r('db').y).toBeGreaterThan(r('api').y);
     expect(r('cache')).toEqual(before.get('cache'));

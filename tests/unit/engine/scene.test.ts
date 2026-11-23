@@ -10,7 +10,6 @@ describe('scene', () => {
   it('places nested objects in world coordinates and orders areas by depth', () => {
     const scene = computeScene(sampleDocument(), look);
     expect(scene.containers.map((c) => c.id)).toEqual(['cloud', 'region', 'vpc', 'public', 'private']);
-    // api: cloud(160,40) + region(180,50) + vpc(40,50) + private(300,60) + (60,60)
     expect(scene.nodes.find((n) => n.id === 'api')!.rect).toMatchObject({ x: 740, y: 260 });
   });
 

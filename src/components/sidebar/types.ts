@@ -15,6 +15,5 @@ export interface PaletteService {
   readonly role: PaletteRole;
   readonly glyph: Glyph;
   readonly color: string;
-  /** Official icon from an icon pack, if loaded. */
   readonly image?: string;
 }

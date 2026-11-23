@@ -1,7 +1,6 @@
 import { descendants, indexDocument, topmost, type Document, type Endpoint, type Id, type Point, type Rect } from '../../domain';
 import { boxAt, containerAt, nearestPort, union, type Scene } from '../../engine';
 
-/** Endpoint for a pointer released at `world`: a side when near one, `auto` inside a box, free elsewhere. */
 export function endpointAt(scene: Scene, world: Point, exclude: ReadonlySet<Id>, zoom: number): Endpoint {
   const target = boxAt(scene, world, exclude, 6 / zoom);
   if (!target) return { kind: 'free', x: Math.round(world.x), y: Math.round(world.y) };
@@ -13,7 +12,6 @@ export function endpointAt(scene: Scene, world: Point, exclude: ReadonlySet<Id>,
   return { kind: 'attached', objectId: target, side: 'auto', offset: null };
 }
 
-/** Topmost movable boxes and annotations in a selection. */
 export function movableIds(doc: Document, selection: readonly Id[]): Id[] {
   const index = indexDocument(doc);
   const boxes = topmost(doc, selection.filter((id) => index.nodes.has(id) || index.containers.has(id)));
@@ -25,14 +23,12 @@ export function movingRect(scene: Scene, ids: readonly Id[]): Rect | null {
   return union(ids.map((id) => scene.rects.get(id) ?? scene.annotations.find((a) => a.id === id)?.rect).filter((r): r is Rect => !!r));
 }
 
-/** Ids that must not be snap or drop targets while `ids` move: themselves and their contents. */
 export function movingSet(doc: Document, ids: readonly Id[]): Set<Id> {
   const set = new Set(ids);
   for (const id of ids) if (indexDocument(doc).containers.has(id)) for (const d of descendants(doc, id)) set.add(d);
   return set;
 }
 
-/** New parent for each moved box, from the area under its center after the move. */
 export function dropParents(doc: Document, scene: Scene, ids: readonly Id[]): Map<Id, Id | null> {
   const index = indexDocument(doc);
   const exclude = movingSet(doc, ids);

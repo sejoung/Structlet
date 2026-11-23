@@ -22,12 +22,6 @@ export type MergeResult = { ok: true; document: Document; created: Id[] } | { ok
 
 type M<T> = { -readonly [K in keyof T]: T[K] };
 
-/**
- * Applies a draft to a document. Existing objects keep their id, position and
- * lock unless the draft gives new values (positions of locked objects are
- * never changed). New objects without coordinates are laid out. On any error
- * nothing is returned but the errors, so the caller's document stays as it was.
- */
 export function mergeDraft(base: Document, draft: Draft): MergeResult {
   const errors: string[] = [];
   let doc = draft.remove.length ? applyPatch(base, deleteObjects(base, draft.remove)) : base;
@@ -173,10 +167,8 @@ export function mergeDraft(base: Document, draft: Draft): MergeResult {
     annotations: [...annotations.values()],
   };
   if (errors.length) return { ok: false, errors };
-  // Validate references before layout so a broken draft cannot reach placement.
   const issues = validateDocument(doc);
   if (findParentCycles(doc).length === 0 && issues.length === 0) {
-    // Boxes moved into a new, unplaced area are laid out with it; others keep their world position.
     for (const [id, world] of keepWorld) {
       const box = nodes.get(id) ?? containers.get(id)!;
       if (box.parentId !== null && place.has(box.parentId)) place.add(id);

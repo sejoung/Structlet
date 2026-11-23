@@ -16,10 +16,6 @@ import type {
 } from './model';
 import { applyPatch, composePatches, EMPTY_PATCH, type ObjectChange, type Patch } from './patch';
 
-/**
- * Commands are pure: they read a document and return a patch. Ids for new
- * objects are passed in by the caller so commands stay deterministic.
- */
 
 export class CommandError extends Error {}
 
@@ -36,7 +32,6 @@ function remove<C extends Collection>(doc: Document, collection: C, before: Coll
   return { collection, id: before.id, before, after: null, index } as ObjectChange;
 }
 
-/** Applies command steps one after another and merges their patches. */
 export function sequence(doc: Document, ...steps: ((d: Document) => Patch)[]): Patch {
   let current = doc;
   const patches: Patch[] = [];
@@ -63,7 +58,6 @@ export interface NewNode {
   serviceId: string;
   label: string;
   parentId: Id | null;
-  /** World coordinates of the top-left corner. */
   at: Point;
   width: number;
   height: number;
@@ -91,7 +85,6 @@ export function addNode(doc: Document, init: NewNode): Patch {
 
 export interface NewContainer extends Omit<Container, 'parentId' | 'x' | 'y' | 'locked'> {
   parentId: Id | null;
-  /** World rectangle. */
   rect: Rect;
 }
 
@@ -122,7 +115,6 @@ export function addAnnotation(doc: Document, annotation: Annotation): Patch {
 
 type Editable<C extends Collection> = Partial<Omit<CollectionItem[C], 'id' | 'parentId'>>;
 
-/** Changes plain fields of an object. Use `setParent` to change the hierarchy. */
 export function updateObject<C extends Collection>(doc: Document, collection: C, id: Id, fields: Editable<C>): Patch {
   const before = indexDocument(doc)[collection].get(id) as CollectionItem[C] | undefined;
   if (!before) throw new CommandError(`Unknown ${collection} ${id}`);
@@ -149,12 +141,6 @@ function shiftEndpoint(end: Endpoint, dx: number, dy: number): Endpoint {
   return end.kind === 'free' ? { ...end, x: end.x + dx, y: end.y + dy } : end;
 }
 
-/**
- * Moves boxes, annotations and edges by a world delta. Children follow their
- * container because they are stored in local coordinates. Manual waypoints
- * move when the whole edge moves: both ends inside the moved set, or the edge
- * itself selected.
- */
 export function moveBy(doc: Document, ids: Iterable<Id>, dx: number, dy: number): Patch {
   if (dx === 0 && dy === 0) return EMPTY_PATCH;
   const index = indexDocument(doc);
@@ -196,10 +182,6 @@ export function moveBy(doc: Document, ids: Iterable<Id>, dx: number, dy: number)
   return { changes };
 }
 
-/**
- * Moves objects into another container (or to the root) while keeping their
- * world position. Requests that would create a cycle are rejected.
- */
 export function setParent(doc: Document, ids: Iterable<Id>, parentId: Id | null): Patch {
   assertParent(doc, parentId);
   const index = indexDocument(doc);
@@ -221,7 +203,6 @@ export function setParent(doc: Document, ids: Iterable<Id>, parentId: Id | null)
   return { changes };
 }
 
-/** Sets a box's world rectangle. Children of a container keep their world position. */
 export function setBounds(doc: Document, id: Id, rect: Rect): Patch {
   const index = indexDocument(doc);
   const box = getBox(doc, id);
@@ -248,7 +229,6 @@ export function setBounds(doc: Document, id: Id, rect: Rect): Patch {
   return { changes };
 }
 
-/** Deletes objects. Containers take their contents; edges attached to deleted boxes go too. */
 export function deleteObjects(doc: Document, ids: Iterable<Id>): Patch {
   const index = indexDocument(doc);
   const doomed = new Set<Id>();
@@ -272,21 +252,12 @@ export function deleteObjects(doc: Document, ids: Iterable<Id>): Patch {
   return { changes: removalsLast(changes) };
 }
 
-/**
- * Orders removals from the same list by descending index, so each recorded
- * index is still right when the patch is applied in order and when its
- * inverse re-inserts in reverse order.
- */
 export function removalsLast(changes: readonly ObjectChange[]): ObjectChange[] {
   const updates = changes.filter((c) => c.after !== null);
   const removals = changes.filter((c) => c.after === null).sort((a, b) => a.collection.localeCompare(b.collection) || (b.index ?? 0) - (a.index ?? 0));
   return [...updates, ...removals];
 }
 
-/**
- * Copies boxes (with their contents), annotations and the edges between copied
- * objects. Returns the patch and the ids of the copies of the selected objects.
- */
 export function duplicate(doc: Document, ids: Iterable<Id>, newId: (collection: Collection) => Id, offset: Point): { patch: Patch; created: Id[] } {
   const index = indexDocument(doc);
   const selected = [...new Set(ids)];
@@ -333,7 +304,6 @@ export function duplicate(doc: Document, ids: Iterable<Id>, newId: (collection: 
   return { patch: { changes }, created };
 }
 
-/** Creates a container around the given boxes and moves them into it. */
 export function wrapInContainer(
   doc: Document,
   ids: Iterable<Id>,
@@ -356,11 +326,6 @@ export function wrapInContainer(
   );
 }
 
-/**
- * Moves objects and puts boxes into new parents in one patch, so a drag that
- * drops objects into another area is a single undo step. Requests that would
- * create a cycle keep the current parent.
- */
 export function moveInto(doc: Document, ids: readonly Id[], dx: number, dy: number, parents: ReadonlyMap<Id, Id | null>): Patch {
   return sequence(
     doc,
@@ -381,7 +346,6 @@ export function moveInto(doc: Document, ids: readonly Id[], dx: number, dy: numb
   );
 }
 
-/** Moves each object by its own delta in one patch (used by align and distribute). */
 export function moveEach(doc: Document, deltas: ReadonlyMap<Id, Point>): Patch {
   return sequence(doc, ...[...deltas].map(([id, d]) => (current: Document) => moveBy(current, [id], d.x, d.y)));
 }

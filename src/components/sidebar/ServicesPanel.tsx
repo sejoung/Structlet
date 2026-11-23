@@ -32,7 +32,6 @@ function Tile({ s, onAdd }: { s: PaletteService; onAdd(id: string): void }) {
   );
 }
 
-/** Service picker: search across every provider, or browse one provider by role. */
 export function ServicesPanel({ t, services, search, recent, onAdd }: Props) {
   const [query, setQuery] = useState('');
   const [provider, setProvider] = useState<PaletteProvider>('general');

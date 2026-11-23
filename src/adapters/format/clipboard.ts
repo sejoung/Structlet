@@ -1,7 +1,6 @@
 import { FORMAT_VERSION, isEmptyFragment, type Fragment } from '../../domain';
 import { parseStructlet, serializeStructlet } from './structlet-format';
 
-/** Clipboard text for a fragment: a small `.structlet` document, validated like a file on paste. */
 export function serializeFragment(f: Fragment): string {
   return serializeStructlet({ formatVersion: FORMAT_VERSION, id: 'clipboard', title: 'Structlet clipboard', ...f });
 }

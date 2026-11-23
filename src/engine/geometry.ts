@@ -27,7 +27,6 @@ export function containsPoint(r: Rect, p: Point): boolean {
   return p.x >= r.x && p.x <= r.x + r.width && p.y >= r.y && p.y <= r.y + r.height;
 }
 
-/** Strictly inside, boundary excluded. */
 export function strictlyInside(r: Rect, p: Point): boolean {
   return p.x > r.x && p.x < r.x + r.width && p.y > r.y && p.y < r.y + r.height;
 }
@@ -40,7 +39,6 @@ export function containsRect(outer: Rect, inner: Rect): boolean {
   return inner.x >= outer.x && inner.y >= outer.y && inner.x + inner.width <= outer.x + outer.width && inner.y + inner.height <= outer.y + outer.height;
 }
 
-/** True when an axis-aligned segment passes through the interior of a rect. */
 export function segmentHitsRect(a: Point, b: Point, r: Rect): boolean {
   if (a.y === b.y) {
     if (!(a.y > r.y && a.y < r.y + r.height)) return false;
@@ -54,7 +52,6 @@ export function segmentHitsRect(a: Point, b: Point, r: Rect): boolean {
     const hi = Math.max(a.y, b.y);
     return hi > r.y && lo < r.y + r.height;
   }
-  // Diagonal: sample conservatively.
   const steps = Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / 4);
   for (let i = 1; i < steps; i++) {
     const t = i / steps;
@@ -80,7 +77,6 @@ export function isHorizontalSide(side: Side): boolean {
   return side === 'left' || side === 'right';
 }
 
-/** Removes repeated points and middle points of straight runs. */
 export function simplify(points: readonly Point[]): Point[] {
   const out: Point[] = [];
   for (const p of points) {
@@ -112,7 +108,6 @@ export function polylineLength(points: readonly Point[]): number {
   return total;
 }
 
-/** Point at the middle of a polyline by length, with the segment it lies on. */
 export function polylineMidpoint(points: readonly Point[]): { point: Point; segment: number } {
   const half = polylineLength(points) / 2;
   let walked = 0;

@@ -26,12 +26,10 @@ export interface ToolbarActions {
   onIconPacks(): void;
   onLeftPanel(open: boolean): void;
   onRightPanel(open: boolean): void;
-  /** Hides both side panels, or shows both when they are hidden. */
   onTogglePanels(): void;
   onPresent(on: boolean): void;
 }
 
-/** Google Drive in this build: working, or configured but unusable here (a page opened from a file). */
 export type DriveBar =
   | { readonly kind: 'ready'; readonly view: DriveView; readonly actions: DriveActions; onDetails(): void; onConflict(): void; onDisconnect(): void }
   | { readonly kind: 'web-only' };
@@ -49,10 +47,8 @@ interface ToolbarProps extends ToolbarActions {
   fileName: string | null;
   leftOpen: boolean;
   rightOpen: boolean;
-  /** Checks that found something; shown on the inspector toggle while the inspector is folded. */
   findingCount: number;
   drive?: DriveBar;
-  /** Usage statistics in this build: the current choice and how to change it. */
   stats?: { readonly granted: boolean; toggle(): void };
   presenting: boolean;
 }
@@ -74,14 +70,11 @@ function driveItems(t: Translate, drive: DriveBar | undefined): MenuItem[] {
   return items;
 }
 
-/** Top bar: the document and where it is saved on the left, editing in the middle, layout, tools and output on the right. */
 export function Toolbar(props: ToolbarProps) {
   const { t } = props;
   const drive = props.drive?.kind === 'ready' ? props.drive : undefined;
-  // Linked to a Drive file, the Drive status is the save status; otherwise it is this browser.
   const driveLinked = drive !== undefined && drive.view.state.status !== 'unlinked';
   const both = t('panels.both', { key: `${mod}\\` });
-  // Folded, the inspector still says when the checks found something.
   const flagged = !props.rightOpen && !props.presenting && props.findingCount > 0;
   return (
     <header className="topbar" role="toolbar" aria-label="Structlet">
@@ -108,7 +101,6 @@ export function Toolbar(props: ToolbarProps) {
         />
         {!props.presenting && <DiagramMenu t={t} diagram={props.diagram} />}
         <div className="doc-title">
-          {/* The hidden copy of the title sizes the field, so the save status sits right after it. */}
           <span className="title-field" data-value={props.title}>
             <input className="title-input" size={1} aria-label={t('toolbar.title')} value={props.title} onChange={(e) => props.onTitle(e.target.value)} spellCheck={false} />
           </span>

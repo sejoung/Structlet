@@ -1,5 +1,3 @@
-/** Small typed readers for untrusted JSON. They throw `FormatError` with a path. */
-
 export class FormatError extends Error {
   constructor(
     readonly path: string,

@@ -1,23 +1,17 @@
 import type { Edge, Endpoint, Id, Point, Side } from '../../domain';
 import { intersects, normal } from '../geometry';
 
-/**
- * Where edges may attach to an object. For a service node the bottom side sits
- * below its label so lines do not cross the text.
- */
 export interface PortFrame {
   readonly left: number;
   readonly right: number;
   readonly top: number;
   readonly bottom: number;
-  /** Vertical extent used for left/right ports. */
   readonly sideTop: number;
   readonly sideBottom: number;
 }
 
 export interface ResolvedEnd {
   readonly point: Point;
-  /** `null` for free endpoints. */
   readonly side: Side | null;
   readonly objectId: Id | null;
 }
@@ -28,7 +22,6 @@ function frameCenter(f: PortFrame): Point {
   return { x: (f.left + f.right) / 2, y: (f.sideTop + f.sideBottom) / 2 };
 }
 
-/** Side of `f` facing `toward`, scaled by the frame's proportions. */
 export function facingSide(f: PortFrame, toward: Point): Side {
   const c = frameCenter(f);
   const hw = Math.max((f.right - f.left) / 2, 1);
@@ -52,7 +45,6 @@ export function pointOnSide(f: PortFrame, side: Side, t: number): Point {
   }
 }
 
-/** Nearest side and fractional offset of a world point on a frame. */
 export function nearestPort(f: PortFrame, p: Point): { side: Side; offset: number } {
   const clamp = (v: number) => Math.min(1, Math.max(0, v));
   const tx = clamp((p.x - f.left) / Math.max(f.right - f.left, 1));
@@ -78,7 +70,6 @@ export interface EndpointPair {
   readonly target: ResolvedEnd;
 }
 
-/** An object a port should not face directly (another node in front of the side). */
 export interface Blocker {
   readonly id: Id;
   readonly rect: { x: number; y: number; width: number; height: number };
@@ -96,11 +87,6 @@ function frontStrip(f: PortFrame, side: Side) {
 
 const OPPOSITE: Record<Side, Side> = { top: 'bottom', bottom: 'top', left: 'right', right: 'left' };
 
-/**
- * `auto` side: the side facing the other end, unless another object sits right
- * in front of it. Then the side turning toward the other end, the other
- * perpendicular side, and finally the back side.
- */
 export function autoSide(f: PortFrame, toward: Point, self: Id, other: Id | null, blockers: readonly Blocker[]): Side {
   const primary = facingSide(f, toward);
   if (blockers.length === 0) return primary;
@@ -115,11 +101,6 @@ export function autoSide(f: PortFrame, toward: Point, self: Id, other: Id | null
   return candidates.find(free) ?? primary;
 }
 
-/**
- * Resolves every edge end to a world point and side. `auto` sides face the
- * other end (or the nearest manual waypoint). Ends without a fixed offset that
- * share a side are spread in the order of their other ends.
- */
 export function resolveEndpoints(edges: readonly Edge[], frames: ReadonlyMap<Id, PortFrame>, blockers: readonly Blocker[] = []): Map<Id, EndpointPair> {
   type Pending = { edge: Id; which: 'source' | 'target'; objectId: Id; side: Side; toward: Point };
   const fixed = new Map<string, ResolvedEnd>();
@@ -174,7 +155,6 @@ export function resolveEndpoints(edges: readonly Edge[], frames: ReadonlyMap<Id,
 
 export const STUB = 20;
 
-/** Point a short distance out from a port, where a route may first turn. */
 export function stubPoint(end: ResolvedEnd, length = STUB): Point {
   if (!end.side) return end.point;
   const n = normal(end.side);

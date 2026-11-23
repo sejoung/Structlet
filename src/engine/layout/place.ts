@@ -1,13 +1,11 @@
 import { ancestors, indexDocument, topmost, worldRect, type Container, type Document, type Id, type Node, type Point, type Rect } from '../../domain';
-import { intersects, union } from '../geometry';
-import { NODE_LABEL } from '../scene';
+import { containsPoint, inflate, intersects, union } from '../geometry';
+import { annotationRect, NODE_LABEL } from '../scene';
 import { measureText, wrapText } from '../text';
 import { arrange, LAYOUT_GAP, type LayoutItem, type LayoutLink, type LayoutMode } from './arrange';
 
-/** Space inside an area around its contents: sides, below the header, bottom. */
 export const AREA_PADDING = { side: 32, top: 56, bottom: 32 } as const;
 
-/** Slot a box occupies when laid out, and where the box sits inside it. */
 export interface Footprint {
   readonly width: number;
   readonly height: number;
@@ -23,7 +21,6 @@ export function footprint(box: Node | Container): Footprint {
   return { width, height, offsetX: (width - box.width) / 2 };
 }
 
-/** Edges between objects lifted to the given sibling items (an item stands for its whole subtree). */
 export function liftLinks(doc: Document, items: ReadonlySet<Id>): LayoutLink[] {
   const itemFor = (id: Id): Id | null => (items.has(id) ? id : (ancestors(doc, id).find((a) => items.has(a)) ?? null));
   const links: LayoutLink[] = [];
@@ -37,38 +34,60 @@ export function liftLinks(doc: Document, items: ReadonlySet<Id>): LayoutLink[] {
 }
 
 export interface SelectionLayout {
-  /** World deltas per moved box. */
   readonly moves: Map<Id, Point>;
-  /** New world rectangles for areas that must grow to hold the result. */
   readonly grow: Map<Id, Rect>;
 }
 
-/**
- * Lays out the selected boxes within their parents, starting at each group's
- * current top-left corner. Locked boxes stay where they are; manual routes
- * are left untouched by the caller.
- */
 export function layoutSelection(doc: Document, ids: readonly Id[], mode: LayoutMode): SelectionLayout {
   const index = indexDocument(doc);
   const box = (id: Id) => index.nodes.get(id) ?? index.containers.get(id);
-  const chosen = topmost(doc, ids.filter((id) => box(id) && !box(id)!.locked));
+  const chosen = topmost(doc, ids.filter((id) => box(id) && !box(id)!.locked &&
+    !ancestors(doc, id).some((parent) => index.containers.get(parent)?.locked)));
   const groups = new Map<Id | null, Id[]>();
   for (const id of chosen) groups.set(box(id)!.parentId, [...(groups.get(box(id)!.parentId) ?? []), id]);
   const moves = new Map<Id, Point>();
   const after = new Map<Id, Rect>();
-  for (const [, members] of groups) {
+  const notes = doc.annotations.map((note) => ({ note, rect: annotationRect(note).rect }));
+  const worldSlot = (id: Id): Rect => {
+    const r = worldRect(doc, box(id)!);
+    const f = footprint(box(id)!);
+    return { x: r.x - f.offsetX, y: r.y, width: f.width, height: f.height };
+  };
+  for (const [parent, members] of groups) {
     if (members.length < 2) continue;
+    const memberIds = new Set(members);
     const feet = new Map(members.map((id) => [id, footprint(box(id)!)]));
     const rects = new Map(members.map((id) => [id, worldRect(doc, box(id)!)]));
     const items: LayoutItem[] = members.map((id) => ({ id, width: feet.get(id)!.width, height: feet.get(id)!.height }));
-    const pos = arrange(items, liftLinks(doc, new Set(members)), mode);
-    const originX = Math.min(...members.map((id) => rects.get(id)!.x - feet.get(id)!.offsetX));
-    const originY = Math.min(...members.map((id) => rects.get(id)!.y));
+    const pos = arrange(items, liftLinks(doc, memberIds), mode);
+    const area = parent ? worldRect(doc, box(parent)!) : null;
+    const originX = Math.max(area ? area.x + AREA_PADDING.side : Number.NEGATIVE_INFINITY, Math.min(...members.map((id) => rects.get(id)!.x - feet.get(id)!.offsetX)));
+    const originY = Math.max(area ? area.y + AREA_PADDING.top : Number.NEGATIVE_INFINITY, Math.min(...members.map((id) => rects.get(id)!.y)));
+    const occupied = [
+      ...(index.children.get(parent) ?? []).filter((id) => !memberIds.has(id)).map(worldSlot),
+      ...notes.filter(({ note, rect }) => {
+        if (note.targetId && (memberIds.has(note.targetId) || ancestors(doc, note.targetId).some((id) => memberIds.has(id)))) return false;
+        return parent === null || containsPoint(area!, rect);
+      }).map(({ rect }) => rect),
+    ];
+    const slots = new Map(items.map((item) => [item.id, { ...item, x: originX + pos.get(item.id)!.x, y: originY + pos.get(item.id)!.y }]));
+    let clearance = 0;
+    for (;;) {
+      let next = clearance;
+      for (const slot of slots.values()) {
+        const candidate = { ...slot, y: slot.y + clearance };
+        for (const fixed of occupied) {
+          if (intersects(candidate, inflate(fixed, 12))) next = Math.max(next, fixed.y + fixed.height + 16 - slot.y);
+        }
+      }
+      if (next === clearance) break;
+      clearance = next;
+    }
     for (const id of members) {
       const r = rects.get(id)!;
-      const p = pos.get(id)!;
-      const x = Math.round(originX + p.x + feet.get(id)!.offsetX);
-      const y = Math.round(originY + p.y);
+      const slot = slots.get(id)!;
+      const x = Math.round(slot.x + feet.get(id)!.offsetX);
+      const y = Math.round(slot.y + clearance);
       if (x !== r.x || y !== r.y) moves.set(id, { x: x - r.x, y: y - r.y });
       after.set(id, { ...r, x, y });
     }
@@ -76,7 +95,6 @@ export function layoutSelection(doc: Document, ids: readonly Id[], mode: LayoutM
   return { moves, grow: growAreas(doc, after) };
 }
 
-/** Grows ancestor areas so moved boxes stay inside them, innermost first. */
 function growAreas(doc: Document, moved: ReadonlyMap<Id, Rect>): Map<Id, Rect> {
   const index = indexDocument(doc);
   const grow = new Map<Id, Rect>();
@@ -85,7 +103,12 @@ function growAreas(doc: Document, moved: ReadonlyMap<Id, Rect>): Map<Id, Rect> {
   parents.sort((a, b) => ancestors(doc, b).length - ancestors(doc, a).length);
   for (const pid of parents) {
     const kids = index.children.get(pid) ?? [];
-    const content = union(kids.map(current));
+    const content = union(kids.map((id) => {
+      const rect = current(id);
+      if (index.containers.has(id)) return rect;
+      const size = footprint(index.nodes.get(id)!);
+      return { x: rect.x - size.offsetX, y: rect.y, width: size.width, height: size.height };
+    }));
     if (!content) continue;
     const r = current(pid);
     const need = {
@@ -102,12 +125,6 @@ function growAreas(doc: Document, moved: ReadonlyMap<Id, Rect>): Map<Id, Rect> {
 
 type Mutable<T> = { -readonly [K in keyof T]: T[K] };
 
-/**
- * Gives positions to the boxes in `place` (and sizes to new areas in it),
- * keeping every other box where it is. Areas are measured innermost first.
- * A new box linked to a placed sibling goes next to it; the rest are laid out
- * with the parent's mode below the existing contents.
- */
 export function placeNew(doc: Document, place: ReadonlySet<Id>, modes: ReadonlyMap<Id | null, LayoutMode>, fallback: LayoutMode = 'flow'): Document {
   const index = indexDocument(doc);
   const boxes = new Map<Id, Mutable<Node> | Mutable<Container>>([...doc.containers, ...doc.nodes].map((b) => [b.id, { ...b }]));
@@ -179,7 +196,6 @@ function fitArea(boxes: Map<Id, Mutable<Node> | Mutable<Container>>, area: Mutab
     }
     return;
   }
-  // Children are local to the area: shift them right/down if they start too close to its edge.
   const dx = Math.max(0, AREA_PADDING.side - content.x);
   const dy = Math.max(0, AREA_PADDING.top - content.y);
   if (dx || dy) for (const id of kids) {

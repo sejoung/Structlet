@@ -85,7 +85,6 @@ describe('draft import', () => {
     expect(doc.nodes.some((n) => n.id === 'mail')).toBe(false);
     expect(doc.edges.find((e) => e.id === 'e-api-db')!.label).toBe('SQL (TLS)');
     expect(doc.edges.filter((e) => e.target.kind === 'attached' && e.target.objectId === 'db')).toHaveLength(1);
-    // The new CDN sits to the right of the user it is linked from, without overlapping.
     const rects = worldRects(doc);
     expect(rects.get('cdn')!.x).toBeGreaterThan(rects.get('user')!.x);
     for (const [id, r] of rects) if (id !== 'cdn' && doc.nodes.some((n) => n.id === id)) expect(intersects(r, rects.get('cdn')!), id).toBe(false);

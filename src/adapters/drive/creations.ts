@@ -2,11 +2,9 @@ import { readItem, removeItem, writeItem } from '../storage/web-storage';
 
 export const DRIVE_CREATING_KEY = 'structlet.drive.creating';
 
-/** A creation whose answer has not arrived: the reserved file ID, its folder, and when. */
 export interface PendingCreation {
   folderId: string;
   id: string;
-  /** When the last upload to it started, in milliseconds since the epoch. */
   at: number;
 }
 
@@ -25,7 +23,6 @@ const isCreation = (value: unknown): value is PendingCreation => {
   );
 };
 
-/** The record in memory only, for tests and for builds that keep nothing. */
 export function memoryCreations(): CreationRecord {
   let creation: PendingCreation | null = null;
   return {
@@ -34,10 +31,6 @@ export function memoryCreations(): CreationRecord {
   };
 }
 
-/**
- * The pending creation in browser storage, so a page closed before Drive answered can
- * still find the file it made after a reload. It holds IDs only, never a token.
- */
 export class LocalCreations implements CreationRecord {
   private readonly key: string;
 

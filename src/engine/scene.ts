@@ -1,4 +1,5 @@
 import {
+  ancestors,
   indexDocument,
   type Annotation,
   type AnnotationKind,
@@ -14,12 +15,11 @@ import {
   type Side,
 } from '../domain';
 import { AREA_STROKE, type Appearance, type Glyph } from './appearance';
-import { intersects, polylineLength, union } from './geometry';
+import { containsRect, inflate, intersects, polylineLength, union } from './geometry';
 import { resolveEndpoints, type Blocker, type PortFrame } from './routing/ports';
 import { routeAuto, routeManual, routeStraight } from './routing/route';
 import { measureText, wrapText } from './text';
 
-/** Render-ready description of a document in world coordinates. */
 
 export const NODE_LABEL = { fontSize: 12, lineHeight: 15, gap: 6, maxWidth: 136 } as const;
 export const CONTAINER_HEADER = { height: 28, fontSize: 12, glyph: 22 } as const;
@@ -36,7 +36,6 @@ export interface SceneContainer {
   readonly label: string;
   readonly style: ContainerStyle;
   readonly glyph: Glyph | null;
-  /** Area icon from an icon pack (`data:` URI), drawn instead of the glyph. */
   readonly image: string | null;
   readonly locked: boolean;
 }
@@ -49,7 +48,6 @@ export interface SceneNode {
   readonly label: readonly string[];
   readonly labelBox: Rect | null;
   readonly glyph: Glyph;
-  /** Official icon from an icon pack (`data:` URI), drawn instead of the tile and glyph. */
   readonly image: string | null;
   readonly color: string;
   readonly serviceName: string;
@@ -62,7 +60,7 @@ export interface SceneEdge {
   readonly points: readonly Point[];
   readonly label: readonly string[];
   readonly labelBox: Rect | null;
-  /** Colors of the tinted areas under the label, outermost first, so its box can match what is behind it. */
+  readonly labelAnchor: Point | null;
   readonly labelTints: readonly string[];
   readonly style: EdgeStyle;
   readonly manual: boolean;
@@ -91,7 +89,6 @@ function textBlock(lines: readonly string[], fontSize: number): number {
   return Math.max(0, ...lines.map((l) => measureText(l, fontSize)));
 }
 
-/** A legend line may start with a color swatch (`#rrggbb`), a solid line sample (`---`) or a dashed one (`- -`). */
 export type LegendMarker = { kind: 'swatch'; color: string } | { kind: 'line'; dashed: boolean } | null;
 
 export function legendMarker(line: string): { marker: LegendMarker; text: string } {
@@ -106,7 +103,7 @@ export const LEGEND_MARKER_WIDTH = 30;
 
 export function annotationRect(a: Annotation): { rect: Rect; lines: string[] } {
   if (a.kind === 'step') return { rect: { x: a.x, y: a.y, width: STEP_SIZE, height: STEP_SIZE }, lines: [a.text] };
-  const lines = a.kind === 'legend' ? a.text.split('\n') : wrapText(a.text || ' ', ANNOTATION_TEXT.maxWidth, ANNOTATION_TEXT.fontSize, 40);
+  const lines = a.kind === 'legend' ? a.text.split('\n') : wrapText(a.text || ' ', ANNOTATION_TEXT.maxWidth, ANNOTATION_TEXT.fontSize, Number.POSITIVE_INFINITY);
   const pad = a.kind === 'legend' ? 12 : 0;
   const widths = lines.map((l) => {
     if (a.kind !== 'legend') return measureText(l, ANNOTATION_TEXT.fontSize);
@@ -118,7 +115,6 @@ export function annotationRect(a: Annotation): { rect: Rect; lines: string[] } {
   return { rect: { x: a.x, y: a.y, width, height }, lines };
 }
 
-/** World rectangles of every node and container. */
 export function worldRects(doc: Document): Map<Id, Rect> {
   const index = indexDocument(doc);
   const origins = new Map<Id, Point>();
@@ -202,10 +198,17 @@ export function computeScene(doc: Document, appearance: Appearance, summaries?: 
     return { ...base, label, labelBox };
   });
 
+  const annotations: SceneAnnotation[] = doc.annotations.map((a) => ({ id: a.id, kind: a.kind, ...annotationRect(a) }));
+  obstacles.push(...annotations.filter((note) => note.kind !== 'step').map((note) => note.rect));
   const ends = resolveEndpoints(doc.edges, frames, blockers);
   const edges: SceneEdge[] = [];
   const routed: (readonly [Point, Point])[] = [];
-  const taken: Rect[] = [...obstacles];
+  const taken: Rect[] = [...obstacles, ...annotations.filter((note) => note.kind === 'step').map((note) => note.rect)];
+  for (const area of containers) {
+    if (!area.label) continue;
+    const extra = area.glyph || area.image ? CONTAINER_HEADER.glyph + 8 : 10;
+    taken.push({ x: area.rect.x, y: area.rect.y, width: extra + measureText(area.label, CONTAINER_HEADER.fontSize), height: CONTAINER_HEADER.height });
+  }
   for (const e of doc.edges) {
     const pair = ends.get(e.id);
     if (!pair) continue;
@@ -219,17 +222,22 @@ export function computeScene(doc: Document, appearance: Appearance, summaries?: 
     for (let i = 1; i < points.length; i++) routed.push([points[i - 1]!, points[i]!]);
     const label = e.label.trim() ? wrapText(e.label, 160, EDGE_LABEL.fontSize, 3) : [];
     let labelBox: Rect | null = null;
+    let labelAnchor: Point | null = null;
     if (label.length > 0) {
       const w = textBlock(label, EDGE_LABEL.fontSize) + EDGE_LABEL.padX * 2;
       const h = label.length * EDGE_LABEL.lineHeight + EDGE_LABEL.padY * 2;
-      labelBox = placeLabel(points, w, h, taken);
+      const source = e.source;
+      const target = e.target;
+      const targetAreas = target.kind === 'attached' ? new Set(ancestors(doc, target.objectId)) : undefined;
+      const common = source.kind === 'attached' && targetAreas
+        ? ancestors(doc, source.objectId).find((id) => targetAreas.has(id))
+        : undefined;
+      ({ box: labelBox, anchor: labelAnchor } = placeLabel(points, w, h, taken, common ? rects.get(common) : undefined));
       taken.push(labelBox);
     }
     const labelTints = labelBox ? tintsAt(containers, { x: labelBox.x + labelBox.width / 2, y: labelBox.y + labelBox.height / 2 }) : [];
-    edges.push({ id: e.id, points, label, labelBox, labelTints, style: e.style, manual, sourceSide: pair.source.side, targetSide: pair.target.side });
+    edges.push({ id: e.id, points, label, labelBox, labelAnchor, labelTints, style: e.style, manual, sourceSide: pair.source.side, targetSide: pair.target.side });
   }
-
-  const annotations: SceneAnnotation[] = doc.annotations.map((a) => ({ id: a.id, kind: a.kind, ...annotationRect(a) }));
 
   const all: Rect[] = [
     ...containers.map((c) => c.rect),
@@ -240,14 +248,12 @@ export function computeScene(doc: Document, appearance: Appearance, summaries?: 
   return { containers, nodes, edges, annotations, frames, rects, bounds: union(all) };
 }
 
-/** Tint colors of filled areas containing a point, outermost first (containers are sorted by depth). */
 function tintsAt(containers: readonly SceneContainer[], p: Point): string[] {
   return containers
     .filter((c) => c.style.filled && p.x >= c.rect.x && p.x <= c.rect.x + c.rect.width && p.y >= c.rect.y && p.y <= c.rect.y + c.rect.height)
     .map((c) => AREA_STROKE[c.style.color] ?? AREA_STROKE.gray!);
 }
 
-/** Point at fraction `t` of a polyline's length. */
 function pointAt(points: readonly Point[], t: number): Point {
   const goal = polylineLength(points) * t;
   let walked = 0;
@@ -264,14 +270,36 @@ function pointAt(points: readonly Point[], t: number): Point {
   return points[points.length - 1] ?? { x: 0, y: 0 };
 }
 
-/** Label box along the line: the middle if free, otherwise the nearest position that does not cover boxes or other labels. */
-function placeLabel(points: readonly Point[], w: number, h: number, taken: readonly Rect[]): Rect {
+function placeLabel(points: readonly Point[], w: number, h: number, taken: readonly Rect[], within?: Rect): { box: Rect; anchor: Point | null } {
   const at = (p: Point): Rect => ({ x: p.x - w / 2, y: p.y - h / 2, width: w, height: h });
-  for (const t of [0.5, 0.4, 0.6, 0.3, 0.7, 0.2, 0.8]) {
-    const box = at(pointAt(points, t));
-    if (!taken.some((r) => intersects(r, box))) return box;
+  const anchors = [0.5, 0.4, 0.6, 0.3, 0.7, 0.2, 0.8, 0.1, 0.9].map((t) => pointAt(points, t));
+  const candidates = anchors.map((point) => ({ box: at(point), anchor: null as Point | null }));
+  for (const gap of [6, 18, 36, 64]) for (const point of anchors) {
+    const x = w / 2 + gap;
+    const y = h / 2 + gap;
+    for (const center of [{ x: point.x, y: point.y - y }, { x: point.x, y: point.y + y }, { x: point.x - x, y: point.y }, { x: point.x + x, y: point.y }]) {
+      candidates.push({ box: at(center), anchor: point });
+    }
   }
-  return at(pointAt(points, 0.5));
+  let clear: (typeof candidates)[number] | undefined;
+  let best = candidates[0]!;
+  let bestOverlap = Number.POSITIVE_INFINITY;
+  for (const item of candidates) {
+    const box = inflate(item.box, 2);
+    const overlap = taken.reduce((sum, rect) => sum + (intersects(rect, box)
+      ? (Math.min(rect.x + rect.width, box.x + box.width) - Math.max(rect.x, box.x)) *
+        (Math.min(rect.y + rect.height, box.y + box.height) - Math.max(rect.y, box.y))
+      : 0), 0);
+    if (!overlap) {
+      if (!within || containsRect(within, box)) return item;
+      clear ??= item;
+    }
+    if (overlap < bestOverlap) {
+      best = item;
+      bestOverlap = overlap;
+    }
+  }
+  return clear ?? best;
 }
 
 const routeCache = new Map<string, Point[]>();

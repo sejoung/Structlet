@@ -33,7 +33,6 @@ describe('editing session', () => {
   it('coalesces typing into one undo step and a new edit clears redo', () => {
     const editor = newEditor(sampleDocument());
     const session = editor.session;
-    // Same coalesce key within the window merges.
     let t = 0;
     (session as unknown as { now: () => number }).now = () => (t += 100);
     editor.rename('api', 'O');

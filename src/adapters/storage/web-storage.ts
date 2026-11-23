@@ -1,4 +1,3 @@
-/** localStorage that never throws: blocked or full storage reads as empty and writes as false. */
 export function readItem(key: string): string | null {
   try {
     return localStorage.getItem(key);
@@ -20,6 +19,5 @@ export function removeItem(key: string): void {
   try {
     localStorage.removeItem(key);
   } catch {
-    // nothing to remove from blocked storage
   }
 }

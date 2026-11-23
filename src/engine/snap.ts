@@ -8,7 +8,6 @@ export function snapToGrid(v: number, grid = GRID): number {
 
 export interface Guide {
   readonly axis: 'x' | 'y';
-  /** World coordinate of the guide line. */
   readonly at: number;
   readonly from: number;
   readonly to: number;
@@ -20,10 +19,6 @@ export interface SnapResult {
   readonly guides: readonly Guide[];
 }
 
-/**
- * Adjusts a move so the moving box's edges or center line up with another box
- * within `threshold`; otherwise snaps its top-left corner to the grid.
- */
 export function snapMove(moving: Rect, dx: number, dy: number, others: readonly Rect[], threshold: number, grid = GRID): SnapResult {
   const moved = { ...moving, x: moving.x + dx, y: moving.y + dy };
   const xs = (r: Rect) => [r.x, r.x + r.width / 2, r.x + r.width];

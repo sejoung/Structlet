@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { mergeDocuments, validateDocument, worldRect, type Document } from '../../../src/domain';
 import { sampleDocument } from '../fixtures';
 
-// Plain JSON copies the tests change in place.
 type Mutable = any;
 const edit = (doc: Document, fn: (d: Mutable) => void): Document => {
   const copy = JSON.parse(JSON.stringify(doc)) as Mutable;
@@ -62,7 +61,6 @@ describe('three-way merge', () => {
 
   it('keeps the document valid: lines to deleted boxes go, children of deleted areas move up in place', () => {
     const local = edit(base, (d) => void (node(d, 'api').label = 'API'));
-    // Remote deleted the private subnet (unchanged locally), but locally a node was added into it.
     const remote = edit(base, (d) => void (d.containers = d.containers.filter((c: Mutable) => c.id !== 'private')));
     const withChild = edit(local, (d) => d.nodes.push({ ...base.nodes[0]!, id: 'child', parentId: 'private', x: 10, y: 20 }));
     const merged = mergeDocuments(base, withChild, remote).document;

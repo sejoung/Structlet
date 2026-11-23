@@ -16,14 +16,6 @@ import { MAX_SYNC_WAIT, RETRY_DELAYS, ROUNDS, SYNC_DELAY, type SyncFailure, type
 
 export type Opened = Awaited<ReturnType<RemoteDocuments['open']>> & { account?: RemoteAccount };
 
-/**
- * Keeps the diagram in sync with one remote file (ADR 0016). Edits are kept in the session
- * (and the browser autosave) at once and, after `SYNC_DELAY`, written to the file. Saving
- * checks the file's version; if someone else changed it, their changes are merged in
- * (three-way, against the diagram as last synced) and shown without entering undo history.
- * Real conflicts wait for the user's choice. Saves run one at a time; linking another file
- * bumps a generation so results of the previous file's requests are dropped.
- */
 export class DriveSync {
   private link: RemoteLink | null;
   private state: SyncState;
@@ -38,7 +30,6 @@ export class DriveSync {
   private recheck = false;
   private applying = false;
   private seen: Document;
-  /** The remote side of a conflict waiting for the user. */
   private theirs: Opened | null = null;
 
   constructor(
@@ -48,7 +39,6 @@ export class DriveSync {
     private readonly now: () => number = Date.now,
   ) {
     this.link = links.read();
-    // Access lives in memory only, so a remembered file waits until the user reconnects.
     this.state = this.link ? { status: 'paused', file: this.link.file } : { status: 'unlinked' };
     this.seen = session.committedDocument;
     session.subscribe(() => {
@@ -76,7 +66,6 @@ export class DriveSync {
     return this.session.committedDocument;
   }
 
-  /** Save the diagram as a new file in `folderId` and keep it in sync from now on. */
   async create(folderId: string): Promise<RemoteFile> {
     const generation = this.link ? this.generation : this.detach();
     const doc = this.load();
@@ -90,7 +79,6 @@ export class DriveSync {
     return file;
   }
 
-  /** Read a file to open; call `linkOpened` before putting it in the session. */
   async open(id: string): Promise<Opened> {
     const [opened, account] = await Promise.all([this.remote.open(id), this.account()]);
     return { ...opened, account };
@@ -100,7 +88,6 @@ export class DriveSync {
     return this.remote.account?.().catch(() => undefined) ?? Promise.resolve(undefined);
   }
 
-  /** Link the file just opened, so replacing the diagram with it saves nothing back. */
   linkOpened(opened: Opened): void {
     this.detach();
     this.remote.forgetUnconfirmed?.();
@@ -116,7 +103,6 @@ export class DriveSync {
     this.set('unlinked');
   }
 
-  /** After connecting with no file linked: link the file a lost creation made, if any. */
   async recover(): Promise<RemoteFile | null> {
     if (this.link || !this.remote.unconfirmed) return null;
     const generation = this.generation;
@@ -135,13 +121,11 @@ export class DriveSync {
     this.set('paused');
   }
 
-  /** Save now, without waiting; also retries after a failure. */
   saveNow(): Promise<void> {
     if (!this.link) return Promise.resolve();
     return this.otherAccount() || this.state.status === 'paused' ? this.resume() : this.run();
   }
 
-  /** After reconnecting: take in what changed remotely, then save what changed here. */
   async resume(): Promise<void> {
     if (!this.link) return;
     const generation = this.generation;
@@ -151,7 +135,6 @@ export class DriveSync {
     return this.run();
   }
 
-  /** A token arrived while a file is linked, maybe for another account: check before writing. */
   reconnected(): Promise<void> {
     if (!this.link) return Promise.resolve();
     const { status } = this.state;
@@ -160,7 +143,6 @@ export class DriveSync {
     return ['synced', 'pending', 'saving'].includes(status) ? this.run() : Promise.resolve();
   }
 
-  /** Finish a conflict with a side for each conflict key; unnamed ones keep the local side. */
   resolve(choices: Readonly<Record<string, MergeSide>>): Promise<void> {
     const theirs = this.theirs;
     if (this.state.status !== 'conflict' || !theirs || !this.link) return Promise.resolve();
@@ -170,7 +152,6 @@ export class DriveSync {
     return this.run();
   }
 
-  /** Save what is pending before the linked file changes; true when nothing is left unsaved. */
   async settle(): Promise<boolean> {
     for (let round = 0; ; round++) {
       if (!this.link || same(this.load(), this.link.base)) return true;
@@ -282,7 +263,6 @@ export class DriveSync {
     }
   }
 
-  /** Merge what changed in the file; false when the run should stop. */
   private async pull(live: () => boolean, changed: boolean): Promise<boolean> {
     const { file } = this.link!;
     if (!changed && (await this.remote.version(file.id)) === file.version) return live();
@@ -298,10 +278,8 @@ export class DriveSync {
     return true;
   }
 
-  /** Show the merged diagram and make the remote version the new base. */
   private adopt(theirs: Opened, merged: Document): void {
     const current = this.load();
-    // The document id and version are this editor's; the merge decides the content.
     const patch = diffDocuments(current, { ...merged, id: current.id, formatVersion: current.formatVersion });
     this.applying = true;
     try {

@@ -4,7 +4,6 @@ import { pathToFileURL } from 'node:url';
 import { expect, test } from '@playwright/test';
 import { act, openManual } from './helpers';
 
-/** The one-file build opened by double-click (file://), with no server. */
 const file = resolve('dist-single/structlet.html');
 
 test.skip(!existsSync(file), 'run `npm run build:single` first');
@@ -29,7 +28,6 @@ test('single structlet.html works from file://', async ({ page }) => {
   await sampleChooser.setFiles((await sample.path())!);
   await expect(page.locator('[data-testid^="node-"]')).toHaveCount(11);
 
-  // Import (lazy compose parser is inlined) and export without a server.
   const [chooser] = await Promise.all([page.waitForEvent('filechooser'), act(page, 'tb-import')]);
   await chooser.setFiles('tests/unit/adapters/fixtures/docker-compose.yml');
   await expect(page.locator('[data-testid="node-svc-api"]')).toHaveCount(1);
@@ -38,14 +36,12 @@ test('single structlet.html works from file://', async ({ page }) => {
   const [png] = await Promise.all([page.waitForEvent('download'), act(page, 'tb-png')]);
   expect(readFileSync((await png.path())!).subarray(1, 4).toString()).toBe('PNG');
 
-  // Google sign-in needs a web origin: with Drive configured, the menu says why it is off.
   expect(await page.getByTestId('drive-button').count()).toBe(0);
   await act(page, 'menu-file');
   const webOnly = page.getByTestId('drive-web-only');
   if (await webOnly.count()) await expect(webOnly).toBeDisabled();
   await page.keyboard.press('Escape');
 
-  // Autosave survives a reload.
   await page.waitForTimeout(600);
   await page.reload();
   await expect(page.locator('[data-testid="node-svc-api"]')).toHaveCount(1);

@@ -1,24 +1,17 @@
 import type { BrowserContext, Page, Request, Route } from '@playwright/test';
 
-/** A page, or every page of a browser context (tabs share one fake Google). */
 type Target = Page | BrowserContext;
 
-/** A diagram file in the fake Drive. */
 export interface FakeFile {
   name: string;
   version: number;
   content: string;
   parents: string[];
-  /** Drive's media type; seeded files without one are older plain-JSON uploads. */
   mimeType?: string;
 }
 
 export const TOKEN = 'e2e-token';
 
-/**
- * Google's sign-in and Picker scripts, simulated in the page. Sign-in grants a token at
- * once; the Picker shows a dialog whose button picks `window.__pick[kind]`.
- */
 export async function mockGoogleScripts(page: Target) {
   await page.route('https://accounts.google.com/gsi/client', (route) =>
     route.fulfill({
@@ -73,7 +66,6 @@ export async function mockGoogleScripts(page: Target) {
   );
 }
 
-/** The parts of a `multipart/related` upload: metadata, then content. */
 function multipart(request: Request): [Record<string, unknown>, string] {
   const boundary = /boundary=(.+)$/.exec(request.headers()['content-type'] ?? '')![1];
   const [meta, content] = (request.postData() ?? '')
@@ -83,15 +75,10 @@ function multipart(request: Request): [Record<string, unknown>, string] {
   return [JSON.parse(meta ?? '{}'), content ?? ''];
 }
 
-/** The Drive v3 REST API over an in-memory file map, checking the access token. */
 export async function mockDrive(page: Target) {
   const files = new Map<string, FakeFile>();
   const requests: string[] = [];
   let created = 0;
-  /**
-   * `loseNextCreate` drops the answer to the next creation after storing the file, as a
-   * lost response would; `holdNextCreate` stores it and never answers.
-   */
   const faults = { loseNextCreate: false, holdNextCreate: false };
   const reply = (route: Route, body: unknown, status = 200) =>
     route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
@@ -115,7 +102,6 @@ export async function mockDrive(page: Target) {
     if (url.pathname.endsWith('/about'))
       return reply(route, { user: { permissionId: 'e2e-user', emailAddress: 'e2e@example.com' } });
     if (id === 'generateIds') return reply(route, { ids: [`created-${++created}`] });
-    // A folder listing, as `drive.file` shows it: only files this app has.
     const parent = /^'(.+)' in parents/.exec(url.searchParams.get('q') ?? '')?.[1];
     if (parent !== undefined)
       return reply(route, {

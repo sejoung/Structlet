@@ -2,7 +2,6 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 
-/** Fail before E2E if a dependency update left the CI image behind. */
 export function checkImageVersion(imageVersion, packageVersion) {
   if (imageVersion !== packageVersion)
     throw new Error(
@@ -14,7 +13,6 @@ export function checkImageVersion(imageVersion, packageVersion) {
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const image = JSON.parse(readFileSync('/ms-playwright/.docker-info', 'utf8'));
   const require = createRequire(import.meta.url);
-  // @playwright/test pins playwright to the same version and is the package this project declares.
   const version = require('@playwright/test/package.json').version;
   checkImageVersion(image.driverVersion, version);
   console.log(`Preinstalled Playwright ${version} matches the project.`);

@@ -6,7 +6,6 @@ test('two nodes → connect → save → reopen → SVG export', async ({ page }
   await freshApp(page);
   await expect(page.getByText('Start your architecture diagram')).toBeVisible();
 
-  // Add two services from the palette search.
   const search = page.getByLabel('Search services');
   await search.fill('server');
   await page.locator('[data-service="server"]').click();
@@ -15,7 +14,6 @@ test('two nodes → connect → save → reopen → SVG export', async ({ page }
   const [a, b] = await nodeIds(page);
   expect(a && b).toBeTruthy();
 
-  // Move the second node away so the link is long, then connect by dragging from a side handle.
   const pb = await center(page, `node-${b}`);
   await drag(page, pb, { x: pb.x + 160, y: pb.y + 120 });
   const pa = await center(page, `node-${a}`);
@@ -27,11 +25,9 @@ test('two nodes → connect → save → reopen → SVG export', async ({ page }
   await drag(page, { x: hb!.x + hb!.width / 2, y: hb!.y + hb!.height / 2 }, target);
   await expect(page.locator('.diagram path[data-edge]')).toHaveCount(1);
 
-  // Name the connection from the properties panel.
   await page.getByTestId('prop-label').fill('SQL');
   await expect(page.locator('.diagram')).toContainText('SQL');
 
-  // Save to a .structlet file.
   const [download] = await Promise.all([page.waitForEvent('download'), act(page, 'tb-save')]);
   expect(download.suggestedFilename()).toMatch(/\.structlet$/);
   const savedPath = await download.path();
@@ -41,7 +37,6 @@ test('two nodes → connect → save → reopen → SVG export', async ({ page }
   expect(saved.edges[0]).toMatchObject({ source: { objectId: a }, target: { objectId: b }, label: 'SQL' });
   const positions = saved.nodes.map((n: { x: number; y: number }) => [n.x, n.y]);
 
-  // Start over, then reopen the saved file.
   page.once('dialog', (d) => d.accept());
   await act(page, 'tb-new');
   await expect(page.locator('[data-testid^="node-"]')).toHaveCount(0);
@@ -50,13 +45,11 @@ test('two nodes → connect → save → reopen → SVG export', async ({ page }
   await expect(page.locator('[data-testid^="node-"]')).toHaveCount(2);
   expect(await nodeIds(page)).toEqual([a, b]);
 
-  // Reload: autosave restores the same document.
   await page.waitForTimeout(600);
   await page.reload();
   await expect(page.locator('[data-testid^="node-"]')).toHaveCount(2);
   await expect(page.locator('.diagram path[data-edge]')).toHaveCount(1);
 
-  // Export SVG with the same path and labels as the canvas.
   const canvasPath = await page.locator('.diagram path[data-edge]').getAttribute('d');
   const [svgDownload] = await Promise.all([page.waitForEvent('download'), act(page, 'tb-svg')]);
   const svg = readFileSync((await svgDownload.path())!, 'utf8');
@@ -65,7 +58,6 @@ test('two nodes → connect → save → reopen → SVG export', async ({ page }
   expect(svg).toContain('SQL');
   expect(svg).toContain('>Server<');
 
-  // Re-saving gives the same positions.
   const [again] = await Promise.all([page.waitForEvent('download'), act(page, 'tb-save')]);
   const resaved = JSON.parse(readFileSync((await again.path())!, 'utf8'));
   expect(resaved.nodes.map((n: { x: number; y: number }) => [n.x, n.y])).toEqual(positions);

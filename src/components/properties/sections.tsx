@@ -29,7 +29,6 @@ import { Pair, Select, TextArea } from './fields';
 
 export type LayoutChoice = 'flow' | 'flow-down' | 'grid';
 
-/** Actions that need geometry or catalog data, provided by the app. */
 export interface PanelActions {
   layout(ids: readonly Id[], mode: LayoutChoice): void;
   layoutContents(containerId: Id, mode: LayoutChoice): void;

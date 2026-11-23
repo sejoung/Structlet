@@ -125,7 +125,6 @@ export function DisconnectDialog({ t, onDisconnect, onClose }: { t: Translate; o
   );
 }
 
-/** Asks once, without covering the canvas, before any usage statistics are sent. */
 export function ConsentBanner({ t, onChoose }: { t: Translate; onChoose(granted: boolean): void }) {
   return (
     <div className="consent" role="region" aria-label={t('consent.setting')} data-testid="consent">

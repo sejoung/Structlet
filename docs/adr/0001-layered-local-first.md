@@ -33,6 +33,7 @@ Structlet은 서버 없이 정적 호스팅으로 동작한다. 문서는 사용
 | --- | --- | --- |
 | 계층 import 방향, 계층별 허용 패키지, `src` 밖 import(`app`의 `samples/`만 허용), Node 내장 모듈과 devDependencies 금지, 순환, 풀리지 않는 import, package.json에 없는 패키지 | dependency-cruiser (`npm run deps`) | `.dependency-cruiser.cjs` |
 | 파일 400줄 이하, `src`의 `console` 금지, 정확성 규칙 | oxlint (`npm run lint`) | `.oxlintrc.json` |
+| 코드 주석 금지 | `npm run lint` | `scripts/check-comments.mjs` |
 | 모든 파일이 알려진 계층에 속함, 순수 계층의 브라우저 전역, 어댑터 생성 위치, 한·영 메시지 키 일치 | Vitest | `tests/unit/architecture/layers.test.ts` |
 
 규칙을 바꾸려면 이 ADR과 해당 파일을 함께 고친다. 계층 표는 `.dependency-cruiser.cjs`의 `LAYERS`·`PACKAGES`와 같아야 한다.

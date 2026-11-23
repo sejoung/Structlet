@@ -10,7 +10,6 @@ import { sampleDocument } from '../fixtures';
 const svg = (label: string) => new TextEncoder().encode(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><title>${label}</title><rect width="48" height="48"/></svg>`);
 const file = (path: string): PackFile => ({ path, data: svg(path) });
 
-// File names as they appear in the providers' official downloads.
 const AWS_FILES = [
   'Architecture-Service-Icons/Arch_Compute/48/Arch_Amazon-EC2_48.svg',
   'Architecture-Service-Icons/Arch_Compute/64/Arch_Amazon-EC2_64.svg',
@@ -102,7 +101,6 @@ describe('rendering with a pack', () => {
     expect(out).toContain('xmlns:xlink');
     expect(out.match(/<symbol /g)!.length).toBe(new Set(scene.nodes.map((n) => n.image).concat(scene.containers.map((c) => c.image)).filter(Boolean)).size);
     expect(renderIsometricSvg(scene).svg).toContain('<use href="#sl-iso-img-');
-    // A disabled pack changes nothing.
     expect(computeScene(doc, createAppearance('en', [{ ...result.pack, enabled: false }])).nodes.every((n) => n.image === null)).toBe(true);
   });
 });

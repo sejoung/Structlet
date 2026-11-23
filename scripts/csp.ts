@@ -1,12 +1,5 @@
 import type { Plugin } from 'vite';
 
-/**
- * Content Security Policy for the hosted build (ADR 0016, ADR 0017). It allows only this
- * origin, plus the Google origins a build needs: sign-in, Picker and the Drive API when
- * Drive is configured, Google Analytics when a measurement ID is set. Inline scripts and
- * `eval` stay refused. The dev server and the single-file build (whose script is inline)
- * get no policy.
- */
 export const DRIVE_SOURCES: Readonly<Record<string, readonly string[]>> = {
   'script-src': ['https://accounts.google.com', 'https://apis.google.com', 'https://www.google.com'],
   'connect-src': ['https://www.googleapis.com', 'https://accounts.google.com', 'https://oauth2.googleapis.com'],

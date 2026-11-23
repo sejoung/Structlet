@@ -8,7 +8,6 @@ import type { DriveActions, DriveView } from '../../components/drive/types';
 import type { Language, MessageKey, Translate } from '../../i18n/messages';
 import { useAuthRenewal } from './use-auth-renewal';
 
-/** Google Drive for this build; absent when it is not configured or the page has no web origin. */
 export interface DriveServices {
   readonly auth: DriveAuth;
   readonly sync: DriveSync;
@@ -36,14 +35,11 @@ export function failureMessage(error: unknown): MessageKey {
 export interface DriveController {
   readonly view: DriveView;
   readonly actions: DriveActions;
-  /** Save pending edits and stop syncing before another diagram replaces this one; false keeps it. */
   beforeReplace(): Promise<boolean>;
-  /** A new empty diagram: while connected, its first edit creates a file in the remembered folder. */
   markFresh(): void;
   readonly linked: boolean;
 }
 
-/** The Drive flows of the editor (ADR 0016). Null when Drive is unavailable in this build. */
 export function useDrive({ services, editor, t, language, notify, onOpened }: Options): DriveController | null {
   const [state, setState] = useState<SyncState>(() => services?.sync.current ?? UNLINKED);
   const [connected, setConnected] = useState(() => Boolean(services?.auth.getToken()));
@@ -72,7 +68,6 @@ export function useDrive({ services, editor, t, language, notify, onOpened }: Op
         setFolder(null);
       }
     });
-    // A remembered file waits for access; load Google's scripts so reconnecting is one click.
     if (sync.current.status !== 'unlinked') void auth.prepare().catch(() => undefined);
     return () => {
       offSync();
@@ -80,7 +75,6 @@ export function useDrive({ services, editor, t, language, notify, onOpened }: Op
     };
   }, [services]);
 
-  // A fresh diagram goes to the remembered folder on its first edit while connected.
   useEffect(() => {
     if (!services) return;
     return editor.session.subscribe(() => {
@@ -103,7 +97,6 @@ export function useDrive({ services, editor, t, language, notify, onOpened }: Op
 
   const renewal = useAuthRenewal(services?.auth, state.status !== 'unlinked', () => notify(t('drive.renewFailed')), hint);
 
-  /** Runs a Drive action, reporting failures; Google's popup needs the click's own call stack. */
   const run = useCallback(
     async (name: string, action: (s: DriveServices) => Promise<void>) => {
       if (!services) return;

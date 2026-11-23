@@ -1,4 +1,3 @@
-/** The slices of Google Identity Services and the Picker API that Structlet calls. */
 export interface TokenResponse {
   access_token?: string;
   expires_in?: number;
@@ -45,7 +44,6 @@ export interface GoogleApi {
         callback: (result: TokenResponse) => void;
         error_callback: () => void;
       }): {
-        /** `login_hint`: the email of the account to preselect in Google's popup. */
         requestAccessToken(options: { prompt: string; login_hint?: string }): void;
       };
       revoke(

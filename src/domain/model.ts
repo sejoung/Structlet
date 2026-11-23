@@ -1,11 +1,3 @@
-/**
- * Structlet document model. Pure data: no React, DOM or storage.
- *
- * Nodes and containers store positions in their parent's local coordinates
- * (the parent's top-left corner is the origin). Objects without a parent use
- * world coordinates. The container hierarchy is explicit through `parentId`.
- */
-
 export type Id = string;
 
 export interface Point {
@@ -23,13 +15,11 @@ export interface Rect {
 export type Side = 'top' | 'right' | 'bottom' | 'left';
 export const SIDES: readonly Side[] = ['top', 'right', 'bottom', 'left'];
 
-/** `icon`: service tile with the name below (AWS-docs style). `box`: bordered box with the icon and name inside. */
 export const NODE_VARIANTS = ['icon', 'box'] as const;
 export type NodeVariant = (typeof NODE_VARIANTS)[number];
 
 export interface Node {
   readonly id: Id;
-  /** Reference into the service catalog. Unknown ids render as a generic icon. */
   readonly serviceId: string;
   readonly label: string;
   readonly parentId: Id | null;
@@ -76,17 +66,13 @@ export interface Container {
   readonly locked: boolean;
 }
 
-/** An edge end attached to a node or container. */
 export interface AttachedEndpoint {
   readonly kind: 'attached';
   readonly objectId: Id;
-  /** `auto` picks the side facing the other end. */
   readonly side: Side | 'auto';
-  /** Position along the side, 0..1. `null` lets the engine spread ports. */
   readonly offset: number | null;
 }
 
-/** An edge end not attached to anything, in world coordinates. */
 export interface FreeEndpoint {
   readonly kind: 'free';
   readonly x: number;
@@ -112,9 +98,7 @@ export interface Edge {
   readonly target: Endpoint;
   readonly label: string;
   readonly style: EdgeStyle;
-  /** `auto` routes are recomputed and never stored; `manual` routes pass through `waypoints`. */
   readonly routingMode: RoutingMode;
-  /** World-coordinate bend points of a manual route. Empty for auto routes. */
   readonly waypoints: readonly Point[];
 }
 
@@ -124,7 +108,6 @@ export type AnnotationKind = (typeof ANNOTATION_KINDS)[number];
 export interface Annotation {
   readonly id: Id;
   readonly kind: AnnotationKind;
-  /** World coordinates of the annotation's top-left corner. */
   readonly x: number;
   readonly y: number;
   readonly text: string;
@@ -154,7 +137,6 @@ export interface CollectionItem {
 }
 
 export const NODE_SIZE = 64;
-/** Size presets per variant. */
 export const NODE_SIZES: Record<NodeVariant, Record<'s' | 'm' | 'l', { width: number; height: number }>> = {
   icon: { s: { width: 48, height: 48 }, m: { width: 64, height: 64 }, l: { width: 88, height: 88 } },
   box: { s: { width: 144, height: 48 }, m: { width: 184, height: 60 }, l: { width: 232, height: 76 } },

@@ -10,7 +10,6 @@ describe('fragments (clipboard)', () => {
     expect(fragment.containers.map((c) => c.id)).toEqual(['private']);
     expect(fragment.nodes.map((n) => n.id).sort()).toEqual(['api', 'auth', 'cache', 'db']);
     expect(fragment.edges.map((e) => e.id).sort()).toEqual(['e-api-auth', 'e-api-db', 'e-auth-cache']);
-    // Root in world coordinates.
     expect(fragment.containers[0]).toMatchObject({ parentId: null, x: 680, y: 200 });
 
     const text = serializeFragment(fragment);

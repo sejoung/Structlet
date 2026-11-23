@@ -1,18 +1,10 @@
 import type { Point, Rect } from '../../domain';
 import { segmentHitsRect, strictlyInside } from '../geometry';
 
-/**
- * A* over a sparse orthogonal grid made from obstacle edges and the two
- * endpoints. Minimises length plus a penalty per bend. Returns `null` when no
- * path exists inside the search area.
- */
 
 export const BEND_COST = 40;
-/** Extra cost for crossing an already routed line. */
 export const CROSS_COST = 28;
-/** Extra cost per pixel of running on top of an already routed line. */
 export const OVERLAP_COST = 1.5;
-/** Lanes offered beside routed lines so parallel lines can keep apart. */
 export const LANE_GAP = 12;
 const DIRS = [
   { x: 1, y: 0 },
@@ -65,19 +57,15 @@ function uniqueSorted(values: number[]): number[] {
 
 export interface SearchInput {
   start: Point;
-  /** Direction index into DIRS the route arrives with at `start`, or -1. */
   startDir: Point | null;
   end: Point;
-  /** Direction the route must travel when it reaches `end`, or null. */
   endDir: Point | null;
   obstacles: readonly Rect[];
   area: Rect;
-  /** Segments of lines routed before this one; crossing them costs `CROSS_COST`. */
   crossings?: readonly (readonly [Point, Point])[];
 }
 
-/** Crossing count and collinear overlap length of a move against routed segments. */
-function crossCount(a: Point, b: Point, segments: readonly (readonly [Point, Point])[]): number {
+export function crossCount(a: Point, b: Point, segments: readonly (readonly [Point, Point])[]): number {
   let n = 0;
   const horizontal = a.y === b.y;
   for (const [p, q] of segments) {
@@ -118,7 +106,6 @@ export function orthogonalSearch(input: SearchInput): Point[] | null {
   if (blocked(start) || blocked(end)) return null;
 
   const dirIndex = (d: Point | null) => (d ? DIRS.findIndex((x) => x.x === d.x && x.y === d.y) : 4);
-  // State key: ((j * W + i) * 5 + dir); dir 4 means "no direction yet".
   const key = (i: number, j: number, d: number) => (j * W + i) * 5 + d;
   const best = new Map<number, number>();
   const prev = new Map<number, number>();

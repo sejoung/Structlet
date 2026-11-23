@@ -40,7 +40,6 @@ test('importing a draft keeps existing positions and adds new objects; a broken 
     expect([m.x, m.y, m.parentId]).toEqual([n.x, n.y, n.parentId]);
   }
   expect(merged.nodes.find((n: { id: string }) => n.id === 'api').label).toBe('Orders API v2');
-  // One undo removes the whole import.
   await page.keyboard.press('ControlOrMeta+z');
   await expect(page.locator('[data-testid="node-cdn"]')).toHaveCount(0);
 

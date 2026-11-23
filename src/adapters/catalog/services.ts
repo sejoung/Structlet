@@ -10,12 +10,6 @@ import { K8S_SERVICES } from './k8s';
 import { NVIDIA_SERVICES } from './nvidia';
 import { ROLE_COLORS, type ServiceDefinition } from './types';
 
-/**
- * The service catalog: general services plus AWS, Google Cloud, Azure and
- * Kubernetes and NVIDIA. Glyphs are Lucide symbols (ISC, see THIRD_PARTY_NOTICES.md);
- * provider names are written as text only. Official provider icons come from
- * icon packs the user loads (see icon-packs/).
- */
 
 export { ROLE_COLORS, PROVIDERS, type Provider, type ServiceDefinition } from './types';
 
@@ -26,14 +20,12 @@ export function findService(id: string): ServiceDefinition | undefined {
   return BY_ID.get(id);
 }
 
-/** Services that exist only in an enabled icon pack (icons the catalog does not know). */
 export function packServices(packs: readonly IconPack[]): ServiceDefinition[] {
   return packs
     .filter((p) => p.enabled)
     .flatMap((p) => p.extras.map((x): ServiceDefinition => ({ id: x.id, provider: p.provider, name: { en: x.name, ko: x.name }, keywords: x.id.split(/[.-]/), glyph: Box, color: ROLE_COLORS.external, role: 'external' })));
 }
 
-/** Case-insensitive search over names (both languages), ids and keywords. */
 export function searchServices(query: string, extra: readonly ServiceDefinition[] = []): ServiceDefinition[] {
   const all = extra.length ? [...SERVICES, ...extra] : SERVICES;
   const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
@@ -68,10 +60,6 @@ const CONTAINER_GLYPHS: Record<ContainerKind, Glyph | null> = {
   custom: null,
 };
 
-/**
- * How services and areas look. Enabled packs, in order, provide official
- * images; anything they do not cover keeps its generic symbol.
- */
 export function createAppearance(language: 'en' | 'ko', packs: readonly IconPack[] = []): Appearance {
   const enabled = packs.filter((p) => p.enabled);
   const fallback: ServiceAppearance = { name: language === 'ko' ? '알 수 없는 서비스' : 'Unknown service', glyph: Box, color: '#8a94a3' };

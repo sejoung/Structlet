@@ -26,7 +26,6 @@ interface Props {
 
 const PROVIDERS: readonly PackProviderChoice[] = ['auto', 'aws', 'gcp', 'azure', 'k8s'];
 
-/** Loading and managing icon packs the user downloaded from a provider. */
 export function IconPacksDialog({ t, packs, persistent, busy, onImport, onToggle, onRemove, onClose }: Props) {
   const [provider, setProvider] = useState<PackProviderChoice>('auto');
   const ref = useRef<HTMLDialogElement>(null);

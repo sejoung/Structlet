@@ -1,7 +1,6 @@
 import { Activity, AppWindow, Archive, ArrowLeftRight, Boxes, Brain, BrickWall, ChartLine, Container, Cpu, Database, FolderOpen, Globe, KeyRound, Layers, Lock, MemoryStick, Radio, ScrollText, Signpost, Sparkles, Split, SquareFunction, Table2, UserCheck, Warehouse, Waves, Webhook, Workflow, Gauge, Inbox } from 'lucide';
 import { define, type Row } from './types';
 
-/** Microsoft Azure services: names as text with generic symbols; official icons come from a user-supplied icon pack. */
 const ROWS: Row[] = [
   ['azure.vm', 'Virtual Machines', 'Virtual Machines', Cpu, 'compute', 'vm instance'],
   ['azure.vmss', 'Virtual Machine Scale Sets', 'Virtual Machine Scale Sets', Layers, 'compute', 'vmss autoscale'],

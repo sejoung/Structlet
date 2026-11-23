@@ -30,11 +30,6 @@ function finite(n: number): boolean {
   return Number.isFinite(n) && Math.abs(n) <= LIMITS.coordinate;
 }
 
-/**
- * Checks the semantic integrity of a document: unique ids, references,
- * acyclic container hierarchy and finite geometry. Shape and type checks of
- * raw input belong to the file format adapter.
- */
 export function validateDocument(doc: Document): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
   if (doc.formatVersion !== FORMAT_VERSION) {

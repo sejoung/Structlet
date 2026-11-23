@@ -1,13 +1,5 @@
 import type { Draft, DraftContainer, DraftEdge, DraftNode } from './draft-format';
 
-/**
- * `terraform show -json` output (state or plan) → draft. HCL is not parsed:
- * the JSON form has resolved modules, values and references.
- * AWS, Google Cloud and Azure resources map to their catalog services.
- * Networks become nested areas, mapped resources become nodes, and edges come
- * from configuration references (plan), `depends_on` (state) or attribute
- * values that name another drawn resource.
- */
 
 const AWS: Record<string, string> = {
   instance: 'aws.ec2', launch_template: 'aws.ec2', autoscaling_group: 'aws.ec2', ecs_service: 'aws.ecs', ecs_cluster: 'aws.ecs',
@@ -139,12 +131,10 @@ export function terraformToDraft(text: string, title = 'Terraform'): Draft {
   const strings = (v: unknown, depth = 0): string[] =>
     depth > 6 ? [] : typeof v === 'string' ? [v] : Array.isArray(v) ? v.flatMap((x) => strings(x, depth + 1)) : v && typeof v === 'object' ? Object.values(v).flatMap((x) => strings(x, depth + 1)) : [];
   const resourceOf = new Map(resources.map((r) => [r.address, r]));
-  // Every resource by id, so references through undrawn resources (network interfaces) can be followed.
   const anyById = new Map<string, string>();
   for (const r of resources) for (const attr of ['id', 'arn', 'self_link']) if (typeof r.values?.[attr] === 'string') anyById.set(r.values[attr] as string, r.address);
   for (const p of providers) containers.unshift({ id: providerArea(p), kind: 'cloud', label: PROVIDERS[p] ?? p, layout: 'flow' });
   const networkKind = (address: string) => NETWORKS[resourceOf.get(address)?.type ?? ''];
-  // Azure subnets name their network instead of referencing its id.
   const vnetByName = new Map(resources.filter((r) => NETWORKS[r.type] === 'vpc' && typeof r.values?.name === 'string').map((r) => [String(r.values.name), r.address]));
   const parentOf = (r: Resource): string => {
     const v = r.values ?? {};
@@ -178,7 +168,6 @@ export function terraformToDraft(text: string, title = 'Terraform'): Draft {
   for (const r of resources) {
     const named = (k: string) => strings(r.values?.[k]).map((x) => byId.get(x)).find(Boolean);
     if (!drawn.has(r.address)) {
-      // Linking resources (event source mappings, subscriptions, triggers) become an edge between what they join.
       const from = named('event_source_arn') ?? named('topic_arn') ?? named('source_arn');
       const to = named('function_name') ?? named('endpoint') ?? named('target_arn') ?? named('arn');
       if (from && to) add(from, to);

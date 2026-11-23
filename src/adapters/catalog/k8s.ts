@@ -1,7 +1,6 @@
 import { Boxes, Box, CalendarClock, Cog, FileCog, FileKey, HardDrive, Package, Repeat, Scaling, Server, Signpost, Split } from 'lucide';
 import { define, type Row } from './types';
 
-/** Kubernetes objects. The cluster and namespaces are areas, not services. */
 const ROWS: Row[] = [
   ['k8s.deployment', 'Deployment', '디플로이먼트', Boxes, 'compute', 'deploy workload replicas'],
   ['k8s.statefulset', 'StatefulSet', '스테이트풀셋', HardDrive, 'compute', 'sts stateful'],

@@ -2,7 +2,6 @@ import { expect, test, type Page } from '@playwright/test';
 import { act, freshApp, openSample } from '../helpers';
 import { mockDrive, mockGoogleScripts } from './google';
 
-/** A fresh app with Google mocked: sign-in grants at once, the Picker picks `window.__pick`. */
 async function setup(page: Page) {
   await mockGoogleScripts(page);
   const drive = await mockDrive(page);
@@ -34,7 +33,6 @@ test('connect, save to a folder, and save edits automatically', async ({ page })
   await rename(page, 'api', 'Orders API');
   await expect(button(page)).toHaveAttribute('data-status', 'synced', { timeout: 8000 });
   await expect.poll(() => labelIn(stored(drive), 'api')).toBe('Orders API');
-  // ⌘S saves to the linked file instead of downloading.
   let downloaded = false;
   page.on('download', () => (downloaded = true));
   await rename(page, 'db', 'Orders DB');
@@ -57,7 +55,6 @@ test('after a reload the file waits for reconnecting, then catches up', async ({
   await button(page).click();
   await expect(button(page)).toHaveAttribute('data-status', 'synced', { timeout: 8000 });
   await expect.poll(() => labelIn(stored(drive), 'api')).toBe('Edited offline');
-  // The reload happened right after saving: Drive never received an empty diagram.
   expect(stored(drive).nodes).toHaveLength(11);
 });
 
@@ -76,13 +73,11 @@ test('changes made elsewhere are merged; a real conflict asks which side to keep
     file.version++;
   };
 
-  // Another device renamed the DB; here the API is renamed: both survive.
   elsewhere((d) => void (d.nodes.find((n) => n.id === 'db')!.label = 'Remote DB'));
   await rename(page, 'api', 'Local API');
   await expect(page.locator('.diagram')).toContainText('Remote DB', { timeout: 8000 });
   await expect.poll(() => [labelIn(stored(drive), 'api'), labelIn(stored(drive), 'db')]).toEqual(['Local API', 'Remote DB']);
 
-  // Both renamed the cache differently: the user chooses.
   elsewhere((d) => void (d.nodes.find((n) => n.id === 'cache')!.label = 'Theirs'));
   await rename(page, 'cache', 'Mine');
   await expect(button(page)).toHaveAttribute('data-status', 'conflict', { timeout: 8000 });
@@ -104,7 +99,6 @@ test('open a diagram from Drive, stop syncing, and disconnect', async ({ page })
   await pick(page);
   await expect(page.locator('.diagram')).toContainText('From Drive');
   await expect(button(page)).toHaveAttribute('data-status', 'synced');
-  // Opening wrote nothing back.
   expect(drive.files.get('shared')!.version).toBe(3);
 
   await button(page).click();

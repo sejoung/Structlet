@@ -75,7 +75,7 @@ The editor opens on an empty canvas. Open **Help (?)** in the top bar to open th
 
 ## Usage
 
-**Large diagrams** — Use the − button on an area to collapse it into one tile. **Diagram → Collapse top-level groups** summarizes the whole system and bundles matching external links. **Arrange summary view** affects the canvas and image exports. **Auto-layout entire diagram** updates the editable document in one undoable step. Try both with the [commerce and ML platform](samples/commerce-and-ml.structlet) in **Help → Complex example**.
+**Large diagrams** — Use the − button on an area to collapse it into one tile. **Diagram → Collapse top-level groups** summarizes the whole system and bundles matching external links. **Arrange summary view** affects the canvas and image exports. **Auto-layout entire diagram** updates the editable document in one undoable step. Try both with the [commerce and ML platform](samples/commerce-and-ml.structlet) in **Help → Complex example**. Full auto-layout fits area titles and boxed node labels, places notes below the contents of their area, and rearranges neighboring grid items to shorten links. It may choose a different side for a connection whose port offset is automatic. Fixed port offsets are preserved.
 
 **Canvas context menu** — Right-click a service, area, or connection for its actions. Right-click a selected object to keep the multi-selection. Right-click empty space for paste, fit, and diagram-wide layout. You can also press **Shift+F10** with the canvas focused. **Collapse to middle-level groups** lets you keep the outer boundaries visible while summarizing their subgroups.
 
@@ -212,6 +212,7 @@ The layer rules are enforced in three places, all part of `npm run check` and CI
 ## Development rules
 
 - **Layers** — put code in the layer that owns it ([ADR 0001](docs/adr/0001-layered-local-first.md)). `npm run deps` fails when an import crosses a layer the wrong way, uses a package the layer may not use, forms a cycle, or does not resolve.
+- **Source comments** — `npm run lint` rejects comments in source, tests, styles, markup, and project configuration. Put rationale and usage notes in Markdown.
 - **400 lines per file** — `npm run lint` fails past 400 lines. Split a file by responsibility before it gets there, rather than raising the limit.
 - **No `console` in `src/`** — report through the diagnostics log (`adapters/diagnostics`).
 - **Both languages** — every message key exists in `src/i18n/ko.ts` and `en.ts` (a unit test checks).
@@ -221,7 +222,7 @@ The layer rules are enforced in three places, all part of `npm run check` and CI
 ## Tests
 
 <details>
-<summary><b>129 unit tests</b> (<code>tests/unit</code>)</summary>
+<summary><b>142 unit tests</b> (<code>tests/unit</code>)</summary>
 
 - **domain** — hierarchy, local coordinates, children moving with parents, reparenting and cycle rejection, patch undo (including adjacent-delete order), fragment copy / paste, document diff
 - **domain** — three-way merge (fields, grouped positions, delete conflicts, hierarchy repair, cycles)
@@ -244,7 +245,7 @@ The layer rules are enforced in three places, all part of `npm run check` and CI
 </details>
 
 <details>
-<summary><b>45 E2E tests</b> (<code>tests/e2e</code>, production builds)</summary>
+<summary><b>47 E2E tests</b> (<code>tests/e2e</code>, production builds)</summary>
 
 - **Basic flow** — two nodes → connect → save → open → reload → SVG (same paths as the screen), PNG, rejecting an invalid file
 - **Areas** — dragging a VPC then a single undo, dragging into another area, wrapping

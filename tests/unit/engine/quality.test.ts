@@ -23,7 +23,6 @@ describe('edge quality', () => {
     const blocker = { id: 'b', rect: { x: 70, y: 0, width: 64, height: 64 } };
     expect(autoSide(f, { x: 400, y: 200 }, 'a', 'z', [])).toBe('right');
     expect(autoSide(f, { x: 400, y: 200 }, 'a', 'z', [blocker])).toBe('bottom');
-    // The other end itself never blocks.
     expect(autoSide(f, { x: 400, y: 32 }, 'a', 'b', [blocker])).toBe('right');
   });
 
@@ -96,7 +95,6 @@ describe('edge label surface', () => {
   it('fills label boxes with the color behind them instead of white', async () => {
     const { labelSurface, mixColor, onSurface, LIGHT_THEME } = await import('../../../src/engine');
     const scene = computeScene(sampleDocument(), look);
-    // "SQL" sits inside the tinted private subnet, "HTTPS" on the plain page.
     const sql = scene.edges.find((e) => e.id === 'e-api-db')!;
     const https = scene.edges.find((e) => e.id === 'e-user-alb')!;
     expect(sql.labelTints).toEqual(['#147eba']);

@@ -1,12 +1,7 @@
 import { useEffect } from 'react';
 import type { DocumentStore, Editor, SessionSnapshot } from '../application';
 
-/**
- * Browser autosave: shortly after each change, and at once when the page is hidden or
- * closed, so a reload never finds an older copy than what was on screen.
- */
 export function useAutosave(editor: Editor, store: DocumentStore, snapshot: SessionSnapshot): void {
-  // Leaving the page saves at once instead of waiting for the autosave delay.
   useEffect(() => {
     const flush = () => {
       if (!editor.session.getSnapshot().dirty) return;

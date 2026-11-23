@@ -1,9 +1,5 @@
 import { allIds, applyPatch, composePatches, invertPatch, isEmptyPatch, type Document, type Id, type Patch } from '../domain';
 
-/**
- * Editing session: the committed document, an optional preview patch shown
- * during a gesture, undo/redo history and the selection. No React or DOM.
- */
 
 interface HistoryEntry {
   readonly patch: Patch;
@@ -14,22 +10,17 @@ interface HistoryEntry {
 }
 
 export interface SessionSnapshot {
-  /** Committed document with the preview applied. */
   readonly document: Document;
   readonly committed: Document;
   readonly selection: readonly Id[];
   readonly canUndo: boolean;
   readonly canRedo: boolean;
-  /** Increments on every committed change, undo, redo and replace. */
   readonly revision: number;
-  /** True while there are changes not yet written by the store. */
   readonly dirty: boolean;
 }
 
 export interface ExecuteOptions {
-  /** Selection after the change. Defaults to the current selection. */
   readonly select?: readonly Id[];
-  /** Consecutive changes with the same key within `coalesceMs` merge into one undo step. */
   readonly coalesceKey?: string;
 }
 
@@ -80,7 +71,6 @@ export class EditorSession {
     return this.selection;
   }
 
-  /** Shows a patch on top of the committed document without recording it. */
   preview(patch: Patch | null): void {
     this.previewPatch = patch && !isEmptyPatch(patch) ? patch : null;
     this.emit();
@@ -131,7 +121,6 @@ export class EditorSession {
     return true;
   }
 
-  /** Ends the current coalescing run so the next change starts a new undo step. */
   breakCoalescing(): void {
     const last = this.undoStack[this.undoStack.length - 1];
     if (last) this.undoStack[this.undoStack.length - 1] = { ...last, coalesceKey: null };
@@ -144,11 +133,6 @@ export class EditorSession {
     this.emit();
   }
 
-  /**
-   * Applies a change that came from elsewhere (another device's edits merged from Drive).
-   * It is shown and saved locally but not recorded for undo: undoing it would undo someone
-   * else's work.
-   */
   applyExternal(patch: Patch): void {
     if (isEmptyPatch(patch)) return;
     this.previewPatch = null;
@@ -157,7 +141,6 @@ export class EditorSession {
     this.changed();
   }
 
-  /** Opens another document: clears history and selection. */
   replaceDocument(doc: Document, options: { dirty?: boolean } = {}): void {
     this.committed = doc;
     this.previewPatch = null;

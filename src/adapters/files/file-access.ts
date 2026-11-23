@@ -1,6 +1,5 @@
 import { downloadText, pickTextFile } from './browser-files';
 
-/** The parts of the File System Access API this adapter uses. */
 interface WritableLike {
   write(data: string): Promise<void>;
   close(): Promise<void>;
@@ -21,11 +20,6 @@ export type SaveOutcome = 'saved' | 'downloaded' | 'cancelled';
 
 const isAbort = (e: unknown) => e instanceof Error && e.name === 'AbortError';
 
-/**
- * Opens and saves `.structlet` files. Where the browser supports the File
- * System Access API, Save writes back to the opened file; elsewhere it falls
- * back to a file input and a download. Automated browsers use the fallback.
- */
 export class LocalFileAccess {
   private handle: FileHandleLike | null = null;
 
@@ -39,7 +33,6 @@ export class LocalFileAccess {
     return typeof this.host.showOpenFilePicker === 'function' && typeof this.host.showSaveFilePicker === 'function' && !this.host.navigator?.webdriver;
   }
 
-  /** Name of the file Save writes to, if any. */
   get fileName(): string | null {
     return this.handle?.name ?? null;
   }
@@ -62,7 +55,6 @@ export class LocalFileAccess {
     }
   }
 
-  /** Reads a file for import without making it the save target. */
   async read(accept: string): Promise<{ name: string; text: string } | null> {
     const handle = this.handle;
     try {

@@ -1,4 +1,3 @@
-/** Message catalogs. No dependencies on other layers. */
 import { en, type MessageKey } from './en';
 import { ko } from './ko';
 
@@ -22,7 +21,6 @@ export function messageKeys(language: Language): string[] {
   return Object.keys(catalogs[language]);
 }
 
-/** Picks a supported language from a BCP 47 tag such as `ko-KR`. */
 export function pickLanguage(tag: string | undefined): Language {
   return tag?.toLowerCase().startsWith('ko') ? 'ko' : 'en';
 }

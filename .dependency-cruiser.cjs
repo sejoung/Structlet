@@ -1,13 +1,3 @@
-/**
- * Layer rules from docs/adr/0001-layered-local-first.md, checked with `npm run deps`.
- *
- *   domain ← application / engine / adapters ← components ← app;  i18n stands alone.
- *
- * Each layer lists the layers and packages it may use. Change this file and the ADR together.
- * TypeScript is parsed with swc: TypeScript 7.0 has no JavaScript API for dependency-cruiser.
- */
-
-/** Layers each layer may import, besides itself. */
 const LAYERS = {
   domain: [],
   engine: ['domain'],
@@ -18,7 +8,6 @@ const LAYERS = {
   app: ['domain', 'engine', 'application', 'adapters', 'i18n', 'components'],
 };
 
-/** Packages each layer may import (bare names, matched as node_modules/<name>/). */
 const PACKAGES = {
   domain: [],
   engine: [],
@@ -48,7 +37,6 @@ const packageRules = Object.entries(PACKAGES).map(([layer, allowed]) => ({
   to: { dependencyTypes: ['npm', 'npm-dev', 'npm-optional', 'npm-peer', 'npm-no-pkg', 'npm-unknown'], pathNot: `^node_modules/${anyOf(allowed)}/` },
 }));
 
-/** @type {import('dependency-cruiser').IConfiguration} */
 module.exports = {
   forbidden: [
     ...layerRules,

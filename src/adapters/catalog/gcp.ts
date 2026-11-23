@@ -1,7 +1,6 @@
 import { Activity, Archive, ArrowLeftRight, Boxes, Brain, BrickWall, ChartLine, Container, Cpu, Database, FolderOpen, Globe, Inbox, Key, KeyRound, Layers, Lock, MemoryStick, Radio, ScrollText, Signpost, Sparkles, Split, SquareFunction, Table2, Timer, Warehouse, Waves, Waypoints, Webhook, Workflow } from 'lucide';
 import { define, type Row } from './types';
 
-/** Google Cloud services: names as text with generic symbols; official icons come from a user-supplied icon pack. */
 const ROWS: Row[] = [
   ['gcp.compute-engine', 'Compute Engine', 'Compute Engine', Cpu, 'compute', 'vm instance gce'],
   ['gcp.gke', 'Google Kubernetes Engine', 'Google Kubernetes Engine', Boxes, 'compute', 'kubernetes k8s gke cluster'],
