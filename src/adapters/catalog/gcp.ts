@@ -1,5 +1,5 @@
 import { Activity, Archive, ArrowLeftRight, Boxes, Brain, BrickWall, ChartLine, Container, Cpu, Database, FolderOpen, Globe, Inbox, Key, KeyRound, Layers, Lock, MemoryStick, Radio, ScrollText, Signpost, Sparkles, Split, SquareFunction, Table2, Timer, Warehouse, Waves, Waypoints, Webhook, Workflow } from 'lucide';
-import { define, type Row } from './types';
+import { define, type Row } from './types.ts';
 
 const ROWS: Row[] = [
   ['gcp.compute-engine', 'Compute Engine', 'Compute Engine', Cpu, 'compute', 'vm instance gce'],

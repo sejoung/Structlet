@@ -75,6 +75,10 @@ The editor opens on an empty canvas. Open **Help (?)** in the top bar to open th
 
 ## Usage
 
+**Build a diagram with AI** — Open **Help (?) → Build a diagram with AI**. For ChatGPT or Claude, copy the prompt or download it as Markdown. Fill in your architecture requirements, send the prompt, then paste the returned JSON into the guide to download an editable `.structlet` file.
+
+For Codex or Claude Code, download the skill ZIP from the same tab and extract the `structlet` folder under `.agents/skills/` for Codex or `.claude/skills/` for Claude Code in your project. Run `$structlet` in Codex or `/structlet` in Claude Code and describe what to diagram. The bundled Node.js 22+ compiler validates drafts and creates `.structlet` files. [Codex skills](https://learn.chatgpt.com/docs/build-skills) · [Claude Code skills](https://code.claude.com/docs/en/skills)
+
 **Large diagrams** — Use the − button on an area to collapse it into one tile. **Diagram → Collapse top-level groups** summarizes the whole system and bundles matching external links. **Arrange summary view** affects the canvas and image exports. **Auto-layout entire diagram** updates the editable document in one undoable step. Try both with the [commerce and ML platform](samples/commerce-and-ml.structlet) in **Help → Complex example**. Full auto-layout fits area titles and boxed node labels, places notes below the contents of their area, and rearranges neighboring grid items to shorten links. It may choose a different side for a connection whose port offset is automatic. Fixed port offsets are preserved.
 
 **Canvas context menu** — Right-click a service, area, or connection for its actions. Right-click a selected object to keep the multi-selection. Right-click empty space for paste, fit, and diagram-wide layout. You can also press **Shift+F10** with the canvas focused. **Collapse to middle-level groups** lets you keep the outer boundaries visible while summarizing their subgroups.
@@ -222,7 +226,7 @@ The layer rules are enforced in three places, all part of `npm run check` and CI
 ## Tests
 
 <details>
-<summary><b>159 unit tests</b> (<code>tests/unit</code>)</summary>
+<summary><b>163 unit tests</b> (<code>tests/unit</code>)</summary>
 
 - **domain** — hierarchy, local coordinates, children moving with parents, reparenting and cycle rejection, patch undo (including adjacent-delete order), fragment copy / paste, document diff
 - **domain** — three-way merge (fields, grouped positions, delete conflicts, hierarchy repair, cycles)
@@ -236,6 +240,7 @@ The layer rules are enforced in three places, all part of `npm run check` and CI
 - **adapters**
   - File: round trip, rejecting 12 kinds of invalid input
   - Draft: laying out an empty document, partial updates (keeping IDs, positions, pins), rejecting 4 error kinds, the documented example
+  - AI drafts: both prompt examples, invalid references, standalone skill compiler, and preserving the original during updates
   - compose, Kubernetes, Terraform (AWS · Azure · GCP) conversion
   - Icon packs: per-provider matching, auto-detection, zip, limits, rendering
   - SVG matches the canvas paths and labels; checks; legend; saving to the same file
@@ -246,13 +251,14 @@ The layer rules are enforced in three places, all part of `npm run check` and CI
 </details>
 
 <details>
-<summary><b>56 E2E tests</b> (<code>tests/e2e</code>, production builds)</summary>
+<summary><b>57 E2E tests</b> (<code>tests/e2e</code>, production builds)</summary>
 
 - **Basic flow** — two nodes → connect → save → open → reload → SVG (same paths as the screen), PNG, rejecting an invalid file
 - **Areas** — dragging a VPC then a single undo, dragging into another area, wrapping
 - **Connectors** — keeping and resetting manual paths, reattaching endpoints
 - **Editing** — editing long Korean names, auto-layout undo, copy / paste
 - **Import** — partial draft updates and error rejection, compose
+- **AI guide** — copying and downloading the prompt, downloading the skill, converting a draft online and offline, and opening the resulting `.structlet`
 - **Icon packs** — AWS zip pack (canvas, areas, palette, export, kept after reload, turning off), Kubernetes icon folder + manifest import
 - **View** — isometric rotation, folding, flow playback, and export; dark theme, box nodes, legend, checks, minimap, Tab navigation; touch pan and zoom
 - **Deployment** — single HTML opened from `file://` (import, export, autosave, Drive disabled); no CSP violations in the production build

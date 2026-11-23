@@ -1,17 +1,17 @@
 import { Box, Boxes, Building2, Cloud, Flag, FolderTree, Lock, MapPin, Network } from 'lucide';
 import type { ContainerKind } from '../../domain';
 import type { Appearance, Glyph, ServiceAppearance } from '../../engine';
-import { dataUri, type IconPack } from '../icon-packs/pack';
-import { AWS_SERVICES } from './aws';
-import { AZURE_SERVICES } from './azure';
-import { GCP_SERVICES } from './gcp';
-import { GENERAL_SERVICES } from './general';
-import { K8S_SERVICES } from './k8s';
-import { NVIDIA_SERVICES } from './nvidia';
-import { ROLE_COLORS, type ServiceDefinition } from './types';
+import { dataUri, type IconPack } from '../icon-packs/pack.ts';
+import { AWS_SERVICES } from './aws.ts';
+import { AZURE_SERVICES } from './azure.ts';
+import { GCP_SERVICES } from './gcp.ts';
+import { GENERAL_SERVICES } from './general.ts';
+import { K8S_SERVICES } from './k8s.ts';
+import { NVIDIA_SERVICES } from './nvidia.ts';
+import { ROLE_COLORS, type ServiceDefinition } from './types.ts';
 
 
-export { ROLE_COLORS, PROVIDERS, type Provider, type ServiceDefinition } from './types';
+export { ROLE_COLORS, PROVIDERS, type Provider, type ServiceDefinition } from './types.ts';
 
 export const SERVICES: readonly ServiceDefinition[] = [...GENERAL_SERVICES, ...AWS_SERVICES, ...GCP_SERVICES, ...AZURE_SERVICES, ...K8S_SERVICES, ...NVIDIA_SERVICES];
 const BY_ID = new Map(SERVICES.map((s) => [s.id, s]));

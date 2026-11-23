@@ -1,5 +1,5 @@
 import { Activity, AppWindow, Archive, Box, Boxes, Brain, BrickWall, Building2, CalendarClock, ChartLine, Cog, Container, Cpu, CreditCard, Database, Earth, FolderOpen, Globe, HardDrive, Inbox, KeyRound, Laptop, Lock, Mail, MemoryStick, Radio, Router, ScrollText, Search, Server, ShieldCheck, Signpost, Smartphone, Split, SquareFunction, Table2, User, Users, Waves, Waypoints, Webhook, Workflow } from 'lucide';
-import { define, type Row } from './types';
+import { define, type Row } from './types.ts';
 
 const ROWS: Row[] = [
   ['user', 'User', '사용자', User, 'client', 'person customer 고객 사람'],

@@ -1,5 +1,5 @@
 import { Activity, Boxes, CircuitBoard, Cog, Cpu, Grid2X2, Network, Router, Server } from 'lucide';
-import { define, type Row } from './types';
+import { define, type Row } from './types.ts';
 
 const ROWS: Row[] = [
   ['nvidia.gpu', 'NVIDIA GPU', 'NVIDIA GPU', Cpu, 'compute', 'gpu accelerator accelerators a100 h100 h200 b200 b300 l4 l40s blackwell hopper ampere rubin 그래픽 가속기 엔비디아 머신러닝'],

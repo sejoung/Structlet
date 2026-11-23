@@ -1,5 +1,5 @@
 import { Boxes, Box, CalendarClock, Cog, FileCog, FileKey, HardDrive, Package, Repeat, Scaling, Server, Signpost, Split } from 'lucide';
-import { define, type Row } from './types';
+import { define, type Row } from './types.ts';
 
 const ROWS: Row[] = [
   ['k8s.deployment', 'Deployment', '디플로이먼트', Boxes, 'compute', 'deploy workload replicas'],

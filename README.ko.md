@@ -72,6 +72,10 @@ npm run dev          # http://127.0.0.1:5183
 
 ## 사용법
 
+**AI로 구성도 만들기** — **도움말(?) → AI로 구성도 만들기**에서 프롬프트를 복사하거나 Markdown으로 내려받는다. 구성도 요구사항을 채워 ChatGPT나 Claude에 보내고, 돌아온 JSON을 매뉴얼에 붙여넣으면 편집 가능한 `.structlet` 파일을 받을 수 있다.
+
+Codex와 Claude Code는 같은 탭의 스킬 ZIP을 사용한다. 프로젝트의 `.agents/skills/`(Codex) 또는 `.claude/skills/`(Claude Code) 아래에 `structlet` 폴더를 풀고, `$structlet` 또는 `/structlet`을 실행해 그릴 구성을 설명한다. 포함된 컴파일러는 Node.js 22 이상에서 초안을 검증하고 `.structlet` 파일로 저장한다. [Codex 스킬](https://learn.chatgpt.com/docs/build-skills) · [Claude Code 스킬](https://code.claude.com/docs/en/skills)
+
 **큰 구성도** — 영역의 − 버튼으로 요약 타일 하나로 접는다. **구성도 → 최상위 그룹 모두 접기**는 전체 시스템을 요약하고 같은 외부 연결을 묶는다. **요약 보기 자동 배치**는 화면과 이미지 내보내기에 적용한다. **전체 구성도 자동 배치**는 편집 문서의 위치를 바꾸며 한 번의 실행 취소로 되돌린다. **도움말 → 복잡한 예제**에서 [쇼핑몰·ML 플랫폼](samples/commerce-and-ml.structlet)을 내려받아 두 방식을 비교할 수 있다. 전체 자동 배치는 영역 제목과 상자형 노드의 라벨이 들어갈 공간을 확보하고, 주석을 영역의 내용 아래에 배치한다. 격자에서는 연결된 객체를 가까운 칸에 둔다. 포트 위치를 고정한 연결은 유지하고, 자동 위치의 연결은 배치에 맞는 면을 다시 선택할 수 있다.
 
 **캔버스 우클릭 메뉴** — 서비스·영역·연결선 위에서 관련 작업을 실행한다. 선택된 객체를 우클릭하면 다중 선택을 유지한다. 빈 곳에서는 붙여넣기, 화면 맞춤, 전체 배치를 실행한다. 캔버스에 포커스를 둔 상태에서 **Shift+F10**으로도 열 수 있다. **중간 단위로 접기**는 큰 영역 경계를 유지하면서 하위 그룹을 요약한다.
@@ -218,7 +222,7 @@ docs/adr/       설계 기록. stormlet-reference/ 에 참고한 Stormlet ADR �
 ## 검증 현황
 
 <details>
-<summary><b>단위 159개</b> (<code>tests/unit</code>)</summary>
+<summary><b>단위 163개</b> (<code>tests/unit</code>)</summary>
 
 - **domain** — 계층·로컬 좌표·자식 동반 이동, 부모 변경·순환 거부, 패치 undo(인접 삭제 순서 포함), 조각 복사·붙여넣기, 문서 차이
 - **domain** — 3방향 병합(필드·위치 묶음·삭제 충돌·계층 복구·순환)
@@ -232,6 +236,7 @@ docs/adr/       설계 기록. stormlet-reference/ 에 참고한 Stormlet ADR �
 - **adapters**
   - 파일: 왕복, 12가지 잘못된 입력 거부
   - 초안: 빈 문서 배치, 부분 수정(ID·위치·고정 유지), 오류 4종 거부, 문서화된 예시
+  - AI 초안: 한·영 프롬프트 예제, 잘못된 참조 거부, 독립 실행형 스킬 변환기, 수정 시 원본 유지
   - compose, Kubernetes, Terraform(AWS·Azure·GCP) 변환
   - 아이콘 팩: 제공자별 짝짓기, 자동 감지, zip, 한도, 렌더링
   - SVG가 캔버스와 같은 경로·라벨인지, 점검, 범례, 같은 파일에 저장
@@ -242,13 +247,14 @@ docs/adr/       설계 기록. stormlet-reference/ 에 참고한 Stormlet ADR �
 </details>
 
 <details>
-<summary><b>E2E 56개</b> (<code>tests/e2e</code>, 프로덕션 빌드)</summary>
+<summary><b>E2E 57개</b> (<code>tests/e2e</code>, 프로덕션 빌드)</summary>
 
 - **기본 흐름** — 노드 두 개 → 연결 → 저장 → 열기 → 새로 고침 → SVG(화면과 같은 경로), PNG, 잘못된 파일 거부
 - **영역** — VPC 끌기 후 한 번의 undo, 다른 영역으로 끌어 넣기, 감싸기
 - **연결선** — 수동 경로 유지·초기화, 끝점 재부착
 - **편집** — 한국어 긴 이름 편집, 자동 배치 undo, 복사·붙여넣기
 - **가져오기** — 초안 부분 수정과 오류 거부, compose
+- **AI 매뉴얼** — 프롬프트 복사·다운로드, 스킬 다운로드, 웹·오프라인 초안 변환, 생성한 `.structlet` 열기
 - **아이콘 팩** — AWS zip 팩(캔버스·영역·팔레트·내보내기·새로 고침 후 유지·끄기), Kubernetes 아이콘 폴더 + 매니페스트 가져오기
 - **보기** — 아이소메트릭 회전·그룹 접기·흐름 재생·내보내기, 다크 테마·상자 노드·범례·점검·미니맵·Tab 이동, 터치 이동·확대
 - **배포** — `file://`로 연 단일 HTML(가져오기, 내보내기, 자동 저장, Drive 비활성), 프로덕션 빌드의 CSP 위반 없음

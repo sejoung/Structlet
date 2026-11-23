@@ -107,7 +107,7 @@ module.exports = {
   ],
   options: {
     doNotFollow: { path: '^node_modules' },
-    exclude: { path: '^(dist|dist-single|test-results)/' },
+    exclude: { path: '^(dist|dist-single|test-results)/|^virtual:structlet-skill$' },
     parser: 'swc',
     tsPreCompilationDeps: true,
     combinedDependencies: false,

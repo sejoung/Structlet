@@ -8,6 +8,7 @@ import migKo from './assets/manual-mig-ko.webp';
 import type { Language, MessageKey, Translate } from '../i18n/messages';
 import { IconPackSources } from './IconPacksDialog';
 import { LayoutGuide } from './LayoutGuide';
+import { ManualAiGuide, type ManualAiActions } from './ManualAiGuide';
 import { Icon } from './ui/Icon';
 import { Segmented } from './ui/controls';
 
@@ -35,22 +36,22 @@ const SHORTCUTS: [string, MessageKey][] = [
   ['⌘.', 'sc.present'],
 ];
 
-const EXAMPLE_TABS = ['basic', 'complex', 'nvidia'] as const;
+const GUIDE_TABS = ['basic', 'complex', 'nvidia', 'ai'] as const;
 const GPU_EXAMPLES = [
   { sample: 'gpu-training', label: 'manual.gpuTraining', description: 'manual.trainingPreview', en: trainingEn, ko: trainingKo },
   { sample: 'mig-inference', label: 'manual.migInference', description: 'manual.migPreview', en: migEn, ko: migKo },
 ] as const;
 
-export function ManualPage({ t, language, onDownloadSample }: { t: Translate; language: Language; onDownloadSample(sample: 'three-tier' | 'gpu-training' | 'mig-inference' | 'commerce-and-ml'): void }) {
-  const [example, setExample] = useState<(typeof EXAMPLE_TABS)[number]>('basic');
+export function ManualPage({ t, language, ai, onDownloadSample }: { t: Translate; language: Language; ai: ManualAiActions; onDownloadSample(sample: 'three-tier' | 'gpu-training' | 'mig-inference' | 'commerce-and-ml'): void }) {
+  const [section, setSection] = useState<(typeof GUIDE_TABS)[number]>('basic');
   const mac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
   return (
     <main className="manual-page" aria-labelledby="manual-title">
       <header className="manual-header">
         <h1 id="manual-title">{t('manual.title')}</h1>
-        <Segmented<(typeof EXAMPLE_TABS)[number]> label={t('manual.examples')} value={example} onChange={setExample} options={EXAMPLE_TABS.map((value) => ({ value, label: t(`manual.example.${value}`) }))} />
+        <Segmented<(typeof GUIDE_TABS)[number]> label={t('manual.sections')} value={section} onChange={setSection} options={GUIDE_TABS.map((value) => ({ value, label: t(`manual.example.${value}`) }))} />
       </header>
-      {example === 'basic' && (
+      {section === 'basic' && (
         <>
           <ol className="manual-steps">
             <li>{t('manual.add')}</li>
@@ -68,8 +69,8 @@ export function ManualPage({ t, language, onDownloadSample }: { t: Translate; la
           </section>
         </>
       )}
-      {example === 'complex' && <LayoutGuide t={t} language={language} onDownload={() => onDownloadSample('commerce-and-ml')} />}
-      {example === 'nvidia' && (
+      {section === 'complex' && <LayoutGuide t={t} language={language} onDownload={() => onDownloadSample('commerce-and-ml')} />}
+      {section === 'nvidia' && (
         <section className="manual-packs" aria-labelledby="manual-gpu-title">
           <h2 id="manual-gpu-title">{t('manual.gpuSamples')}</h2>
           <p className="hint">{t('manual.gpuLinks')}</p>
@@ -85,6 +86,7 @@ export function ManualPage({ t, language, onDownloadSample }: { t: Translate; la
           ))}
         </section>
       )}
+      {section === 'ai' && <ManualAiGuide t={t} actions={ai} />}
       <details className="manual-walkthrough">
         <summary>{t('manual.editingGuide')}</summary>
         <ul className="manual-steps">

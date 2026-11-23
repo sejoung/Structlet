@@ -17,6 +17,7 @@ import { LocalDocumentStore } from '../adapters/storage/local-document-store';
 import { emptyDocument } from '../domain';
 import { createTranslator, pickLanguage, type Language } from '../i18n/messages';
 import { ManualPage } from '../components/ManualPage';
+import { createManualAi } from './manual-ai';
 import { downloadSample } from './sample-downloads';
 import { useTheme } from './use-theme';
 import { App } from './App';
@@ -47,7 +48,9 @@ const stats = analytics ? new GoogleAnalytics(analytics.measurementId) : undefin
 
 function Guide() {
   useTheme();
-  return <ManualPage t={createTranslator(language)} language={language} onDownloadSample={downloadSample} />;
+  const t = createTranslator(language);
+  const ai = createManualAi(language, () => newId('document'), t('app.untitled'));
+  return <ManualPage t={t} language={language} ai={ai} onDownloadSample={downloadSample} />;
 }
 
 if (window.location.hash === '#manual') {

@@ -23,6 +23,16 @@ test('single structlet.html works from file://', async ({ page }) => {
   await expect.poll(() => preview.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(1240);
   const [sample] = await Promise.all([guide.waitForEvent('download'), manual.getByRole('button', { name: 'Download sample (.structlet)' }).click()]);
   expect(sample.suggestedFilename()).toBe('three-tier.structlet');
+  await manual.getByRole('radio', { name: 'Build a diagram with AI' }).click();
+  const [skill] = await Promise.all([
+    guide.waitForEvent('download'), manual.getByRole('button', { name: 'Download Structlet skill (.zip)' }).click(),
+  ]);
+  expect(readFileSync((await skill.path())!).subarray(0, 2).toString()).toBe('PK');
+  await manual.getByLabel('AI draft JSON').fill(JSON.stringify({ title: 'Offline AI', nodes: [{ id: 'api', service: 'aws.ec2' }] }));
+  const [generated] = await Promise.all([
+    guide.waitForEvent('download'), manual.getByRole('button', { name: 'Download .structlet', exact: true }).click(),
+  ]);
+  expect(generated.suggestedFilename()).toBe('Offline AI.structlet');
   await guide.close();
   const [sampleChooser] = await Promise.all([page.waitForEvent('filechooser'), act(page, 'tb-open')]);
   await sampleChooser.setFiles((await sample.path())!);

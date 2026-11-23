@@ -38,6 +38,7 @@ Structlet은 서버 없이 정적 호스팅으로 동작한다. 문서는 사용
 
 규칙을 바꾸려면 이 ADR과 해당 파일을 함께 고친다. 계층 표는 `.dependency-cruiser.cjs`의 `LAYERS`·`PACKAGES`와 같아야 한다.
 
+- `virtual:structlet-skill`은 Vite가 생성하는 스킬 ZIP 데이터다. 이 가상 모듈의 해석은 웹과 단일 HTML 빌드에서 검사하고, 소스 파일 의존성 검사에서는 이 이름만 제외한다.
 - 처음에는 정규식으로 import를 읽는 테스트 하나가 전부 검사했다. 실제 모듈 해석(확장자, `exports`, 타입 전용 import)을 하는 dependency-cruiser로 옮겨, 풀리지 않는 import와 선언하지 않은 패키지까지 잡는다. 파일 길이와 `console`은 편집기에서 바로 보이도록 린트로 옮겼다.
 - TypeScript 7.0에는 JavaScript API가 없어 typescript-eslint와 dependency-cruiser의 tsc 파서를 쓸 수 없다. 그래서 린트는 TypeScript에 기대지 않는 oxlint를, dependency-cruiser는 swc 파서를 쓴다. 실행할 때 나오는 `missing-tsc-transpiler` 경고는 이 때문이고, swc가 모든 소스를 읽는다(파일 수로 확인). dependency-cruiser가 Node 22 이상을 요구해 `engines`도 22 이상으로 올렸다.
 - oxlint의 React 규칙(`react`, `react-hooks`)은 켜지 않았다. 켜면 기존 코드에서 렌더 중 ref 읽기 등 24건이 나와 별도 작업으로 다룬다.

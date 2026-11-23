@@ -1,5 +1,5 @@
 import { Activity, AppWindow, Archive, ArrowLeftRight, Boxes, Brain, BrickWall, ChartLine, Container, Cpu, Database, FolderOpen, Globe, KeyRound, Layers, Lock, MemoryStick, Radio, ScrollText, Signpost, Sparkles, Split, SquareFunction, Table2, UserCheck, Warehouse, Waves, Webhook, Workflow, Gauge, Inbox } from 'lucide';
-import { define, type Row } from './types';
+import { define, type Row } from './types.ts';
 
 const ROWS: Row[] = [
   ['azure.vm', 'Virtual Machines', 'Virtual Machines', Cpu, 'compute', 'vm instance'],

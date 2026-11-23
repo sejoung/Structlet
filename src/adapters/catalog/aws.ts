@@ -1,5 +1,5 @@
 import { Activity, Archive, ArrowLeftRight, Boxes, Brain, BrickWall, Container, Database, Earth, FolderOpen, Globe, HardDrive, Inbox, Key, KeyRound, Lambda, Layers, Lock, Mail, MemoryStick, Radio, ScrollText, Search, Server, Signpost, Sparkles, Split, Table2, UserCheck, Warehouse, Waves, Waypoints, Webhook, Workflow } from 'lucide';
-import { define, type Row } from './types';
+import { define, type Row } from './types.ts';
 
 const ROWS: Row[] = [
   ['aws.ec2', 'Amazon EC2', 'Amazon EC2', Server, 'compute', 'instance vm 인스턴스'],
