@@ -1,4 +1,5 @@
 import { terraformInfrastructure } from './terraform-infrastructure';
+import { terraformProjectSettings } from './terraform-resource-settings';
 import type { TerraformResource as Resource } from './terraform-resource';
 import type { Draft, DraftContainer, DraftEdge, DraftNode } from './draft-format';
 import { ec2InstanceType, terraformNodeSpecs } from './terraform-specs';
@@ -13,7 +14,7 @@ const AWS: Record<string, string> = {
   api_gateway_rest_api: 'aws.apigateway', apigatewayv2_api: 'aws.apigateway', cloudfront_distribution: 'aws.cloudfront', cloudfront_function: 'aws.cloudfront-function',
   route53_zone: 'aws.route53', lb: 'aws.elb', alb: 'aws.elb', elb: 'aws.elb', nat_gateway: 'aws.natgateway', internet_gateway: 'aws.igw',
   cognito_user_pool: 'aws.cognito', secretsmanager_secret: 'aws.secretsmanager', kms_key: 'aws.kms', wafv2_web_acl: 'aws.waf',
-  cloudwatch_log_group: 'aws.cloudwatch', opensearch_domain: 'aws.opensearch', elasticsearch_domain: 'aws.opensearch',
+  cloudwatch_log_group: 'aws.cloudwatch', cloudtrail: 'aws.cloudtrail', opensearch_domain: 'aws.opensearch', elasticsearch_domain: 'aws.opensearch',
   redshift_cluster: 'aws.redshift', sagemaker_endpoint: 'aws.sagemaker', ses_domain_identity: 'aws.ses',
   ecr_repository: 'aws.ecr', ecrpublic_repository: 'aws.ecr', docdb_cluster: 'aws.documentdb', docdb_instance: 'aws.documentdb',
   msk_cluster: 'aws.msk', msk_serverless_cluster: 'aws.msk', ssm_document: 'aws.systems-manager', ssm_parameter: 'aws.systems-manager',
@@ -67,6 +68,7 @@ function collect(module: unknown, out: Resource[]): void {
 function serviceFor(type: string): string | null {
   const [provider, ...rest] = type.split('_');
   const short = rest.join('_');
+  if (type === 'helm_release') return 'k8s.helm';
   if (provider === 'aws') return AWS[short] ?? null;
   if (provider === 'google') return GOOGLE[short] ?? null;
   if (provider === 'azurerm') return AZURERM[short] ?? null;
@@ -137,12 +139,10 @@ export function terraformToDraft(text: string, title = 'Terraform'): Draft {
     }
     providers.add(provider);
     const label = `${String(r.values?.tags && (r.values.tags as Record<string, unknown>).Name ? (r.values.tags as Record<string, unknown>).Name : r.name)}\n${r.type}`;
-    if (kind) containers.push({ id: key, kind, label: `${kind === 'vpc' ? 'VPC' : 'Subnet'} · ${label.split('\n')[0]}`, layout: 'flow' });
-    else {
-      const ref = refsFor(r);
-      const infrastructure = detailsFor(r, [...(ref?.targets ?? []), ...(r.depends_on ?? [])], ref?.expressions ?? []);
-      nodes.push({ id: key, service: service!, label, specs: terraformNodeSpecs(r.type, r.values ?? {}, ec2Types), infrastructure });
-    }
+    const ref = refsFor(r);
+    const infrastructure = detailsFor(r, [...(ref?.targets ?? []), ...(r.depends_on ?? [])], ref?.expressions ?? []);
+    if (kind) containers.push({ id: key, kind, label: `${kind === 'vpc' ? 'VPC' : 'Subnet'} · ${label.split('\n')[0]}`, layout: 'flow', infrastructure });
+    else nodes.push({ id: key, service: service!, label, specs: terraformNodeSpecs(r.type, r.values ?? {}, ec2Types), infrastructure });
   }
   const providerArea = (p: string) => `tf-cloud-${p}`;
   const strings = (v: unknown, depth = 0): string[] =>
@@ -150,7 +150,11 @@ export function terraformToDraft(text: string, title = 'Terraform'): Draft {
   const resourceOf = new Map(resources.map((r) => [r.address, r]));
   const anyById = new Map<string, string>();
   for (const r of resources) for (const attr of ['id', 'arn', 'self_link']) if (typeof r.values?.[attr] === 'string') anyById.set(r.values?.[attr] as string, r.address);
-  for (const p of providers) containers.unshift({ id: providerArea(p), kind: 'cloud', label: PROVIDERS[p] ?? p, layout: 'flow' });
+  const project = terraformProjectSettings(json);
+  for (const p of providers) containers.unshift({
+    id: providerArea(p), kind: 'cloud', label: PROVIDERS[p] ?? (p === 'helm' ? 'Helm' : p), layout: 'flow',
+    ...(project ? { infrastructure: { resourceSettings: [project] } } : {}),
+  });
   const networkKind = (address: string) => NETWORKS[resourceOf.get(address)?.type ?? ''];
   const vnetByName = new Map(resources.filter((r) => NETWORKS[r.type] === 'vpc' && typeof r.values?.name === 'string').map((r) => [String(r.values?.name), r.address]));
   const parentOf = (r: Resource): string => {

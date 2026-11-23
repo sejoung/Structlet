@@ -1,6 +1,7 @@
 import type { IamStatement, InfrastructureDetails, RemoteStateReference, SecurityGroupRule } from '../../domain';
 import { array, integer, present, record, text, texts } from './infrastructure-values';
 import { nodeTaints } from './node-provisioning';
+import { terraformResourceSettings } from './terraform-resource-settings';
 import { cloudFrontIndex } from './terraform-cloudfront';
 import { wafIndex } from './terraform-waf';
 
@@ -167,6 +168,7 @@ export function terraformInfrastructure(resources: readonly TerraformResource[],
   const groups = securityGroups(resources);
   const iam = iamIndex(resources);
   const cloudFrontFor = cloudFrontIndex(all);
+  const settingsFor = terraformResourceSettings(resources);
   const wafFor = wafIndex(all);
   const datasets = new Map(all.filter((r) => r.mode === 'data' && r.type === 'terraform_remote_state').map((r) => [r.address, r]));
   return (r: TerraformResource, refs: readonly string[], expressions: readonly string[]): InfrastructureDetails | undefined => {
@@ -178,7 +180,9 @@ export function terraformInfrastructure(resources: readonly TerraformResource[],
     const { iamStatements, iamPolicyRefs } = iam(r, refs);
     const remote = remoteStates(r, expressions, datasets);
     const taints = r.type === 'aws_eks_node_group' && !r.sensitive_values?.taint ? nodeTaints(v.taint) : undefined;
+    const settings = settingsFor(r, expressions);
     return present({
+      resourceSettings: settings.length ? settings : undefined,
       ...(securityGroupRules.length ? { securityGroupRules } : {}),
       ...(iamStatements.length ? { iamStatements } : {}),
       ...(iamPolicyRefs.length ? { iamPolicyRefs } : {}),

@@ -14,6 +14,12 @@ Deliver a validated, editable `.structlet` file. Keep the intermediate JSON in a
 - Read other local repositories, access remote repositories, or query AWS APIs or Kubernetes clusters only when the user includes those sources in scope. Apply the same rule to indirect reads during rendering or dependency resolution.
 - Apply the same scope to previously collected material and temporary render results. Reuse only content whose sources are known to be within the current scope.
 
+## Writing style
+
+- Keep titles, node labels, and connection labels short and use terms from the project. Write annotations and delivery messages in direct sentences. Put technical settings in their dedicated fields when available.
+- Exclude the middle dot (U+00B7) from all newly written labels, annotations, and delivery messages. Avoid decorative dashes, arrows, emoji, and stock phrases. Use ordinary wording or a line break if a label needs two lines.
+- Keep source identifiers, file names, and official names verbatim. Review newly written titles, labels, annotations, and delivery text for decorative punctuation before returning them.
+
 ## Workflow
 
 1. Read the draft contract in the [English prompt](references/prompt-en.md) or [Korean prompt](references/prompt-ko.md). Use the user's language for diagram labels. Select built-in service IDs from [the service catalog](references/services.tsv). Structlet applies any official icon assets users load in their browser to those IDs.
@@ -33,5 +39,7 @@ For Terraform diagrams, label the source as declared configuration and state whi
 For Kubernetes architecture overviews, trace the paths from ingress and services to workloads and their dependencies. Show a single node per workload and use Pod nodes for standalone Pods. Record declared replica counts and CronJob schedules in `infrastructure.workload`. Use supplied workload manifests or charts to establish runtime relationships. Use the destinations already declared in the supplied Argo CD files as deployment context. When GitOps ownership matters, summarize each Argo CD installation with a `workflow` node labeled Argo CD and a dashed configuration link to its known destination. Follow referenced repositories, expand ApplicationSets, and record individual sync settings only when the user asks for deployment detail. Use the Argo CD detail fields in the prompt contract and limit source investigation to the scope above.
 
 Group workloads by namespace and record node selectors and affinity in `infrastructure.placement`. For explicit targets, link to the matching `k8s.karpenter-nodepool` or `aws.eks-nodegroup` when cluster identity is verified. Put cluster-scoped `k8s.karpenter-nodepool` and `k8s.karpenter-ec2nodeclass` nodes in the cluster and link them through declared `nodeClassRef` values. Use `infrastructure.nodeProvisioning` for taints, NodePool instance requirements and limits, and cleanup policies. Use `infrastructure.nodeClass` for EC2NodeClass AMI, subnet, and security group selectors and IAM references. Use `infrastructure.blockDevices` for EC2NodeClass EBS mappings. Set `relationship: true` and `dashed: true` on configuration links. Use separate evidence to report actual pod placement, sync, or deployment status.
+
+Store confirmed settings without a narrower field in `infrastructure.resourceSettings` on the node or area they describe. Keep related declaration blocks under the owner when the link is known. For Helm values or Terraform declarations available as source files, use this field for relevant chart settings, backend references, lifecycle, and import details. Use the structure documented in the prompt.
 
 When compilation is blocked, report the specific problem. The draft can be converted in **User guide → Build a diagram with AI** for a new diagram, or applied through **File → Import** with the existing diagram open for a revision. Share the draft when the user asks for it.

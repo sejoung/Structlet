@@ -79,6 +79,7 @@ function container(v: unknown, path: string): Container {
       filled: bool(style, 'filled', `${path}.style`, preset.filled),
     },
     locked: bool(o, 'locked', path, false),
+    ...(o.infrastructure === undefined ? {} : { infrastructure: readInfrastructure(o.infrastructure, `${path}.infrastructure`) }),
   };
 }
 
@@ -169,6 +170,7 @@ export function serializeStructlet(doc: Document): string {
       height: c.height,
       style: { color: c.style.color, dashed: c.style.dashed, filled: c.style.filled },
       locked: c.locked,
+      infrastructure: c.infrastructure,
     })),
     nodes: doc.nodes.map((n) => ({
       id: n.id,

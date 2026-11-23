@@ -18,6 +18,7 @@ export interface DraftContainer {
   dashed?: boolean;
   filled?: boolean;
   locked?: boolean;
+  infrastructure?: InfrastructureDetails | null;
 }
 
 export interface DraftNode {
@@ -90,6 +91,7 @@ export function readDraft(raw: unknown): Draft {
         y: opt(o, 'y', () => num(o, 'y', p)),
         width: opt(o, 'width', () => num(o, 'width', p)),
         height: opt(o, 'height', () => num(o, 'height', p)),
+        infrastructure: opt(o, 'infrastructure', () => o.infrastructure === null ? null : readInfrastructure(o.infrastructure, `${p}.infrastructure`)),
         color: opt(o, 'color', () => oneOf(o, 'color', p, AREA_COLORS)),
         dashed: opt(o, 'dashed', () => bool(o, 'dashed', p, false)),
         filled: opt(o, 'filled', () => bool(o, 'filled', p, false)),

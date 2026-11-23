@@ -37,6 +37,7 @@ export function CloudFront({ details, t }: { details: CloudFrontDetails; t: Tran
         ]} />
         <Entry name={t('infra.allowedMethods')} values={behavior.allowedMethods} />
         <Entry name={t('infra.cachedMethods')} values={behavior.cachedMethods} />
+        <Entry name={t('infra.functionAssociations')} values={behavior.functionAssociations?.map(({ eventType, functionArn }) => `${eventType}: ${functionArn}`)} />
         {behavior.cachePolicy && <CachePolicy policy={behavior.cachePolicy} t={t} />}
       </>
     ))}</List>
@@ -76,7 +77,7 @@ function IpSet({ set, t }: { set: WafIpSetDetails; t: Translate }) {
   return <>
     <strong>{set.name ?? set.reference}</strong>
     <Fields t={t} fields={[
-      ['infra.wafReference', set.name ? set.reference : undefined], ['infra.wafIpVersion', set.ipAddressVersion],
+      ['infra.wafReference', set.name ? set.reference : undefined], ['infra.wafIpVersion', set.ipAddressVersion], ['infra.wafScope', set.scope],
     ]} />
     {addresses && <details open={addresses.length <= 12}>
       <summary>{t('infra.wafAddresses', { count: addresses.length })}</summary>
@@ -89,7 +90,7 @@ export function Waf({ details, t }: { details: WafDetails; t: Translate }) {
   return <section>
     <h3>{t('infra.waf')}</h3>
     <Fields t={t} fields={[
-      ['infra.webAclReference', details.id], ['infra.wafScope', details.scope], ['infra.wafDefault', details.defaultAction],
+      ['infra.wafName', details.name], ['infra.webAclReference', details.id], ['infra.wafScope', details.scope], ['infra.wafDefault', details.defaultAction],
     ]} />
     <Visibility config={details.visibility} t={t} />
     <List title={t('infra.wafIpSets')}>{details.ipSets?.map((set) => <IpSet set={set} t={t} />)}</List>

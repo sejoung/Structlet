@@ -61,7 +61,7 @@ function groups({ t, doc, scene, editor, diagram, actions, paste, request, fit, 
   });
   const result: Group[] = [];
   const add = (...items: Item[]) => result.push({ items });
-  if (id && inspect && index.nodes.get(id)?.infrastructure) add({ label: t('infra.show'), run: () => inspect(id) });
+  if (id && inspect && getBox(doc, id)?.infrastructure) add({ label: t('infra.show'), run: () => inspect(id) });
   if (id && flow?.canStart(id)) add({ label: t('flow.start'), run: () => flow.start(id) });
   if (area && index.children.get(area.id)?.length) {
     const label = t(folded ? 'summary.expandArea' : 'summary.foldArea', { name: area.label || t(`area.${area.kind}`) });

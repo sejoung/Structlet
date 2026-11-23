@@ -26,7 +26,7 @@ import type { Translate } from '../../i18n/messages';
 import type { PaletteService } from '../sidebar/types';
 import { Row, Section, Segmented, Switch } from '../ui/controls';
 import { Pair, Select, TextArea } from './fields';
-import { NodeInfrastructureSection } from './InfrastructureDetails';
+import { InfrastructureSection } from './InfrastructureDetails';
 import { NodeSpecsSection } from './NodeSpecsSection';
 
 export type LayoutChoice = 'flow' | 'flow-down' | 'grid';
@@ -90,7 +90,7 @@ export function NodeSection({ node, services, ...p }: SectionProps & { node: Nod
         <Select label={t('props.service')} value={node.serviceId} options={options} onChange={(v) => editor.update('nodes', node.id, { serviceId: v })} testId="prop-service" />
       </Section>
       <NodeSpecsSection t={t} editor={editor} node={node} />
-      <NodeInfrastructureSection t={t} editor={editor} node={node} />
+      <InfrastructureSection t={t} editor={editor} target={node} />
       <Section title={t('section.appearance')}>
         <Row label={t('props.variant')}>
           <Segmented label={t('props.variant')} testId="prop-variant" value={node.variant} onChange={(v: NodeVariant) => editor.setNodeStyle(node.id, v)} options={(['icon', 'box'] as const).map((v) => ({ value: v, label: t(`props.variant.${v}`) }))} />
@@ -115,6 +115,7 @@ export function ContainerSection({ container: c, ...p }: SectionProps & { contai
         <TextArea label={t('props.label')} value={c.label} onChange={(v) => editor.rename(c.id, v)} testId="prop-label" />
         <Select label={t('props.kind')} value={c.kind} options={CONTAINER_KINDS.map((k) => ({ value: k, label: t(`area.${k}`) }))} onChange={(kind: ContainerKind) => editor.update('containers', c.id, { kind, style: CONTAINER_PRESETS[kind] })} />
       </Section>
+      <InfrastructureSection t={t} editor={editor} target={c} />
       <Section title={t('section.appearance')}>
         <Row label={t('props.color')}>
           <div className="swatches" role="radiogroup" aria-label={t('props.color')}>

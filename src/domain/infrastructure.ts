@@ -70,9 +70,10 @@ const placement = shape({}, {
   preferred: list(shape({ weight: integer, selectors: list(selector) }, {})),
 });
 const helm = shape({}, { releaseName: text, valueFiles: strings, ignoreMissingValueFiles: boolean });
-const argoSource = shape({ repoURL: text }, { targetRevision: text, path: text, chart: text, ref: text, helm });
+const argoSource = shape({ repoURL: text }, { targetRevision: text, path: text, chart: text, ref: text, helm, directory: shape({}, { recurse: boolean }) });
 const argoCd = shape({}, {
   template: boolean,
+  project: text,
   sources: list(argoSource),
   destination: shape({}, { namespace: text, server: text, name: text }),
   automated: shape({ enabled: boolean }, { prune: boolean, selfHeal: boolean, allowEmpty: boolean }),
@@ -112,6 +113,7 @@ export const CLOUDFRONT_VIEWER_PROTOCOL_POLICIES = ['allow-all', 'https-only', '
 
 const cacheBehavior = shape({}, {
   pathPattern: text, originId: text, cachePolicy, originRequestPolicyId: text,
+  functionAssociations: list(shape({ functionArn: text, eventType: text }, {})),
   viewerProtocolPolicy: choice(...CLOUDFRONT_VIEWER_PROTOCOL_POLICIES), allowedMethods: strings, cachedMethods: strings, compress: boolean,
 });
 const cloudFront = shape({}, {
@@ -139,18 +141,40 @@ function readWafStatement(value: unknown, path: string, depth = 0): WafStatement
 const wafVisibility = shape({}, { metricName: text, cloudWatchMetricsEnabled: boolean, sampledRequestsEnabled: boolean });
 export const WAF_IP_VERSIONS = ['IPV4', 'IPV6'] as const;
 const wafIpSet = shape({ reference: text }, {
-  name: text, ipAddressVersion: choice(...WAF_IP_VERSIONS), addresses: list(text, 10_000),
+  name: text, scope: text, ipAddressVersion: choice(...WAF_IP_VERSIONS), addresses: list(text, 10_000),
 });
 const wafRule = shape({ name: text, priority: count(0) }, {
   action, overrideAction: choice('none', 'count'), statements: list(readWafStatement), visibility: wafVisibility,
 });
 const waf = shape({}, {
-  id: text, scope: text, defaultAction: choice('allow', 'block'), rules: list(wafRule), visibility: wafVisibility, ipSets: list(wafIpSet),
+  id: text, name: text, scope: text, defaultAction: choice('allow', 'block'), rules: list(wafRule), visibility: wafVisibility, ipSets: list(wafIpSet),
 });
+export type SettingValue = string | number | boolean | null | readonly SettingValue[] | SettingValues;
+export interface SettingValues { readonly [field: string]: SettingValue }
+
+function readSettingValue(value: unknown, path: string, depth: number): SettingValue {
+  if (depth > 12) invalid(path, 'setting depth exceeds 12 levels');
+  if (value === null || typeof value === 'boolean' || (typeof value === 'number' && Number.isFinite(value))) return value;
+  if (typeof value === 'string') return labelValue(value, path);
+  if (Array.isArray(value)) return list((entry, entryPath) => readSettingValue(entry, entryPath, depth + 1))(value, path);
+  return readSettings(value, path, depth);
+}
+
+function readSettings(value: unknown, path: string, depth = 0): SettingValues {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) invalid(path, 'expected an object of settings');
+  const entries = Object.entries(value);
+  if (entries.length > 1024) invalid(path, 'expected at most 1024 settings');
+  return Object.fromEntries(entries.map(([key, entry]) => [
+    text(key, path), readSettingValue(entry, `${path}.${key}`, depth + 1),
+  ]));
+}
+
+const resourceSettings = shape({ kind: text, values: readSettings }, { source: text });
+
 const infrastructure = shape({}, {
   securityGroupRules: list(securityRule), iamStatements: list(iamStatement), iamPolicyRefs: strings,
   remoteStates: list(remoteState), placement, argoCd, workload, nodeProvisioning, nodeClass, blockDevices: list(blockDevice),
-  cloudFront, waf,
+  cloudFront, waf, resourceSettings: list(resourceSettings),
 });
 
 export type InfrastructureDetails = Read<typeof infrastructure>;
@@ -170,6 +194,7 @@ export type CachePolicyDetails = Read<typeof cachePolicy>;
 export type WafDetails = Read<typeof waf>;
 export type WafRuleDetails = Read<typeof wafRule>;
 export type WafIpSetDetails = Read<typeof wafIpSet>;
+export type ResourceSettings = Read<typeof resourceSettings>;
 
 export function readInfrastructure(value: unknown, path = 'infrastructure'): InfrastructureDetails {
   return infrastructure(value, path);

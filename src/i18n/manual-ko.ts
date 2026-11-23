@@ -34,7 +34,7 @@ export const manual: Record<keyof typeof english, string> = {
   'manual.editingGuide': '편집, 가져오기, 저장',
   'manual.areaGuide': '영역으로 관련 서비스를 묶으세요. 여러 객체를 선택한 뒤 영역을 추가하면 한꺼번에 감쌀 수 있고, 레이어에서 서비스를 다른 그룹으로 옮길 수 있습니다.',
   'manual.inspectorGuide': '오른쪽 패널에서 선택한 객체의 속성을 바꿉니다. 연결선의 화살표, 모양, 프리셋도 여기서 바꿀 수 있습니다. 패널 상단에서 속성과 점검을 전환할 수 있습니다. 점검 항목을 선택하면 화면이 관련 객체에 맞춰지고 속성이 열립니다.',
-  'manual.infrastructureGuide': '노드를 선택하고 인프라 상세를 열면 보안 그룹 규칙, IAM 정책 문, Terraform 원격 상태 참조, 선언된 노드 배치 조건, Argo CD 소스와 동기화, 노드 프로비저닝, EBS 디스크 설정을 보거나 수정할 수 있습니다. 워크로드의 복제본 수와 CronJob 실행 일정, NodePool 인스턴스 선택 조건과 EC2NodeClass의 AMI·IAM 참조와 서브넷·보안 그룹 선택 조건도 확인할 수 있습니다. CloudFront 노드에는 캐시 정책과 동작별 설정, 기본 루트 객체, 뷰어 인증서 설정을 표시합니다. WAF 노드에는 웹 ACL 규칙, 모니터링 설정, 참조된 IP Set을 표시합니다. 발표 모드와 아이소메트릭에서는 노드를 클릭해 읽을 수 있습니다. 점선 설정 관계로 워크로드를 네임스페이스 안에 두면서 NodePool과 연결할 수 있습니다.',
+  'manual.infrastructureGuide': '노드를 선택하고 인프라 상세를 열면 보안 그룹 규칙, IAM 정책 문, Terraform 원격 상태 참조, 선언된 노드 배치 조건, Argo CD 소스와 동기화, 노드 프로비저닝, EBS 디스크 설정을 보거나 수정할 수 있습니다. 워크로드의 복제본 수와 CronJob 실행 일정, NodePool 인스턴스 선택 조건과 EC2NodeClass의 AMI·IAM 참조와 서브넷·보안 그룹 선택 조건도 확인할 수 있습니다. CloudFront 노드에는 캐시 정책과 동작별 설정, 기본 루트 객체, 뷰어 인증서 설정을 표시합니다. WAF 노드에는 웹 ACL 규칙, 모니터링 설정, 참조된 IP Set을 표시합니다. Terraform과 Kubernetes 리소스 설정은 노드와 영역에 담을 수 있습니다. 발표 모드와 아이소메트릭에서는 노드나 영역을 클릭해 읽을 수 있습니다. 점선 설정 관계로 워크로드를 네임스페이스 안에 두면서 NodePool과 연결할 수 있습니다.',
   'manual.importGuide': '파일 → 가져오기는 초안 JSON, Compose, Kubernetes 매니페스트, Terraform JSON을 현재 구성도에 합칩니다. 가져온 VM을 선택하면 인스펙터의 장비 사양에서 값을 확인하거나 수정할 수 있습니다. 2D에서는 캔버스에 상세 사양 표시를 켜고, 아이소메트릭에서는 전체 라벨을 선택하세요. 자동 배치는 그룹 안에 표시된 사양의 공간도 확보합니다. 저장한 .structlet 구성도는 파일 → 열기를 사용하세요.',
   'manual.storageGuide': '작업 중인 구성도는 브라우저에 자동 저장됩니다. 파일 → 저장으로 파일을 받거나, Drive를 연결해 여러 기기에서 동기화하세요.',
   'manual.sections': '매뉴얼 항목',

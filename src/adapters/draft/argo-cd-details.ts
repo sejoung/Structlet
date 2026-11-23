@@ -19,6 +19,7 @@ export function argoCdDetails(value: unknown, template: boolean): ArgoCdDetails 
     if (!repoURL) return [];
     const helm = record(source.helm);
     return [{
+      directory: present({ recurse: boolean(record(source.directory).recurse) }),
       repoURL, targetRevision: text(source.targetRevision), path: text(source.path), chart: text(source.chart), ref: text(source.ref),
       ...(source.helm && typeof source.helm === 'object' && !Array.isArray(source.helm) ? { helm: {
         releaseName: text(helm.releaseName), valueFiles: Array.isArray(helm.valueFiles) ? texts(helm.valueFiles).flatMap((file) => repository(file) || []) : undefined,
@@ -37,6 +38,7 @@ export function argoCdDetails(value: unknown, template: boolean): ArgoCdDetails 
   const destination = record(spec.destination);
   return {
     ...(template ? { template: true } : {}),
+    project: text(spec.project),
     sources: sources.length ? sources : undefined,
     destination: present({ namespace: text(destination.namespace), name: text(destination.name), server: repository(destination.server) }),
     automated,

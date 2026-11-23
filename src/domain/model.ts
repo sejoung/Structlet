@@ -82,6 +82,7 @@ export interface Container {
   readonly width: number;
   readonly height: number;
   readonly style: ContainerStyle;
+  readonly infrastructure?: InfrastructureDetails;
   readonly locked: boolean;
 }
 

@@ -3,6 +3,7 @@ import type { InfrastructureDetails } from '../../domain';
 import { argoCdDetails } from './argo-cd-details';
 import { integer, present, record, text } from './infrastructure-values';
 import { karpenterBlockDevices, karpenterNodeClass, karpenterProvisioning } from './node-provisioning';
+import { kubernetesResourceSettings } from './kubernetes-resource-settings';
 import { workloadPlacement } from './kubernetes-placement';
 import type { Draft, DraftContainer, DraftEdge, DraftNode } from './draft-format';
 
@@ -12,7 +13,7 @@ type Obj = { apiVersion?: string; kind?: string; metadata?: { name?: string; nam
 const SERVICE: Record<string, string> = {
   Deployment: 'k8s.deployment', StatefulSet: 'k8s.statefulset', DaemonSet: 'k8s.daemonset', Job: 'k8s.job', CronJob: 'k8s.cronjob', Pod: 'k8s.pod',
   Service: 'k8s.service', Ingress: 'k8s.ingress', Gateway: 'k8s.ingress', HTTPRoute: 'k8s.ingress', ConfigMap: 'k8s.configmap', Secret: 'k8s.secret',
-  PersistentVolumeClaim: 'k8s.pvc', HorizontalPodAutoscaler: 'k8s.hpa',
+  PersistentVolumeClaim: 'k8s.pvc', HorizontalPodAutoscaler: 'k8s.hpa', StorageClass: 'k8s.storageclass', IngressClass: 'k8s.ingress',
 };
 const ADD_ONS: Record<string, string> = {
   'argoproj.io/Application': 'k8s.argocd-application',
@@ -20,7 +21,7 @@ const ADD_ONS: Record<string, string> = {
   'karpenter.sh/NodePool': 'k8s.karpenter-nodepool',
   'karpenter.k8s.aws/EC2NodeClass': 'k8s.karpenter-ec2nodeclass',
 };
-const CLUSTER_KINDS = new Set(['NodePool', 'EC2NodeClass']);
+const CLUSTER_KINDS = new Set(['NodePool', 'EC2NodeClass', 'StorageClass', 'IngressClass']);
 const apiGroup = (o: Obj) => o.apiVersion?.split('/')[0];
 const serviceFor = (o: Obj) => ADD_ONS[`${apiGroup(o)}/${o.kind}`] ?? SERVICE[o.kind!];
 const WORKLOADS = new Set(['Deployment', 'StatefulSet', 'DaemonSet', 'Job', 'CronJob', 'Pod']);
@@ -78,10 +79,13 @@ function infrastructureOf(o: Obj): InfrastructureDetails | undefined {
     nodeClass: karpenterNodeClass(o.spec),
     blockDevices: karpenterBlockDevices(o.spec),
   });
-  return WORKLOADS.has(o.kind!) ? present({
+  const pod = WORKLOADS.has(o.kind!) ? podOf(o) : null;
+  const resourceSettings = kubernetesResourceSettings(o, pod?.spec);
+  return present({
     workload: workloadDetails(o),
-    placement: workloadPlacement(podOf(o)?.spec),
-  }) : undefined;
+    placement: workloadPlacement(pod?.spec),
+    resourceSettings: resourceSettings.length ? resourceSettings : undefined,
+  });
 }
 
 export function kubernetesToDraft(text: string, title = 'Kubernetes'): Draft {

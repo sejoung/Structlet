@@ -12,6 +12,7 @@ const ROWS: Row[] = [
   ['k8s.ingress', 'Ingress', '인그레스', Signpost, 'network', 'ing gateway httproute'],
   ['k8s.configmap', 'ConfigMap', '컨피그맵', FileCog, 'operations', 'cm config'],
   ['k8s.secret', 'Secret', '시크릿', FileKey, 'security', 'secret'],
+  ['k8s.storageclass', 'StorageClass', '스토리지 클래스', HardDrive, 'storage', 'storageclass provisioner binding reclaim'],
   ['k8s.pvc', 'PersistentVolumeClaim', '영구 볼륨 클레임', HardDrive, 'storage', 'pvc volume pv'],
   ['k8s.hpa', 'HorizontalPodAutoscaler', '수평 파드 오토스케일러', Scaling, 'operations', 'hpa autoscale'],
   ['k8s.argocd-application', 'Argo CD Application', 'Argo CD 애플리케이션', GitBranch, 'operations', 'argocd gitops sync delivery'],

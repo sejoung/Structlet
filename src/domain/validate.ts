@@ -64,7 +64,7 @@ export function validateDocument(doc: Document): ValidationIssue[] {
   for (const id of findParentCycles(doc)) {
     issues.push({ code: 'parent-cycle', id, message: `${id} is part of a container cycle` });
   }
-  for (const { id, specs, infrastructure } of doc.nodes) {
+  for (const { id, infrastructure } of [...doc.nodes, ...doc.containers]) {
     if (infrastructure !== undefined) {
       try {
         readInfrastructure(infrastructure, `${id}.infrastructure`);
@@ -73,6 +73,8 @@ export function validateDocument(doc: Document): ValidationIssue[] {
         issues.push({ code: 'bad-infrastructure', id, message: error.message });
       }
     }
+  }
+  for (const { id, specs } of doc.nodes) {
     if (!specs) continue;
     const textValid = [specs.instanceType, specs.gpu].every((v) => v === undefined || (typeof v === 'string' && v.length <= NODE_SPEC_TEXT_LIMIT));
     const numbersValid = [specs.vcpus, specs.memoryGiB, specs.diskGiB].every((v) => v === undefined || isSpecQuantity(v));

@@ -16,7 +16,7 @@
 | 위치 | 필드 |
 | --- | --- |
 | 최상위 | `format: "structlet-draft"`, `formatVersion: 1`, `title`, `layout`(`flow` 왼→오, `flow-down` 위→아래, `grid`), `containers`, `nodes`, `edges`, `annotations`, `remove` |
-| `containers[]` | `id`, `kind`(cloud, account, region, availability-zone, vpc, subnet, custom), `label`, `parent`, `layout`, `x`, `y`, `width`, `height`, `color`(gray, teal, purple, green, blue, orange, pink, red), `dashed`, `filled`, `locked` |
+| `containers[]` | `id`, `kind`(cloud, account, region, availability-zone, vpc, subnet, custom), `label`, `parent`, `layout`, `x`, `y`, `width`, `height`, `color`(gray, teal, purple, green, blue, orange, pink, red), `dashed`, `filled`, `locked`, `infrastructure` |
 | `nodes[]` | `id`, `service`(서비스 ID, 예: `database`, `aws.lambda`; 모르는 ID는 일반 아이콘으로 보존), `label`(`\n`으로 줄바꿈: 첫 줄은 역할, 둘째 줄은 기술), `parent`, `x`, `y`, `variant`(`icon`, `box`), `size`(`s`, `m`, `l`), `locked`, `specs`, `infrastructure` |
 | `nodes[].specs` | `instanceType`, `vcpus`, `memoryGiB`, `gpu`, `diskGiB`(시스템 디스크), `showDetails`(2D에서 상세 사양 표시) |
 | `edges[]` | `id`, `from`, `to`, `label`, `dashed`(점선), `relationship`(설정 관계), `arrow`(end, start, both, none), `shape`(orthogonal, straight) |
@@ -27,6 +27,12 @@
 `specs: null`은 노드의 사양을 지운다. 인스턴스 타입이 바뀌면 새 입력에서 제공한 CPU·메모리·GPU 값을 사용한다. 사양 값은 노드와 함께 저장되며 자동 배치가 사양 라벨의 공간을 확보한다.
 
 `infrastructure`는 노드에 저장하는 선택 필드다. 필드를 생략하면 기존 정보를 유지하며 `null`이면 지운다. 객체를 전달하면 섹션 전체를 교체한다. 상세 형식과 예시는 [한국어 AI 프롬프트](../samples/ai/structlet/references/prompt-ko.md)에 있다. 네임스페이스는 워크로드의 부모 영역이다. NodePool 등과의 설정 관계는 `relationship: true`를 지정해 아이소메트릭 흐름 재생에서 제외할 수 있다.
+
+## 리소스 설정
+
+노드와 영역의 `infrastructure.resourceSettings`에 여러 설정 블록을 담을 수 있다. 블록마다 `kind`, 선택 필드 `source`, 중첩 가능한 `values` 객체가 있다. VPC CIDR을 넣을 때는 영역에 `{"kind":"aws_vpc","source":"aws_vpc.main","values":{"cidr_block":"10.0.0.0/16"}}` 같은 항목을 둔다.
+
+Terraform JSON과 Kubernetes 매니페스트를 가져올 때는 확인된 설정을 채운다. CloudFront OAC, VPC 라우팅 테이블, ALB 리스너, EKS 애드온, S3 버킷 정책성 설정처럼 별도 리소스에 선언된 값은 식별자가 일치하면 소유 객체에 붙인다. Terraform HCL의 백엔드 옵션과 lifecycle, import 블록이나 별도 Helm values 파일은 범위 안의 원본에서 확인한 내용을 AI 초안의 리소스 설정에 담을 수 있다. 리소스 설정은 편집기 인스펙터에서 수정하고 2D 발표 모드와 아이소메트릭에서 노드나 영역을 클릭해 읽는다.
 
 ## 배치 방식
 

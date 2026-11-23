@@ -10,3 +10,10 @@
 .infra-dialog { box-sizing: border-box; width: min(640px, calc(100% - 32px)); max-height: calc(100% - 32px); overflow: auto; }
 .infra-dialog p { margin: 0 0 12px; overflow-wrap: anywhere; }
 .infra-dialog .infra-details, .infra-dialog .infra-details h3 { font-size: 14px; }
+.resource-settings details { border-bottom: 1px solid var(--line); padding-block: 5px; }
+.resource-settings summary { cursor: pointer; font-weight: 600; }
+.resource-settings dl { margin: 4px 0; }
+.resource-settings dl > div + div { margin-top: 4px; }
+.resource-settings dt { font-weight: 600; }
+.resource-settings dd { margin-inline-start: 10px; }
+.resource-settings ol { margin: 4px 0; padding-inline-start: 20px; }

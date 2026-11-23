@@ -1,7 +1,6 @@
 import type { Document } from '../../domain';
 import { readDraft, type Draft } from './draft-format';
 import { mergeDraft, type MergeResult } from './draft-merge';
-import { terraformToDraft } from './terraform';
 import { FormatError } from '../format/reader';
 
 export type ImportSource = 'draft' | 'compose' | 'terraform' | 'kubernetes';
@@ -24,7 +23,7 @@ export function detectSource(text: string): ImportSource {
 async function toDraft(source: ImportSource, text: string, title?: string): Promise<Draft> {
   if (source === 'compose') return (await import('./compose')).composeToDraft(text, title);
   if (source === 'kubernetes') return (await import('./kubernetes')).kubernetesToDraft(text, title);
-  if (source === 'terraform') return terraformToDraft(text, title);
+  if (source === 'terraform') return (await import('./terraform')).terraformToDraft(text, title);
   let raw: unknown;
   try {
     raw = JSON.parse(text);

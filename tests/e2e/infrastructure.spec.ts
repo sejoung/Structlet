@@ -174,3 +174,39 @@ test('CloudFront cache behaviors and WAF rules are readable after saving and reo
   await expect(dialog.getByText('website-acl-metrics')).toBeVisible();
   await expect(dialog.getByText('rate-metrics')).toBeVisible();
 });
+
+test('VPC area settings can be edited and read in both viewers after reopening', async ({ page }) => {
+  await freshApp(page);
+  const [picker] = await Promise.all([page.waitForEvent('filechooser'), act(page, 'tb-import')]);
+  const payload = {
+    terraform_version: '1.9.0',
+    values: { root_module: { resources: [{
+      address: 'aws_vpc.main', name: 'main', type: 'aws_vpc',
+      values: { id: 'vpc-1', cidr_block: '10.10.0.0/16', enable_dns_hostnames: false },
+    }] } },
+  };
+  await picker.setFiles({ name: 'network.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(payload)) });
+  const area = page.locator('rect[data-hit="box"][data-id="tf-aws_vpc.main"]');
+  await area.click({ position: { x: 8, y: 8 } });
+  const inspector = page.getByTestId('infrastructure-details');
+  await expect(inspector.getByText('10.10.0.0/16', { exact: true })).toBeVisible();
+  await inspector.getByRole('button', { name: 'Edit details' }).click();
+  const input = inspector.getByRole('textbox', { name: 'Infrastructure details' });
+  await input.fill((await input.inputValue()).replace('10.10.0.0/16', '10.20.0.0/16'));
+  await inspector.getByRole('button', { name: 'Apply details' }).click();
+  await expect(inspector.getByText('10.20.0.0/16', { exact: true })).toBeVisible();
+
+  const [saved] = await Promise.all([page.waitForEvent('download'), act(page, 'tb-save')]);
+  const [open] = await Promise.all([page.waitForEvent('filechooser'), act(page, 'tb-open')]);
+  await open.setFiles((await saved.path())!);
+  await page.getByTestId('tb-present').click();
+  await area.click({ position: { x: 8, y: 8 } });
+  const dialog = page.getByRole('dialog', { name: 'Infrastructure details' });
+  await expect(dialog.getByText('10.20.0.0/16', { exact: true })).toBeVisible();
+  await dialog.getByRole('button', { name: 'Close' }).click();
+  await page.getByTestId('exit-present').click();
+
+  await page.getByTestId('tb-view').locator('[data-value="isometric"]').click();
+  await page.getByTestId('isometric').locator('[data-iso-label="area"][data-iso-object="tf-aws_vpc.main"] text').first().click();
+  await expect(dialog.getByText('10.20.0.0/16', { exact: true })).toBeVisible();
+});

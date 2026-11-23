@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, type DragEvent, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent, type Ref } from 'react';
 import type { Editor, SessionSnapshot } from '../../application';
-import { indexDocument, type Id, type Point, type Rect } from '../../domain';
+import { getBox, indexDocument, type Id, type Point, type Rect } from '../../domain';
 import { fitView, groupBounds, MAX_ZOOM, objectBounds, polylineMidpoint, renderSceneBody, screenToWorld, worldToScreen, zoomAt, type DiagramTheme, type IsometricOptions, type Scene, type Viewport } from '../../engine';
 import type { Translate } from '../../i18n/messages';
 import { SERVICE_DRAG_TYPE } from '../sidebar/types';
@@ -57,14 +57,14 @@ export function Canvas(props: CanvasProps) {
     if (props.view === 'isometric') isoFocus.current?.(ids);
     else showBounds(objectBounds(scene, ids));
   });
-  const [detail, setDetail] = useState<{ docId: Id; nodeId: Id } | null>(null);
-  const inspected = detail?.docId === snapshot.document.id ? snapshot.document.nodes.find((n) => n.id === detail.nodeId) : undefined;
+  const [detail, setDetail] = useState<{ docId: Id; objectId: Id } | null>(null);
+  const inspected = detail?.docId === snapshot.document.id ? getBox(snapshot.document, detail.objectId) : undefined;
   const inspect = (id: Id) => {
-    if (scene.rects.has(id) && snapshot.document.nodes.some((n) => n.id === id && n.infrastructure)) {
-      setDetail({ docId: snapshot.document.id, nodeId: id });
+    if (scene.rects.has(id) && getBox(snapshot.document, id)?.infrastructure) {
+      setDetail({ docId: snapshot.document.id, objectId: id });
     }
   };
-  const details = inspected?.infrastructure && <InfrastructureDialog node={inspected} t={t} onClose={() => setDetail(null)} />;
+  const details = inspected?.infrastructure && <InfrastructureDialog target={inspected} t={t} onClose={() => setDetail(null)} />;
   const readPointer = useRef<(Point & { id: Id }) | null>(null);
   const [menu, setMenu] = useState<ContextRequest | null>(null);
   const dismissMenu = useCallback((restoreFocus: boolean) => {

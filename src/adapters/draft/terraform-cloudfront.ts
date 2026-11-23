@@ -39,6 +39,11 @@ export function cloudFrontIndex(resources: readonly TerraformResource[]) {
       const id = text(config.cache_policy_id);
       const allowedMethods = texts(config.allowed_methods);
       const cachedMethods = texts(config.cached_methods);
+      const functionAssociations = blocks(config.function_association).flatMap((item) => {
+        const functionArn = text(item.function_arn);
+        const eventType = text(item.event_type);
+        return functionArn && eventType ? [{ functionArn, eventType }] : [];
+      });
       return present({
         pathPattern: ordered ? text(config.path_pattern) : undefined,
         originId: text(config.target_origin_id),
@@ -47,6 +52,7 @@ export function cloudFrontIndex(resources: readonly TerraformResource[]) {
         viewerProtocolPolicy: CLOUDFRONT_VIEWER_PROTOCOL_POLICIES.find((policy) => policy === config.viewer_protocol_policy),
         allowedMethods: allowedMethods.length ? allowedMethods : undefined,
         cachedMethods: cachedMethods.length ? cachedMethods : undefined,
+        functionAssociations: functionAssociations.length ? functionAssociations : undefined,
         compress: boolean(config.compress),
       });
     };

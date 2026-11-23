@@ -59,6 +59,7 @@ export function mergeDraft(base: Document, draft: Draft): MergeResult {
       if (hasXY && !old.locked) Object.assign(old, { x: d.x, y: d.y });
       if (d.width !== undefined && !old.locked) old.width = d.width;
       if (d.height !== undefined && !old.locked) old.height = d.height;
+      if (d.infrastructure !== undefined) old.infrastructure = d.infrastructure ?? undefined;
       old.style = { color: d.color ?? old.style.color, dashed: d.dashed ?? old.style.dashed, filled: d.filled ?? old.style.filled };
       if (d.locked !== undefined) old.locked = d.locked;
       continue;
@@ -74,6 +75,7 @@ export function mergeDraft(base: Document, draft: Draft): MergeResult {
       y: d.y ?? 0,
       width: d.width ?? 240,
       height: d.height ?? 160,
+      ...(d.infrastructure ? { infrastructure: d.infrastructure } : {}),
       style: { color: d.color ?? preset.color, dashed: d.dashed ?? preset.dashed, filled: d.filled ?? preset.filled },
       locked: d.locked ?? false,
     });

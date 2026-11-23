@@ -1,10 +1,11 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import type { Editor } from '../../application';
-import { readInfrastructure, type ArgoCdDetails, type BlockDeviceDetails, type InfrastructureDetails as Details, type Node, type NodeClassDetails, type NodeProvisioningDetails, type PlacementSelector, type WorkloadDetails } from '../../domain';
+import { readInfrastructure, type ArgoCdDetails, type BlockDeviceDetails, type Container, type InfrastructureDetails as Details, type Node, type NodeClassDetails, type NodeProvisioningDetails, type PlacementSelector, type WorkloadDetails } from '../../domain';
 import type { Translate } from '../../i18n/messages';
 import { Section } from '../ui/controls';
 import { CloudFront, Waf } from './EdgeInfrastructure';
 import { Entry, Fields, List } from './InfrastructureFields';
+import { ResourceSettingsView } from './ResourceSettingsView';
 
 function displaySelectors(selectors: readonly PlacementSelector[]): string[] {
   return selectors.map(({ key, operator, source, values }) =>
@@ -16,6 +17,7 @@ function ArgoCd({ details, t }: { details: ArgoCdDetails; t: Translate }) {
   return (
     <section>
       <h3>{t(details.template ? 'infra.argoTemplate' : 'infra.argoCd')}</h3>
+      <Fields t={t} fields={[['infra.argoProject', details.project]]} />
       {destination && <Entry name={t('infra.destination')} values={[destination.name ?? destination.server ?? '', destination.namespace ?? ''].filter(Boolean)} />}
       <List title={t('infra.sources')}>{details.sources?.map((source) => (
         <>
@@ -24,6 +26,7 @@ function ArgoCd({ details, t }: { details: ArgoCdDetails; t: Translate }) {
             ['infra.revision', source.targetRevision], ['infra.path', source.path], ['infra.chart', source.chart],
             ['infra.sourceRef', source.ref], ['infra.releaseName', source.helm?.releaseName],
             ['infra.ignoreMissingValueFiles', source.helm?.ignoreMissingValueFiles],
+            ['infra.argoDirectoryRecurse', source.directory?.recurse],
           ]} />
           <Entry name={t('infra.valueFiles')} values={source.helm?.valueFiles} />
         </>
@@ -133,7 +136,7 @@ function BlockDevices({ devices, t }: { devices: readonly BlockDeviceDetails[]; 
 }
 
 export function InfrastructureDetails({ details, t }: { details: Details; t: Translate }) {
-  const { securityGroupRules, iamStatements, iamPolicyRefs, remoteStates, placement, argoCd, workload, nodeProvisioning, nodeClass, blockDevices, cloudFront, waf } = details;
+  const { securityGroupRules, iamStatements, iamPolicyRefs, remoteStates, placement, argoCd, workload, nodeProvisioning, nodeClass, blockDevices, cloudFront, waf, resourceSettings } = details;
   return (
     <div className="infra-details">
       {argoCd && <ArgoCd details={argoCd} t={t} />}
@@ -143,6 +146,7 @@ export function InfrastructureDetails({ details, t }: { details: Details; t: Tra
       {blockDevices && <BlockDevices devices={blockDevices} t={t} />}
       {cloudFront && <CloudFront details={cloudFront} t={t} />}
       {waf && <Waf details={waf} t={t} />}
+      {resourceSettings && <ResourceSettingsView settings={resourceSettings} t={t} />}
       <List title={t('infra.security')}>{securityGroupRules?.map(({ direction, protocol, fromPort, toPort, peers, group, description }) => (
         <>
           <strong>{t(`infra.${direction}`)} · {protocol === '-1' ? t('infra.protocols') : protocol}
@@ -181,7 +185,7 @@ export function InfrastructureDetails({ details, t }: { details: Details; t: Tra
   );
 }
 
-export function NodeInfrastructureSection({ node, editor, t }: { node: Node; editor: Editor; t: Translate }) {
+export function InfrastructureSection({ target, editor, t }: { target: Node | Container; editor: Editor; t: Translate }) {
   const [input, setInput] = useState<string | null>(null);
   const [error, setError] = useState('');
   const apply = () => {
@@ -189,19 +193,19 @@ export function NodeInfrastructureSection({ node, editor, t }: { node: Node; edi
     try {
       const value: unknown = JSON.parse(input.trim() || '{}');
       const details = readInfrastructure(value);
-      editor.update('nodes', node.id, { infrastructure: Object.keys(details).length ? details : undefined });
+      editor.update('serviceId' in target ? 'nodes' : 'containers', target.id, { infrastructure: Object.keys(details).length ? details : undefined });
       setInput(null);
     } catch (error) {
       setError(error instanceof Error ? error.message : String(error));
     }
   };
   return (
-    <Section title={t('infra.title')} defaultOpen={node.infrastructure !== undefined} testId="infrastructure-details">
-      {node.infrastructure && <InfrastructureDetails t={t} details={node.infrastructure} />}
+    <Section title={t('infra.title')} defaultOpen={target.infrastructure !== undefined} testId="infrastructure-details">
+      {target.infrastructure && <InfrastructureDetails t={t} details={target.infrastructure} />}
       {input === null ? (
         <button type="button" className="chip-button" onClick={() => {
           setError('');
-          setInput(JSON.stringify(node.infrastructure ?? {}, null, 2));
+          setInput(JSON.stringify(target.infrastructure ?? {}, null, 2));
         }}>{t('infra.edit')}</button>
       ) : (
         <div className="infra-edit">
@@ -217,7 +221,7 @@ export function NodeInfrastructureSection({ node, editor, t }: { node: Node; edi
   );
 }
 
-export function InfrastructureDialog({ node, t, onClose }: { node: Node; t: Translate; onClose(): void }) {
+export function InfrastructureDialog({ target, t, onClose }: { target: Node | Container; t: Translate; onClose(): void }) {
   const ref = useRef<HTMLDialogElement>(null);
   const heading = useId();
   useEffect(() => {
@@ -228,8 +232,8 @@ export function InfrastructureDialog({ node, t, onClose }: { node: Node; t: Tran
   return (
     <dialog ref={ref} className="dialog infra-dialog" aria-labelledby={heading} onClose={onClose}>
       <h2 id={heading}>{t('infra.title')}</h2>
-      <p>{node.label.replaceAll('\n', ' · ')}</p>
-      {node.infrastructure && <InfrastructureDetails t={t} details={node.infrastructure} />}
+      <p>{target.label.replaceAll('\n', ' ')}</p>
+      {target.infrastructure && <InfrastructureDetails t={t} details={target.infrastructure} />}
       <div className="button-row end"><button type="button" onClick={() => ref.current?.close()}>{t('infra.close')}</button></div>
     </dialog>
   );

@@ -74,6 +74,7 @@ function knownIpSets(resources: readonly TerraformResource[]): Map<string, WafIp
     sets.set(reference, {
       reference,
       name: text(v.name),
+      scope: text(v.scope),
       ipAddressVersion: WAF_IP_VERSIONS.find((version) => version === v.ip_address_version),
       addresses: !r.sensitive_values?.addresses && Array.isArray(v.addresses) ? texts(v.addresses) : undefined,
     });
@@ -120,7 +121,7 @@ export function wafIndex(resources: readonly TerraformResource[]) {
     const rules = [...indexed.values()].sort((a, b) => a.priority - b.priority);
     const ipSets = referencedIpSets(rules, known);
     return present({
-      id: arn ?? text(v.id), scope: text(v.scope), defaultAction: action(v.default_action, DEFAULT_ACTIONS),
+      id: arn ?? text(v.id), name: text(v.name), scope: text(v.scope), defaultAction: action(v.default_action, DEFAULT_ACTIONS),
       visibility: visibility(v.visibility_config),
       rules: rules.length ? rules : undefined,
       ipSets: ipSets.length ? ipSets : undefined,
