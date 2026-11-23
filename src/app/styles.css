@@ -268,12 +268,17 @@ button.twisty:hover { background: var(--surface-3); color: var(--ink); }
 .canvas-corner { position: absolute; right: 12px; bottom: 12px; max-width: calc(100% - 24px); display: grid; justify-items: end; gap: 8px; pointer-events: none; }
 .iso-controls { display: flex; flex-wrap: wrap; justify-content: end; align-items: center; gap: 6px; }
 .iso-flow-launch { border-color: var(--accent); color: var(--accent); font-weight: 600; white-space: nowrap; }
-.iso-flow-launch:hover:not(:disabled), .iso-flow-launch[aria-pressed='true'] { background: var(--accent-soft); border-color: var(--accent); }
-.isometric[data-picking-flow='true'] { cursor: crosshair; }
+.iso-flow-launch:hover:not(:disabled), .iso-orbit-toggle[aria-pressed='true'] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.isometric[data-orbiting='true'] { cursor: ew-resize; }
 .iso-angle { min-width: 38px; text-align: center; font-variant-numeric: tabular-nums; }
-.iso-flow-line, .iso-flow-focus { fill: none; stroke: var(--accent); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
-.iso-flow-focus { filter: drop-shadow(0 0 2px var(--surface)); }
-.iso-flow-dot { fill: var(--accent); stroke: var(--surface); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+.isometric { --flow-ink: #d33d00; --flow-halo: #fff6ce; --flow-packet: #ffdc56; --flow-rim: #54250a; }
+:root[data-theme='dark'] .isometric { --flow-ink: #ff913d; --flow-halo: #301503; --flow-packet: #fff18d; --flow-rim: #522302; }
+.isometric[data-flow-active='true'] [data-edge] { opacity: 0.44; }
+.iso-flow-line, .iso-flow-halo, .iso-flow-focus { fill: none; stroke: var(--flow-ink); stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.iso-flow-halo { stroke: var(--flow-halo); stroke-width: 9; }
+.iso-flow-focus { stroke-width: 3; filter: drop-shadow(0 0 2px var(--flow-halo)); }
+.iso-flow-arrow { fill: var(--flow-ink); stroke: var(--flow-halo); paint-order: stroke; stroke-width: 2; }
+.iso-flow-dot { fill: var(--flow-packet); stroke: var(--flow-rim); stroke-width: 2; vector-effect: non-scaling-stroke; }
 .flow-player { display: flex; align-items: center; justify-content: end; flex-wrap: wrap; gap: 4px; padding: 4px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); box-shadow: var(--float); }
 .flow-progress { padding: 0 6px; color: var(--ink-2); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .canvas-corner > * { pointer-events: auto; }

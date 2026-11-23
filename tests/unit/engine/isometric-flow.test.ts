@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createAppearance } from '../../../src/adapters/catalog/services';
 import { CONTAINER_PRESETS, DEFAULT_EDGE_STYLE, emptyDocument, type ArrowHeads, type Document, type Edge, type Endpoint, type Node } from '../../../src/domain';
-import { computeDiagramView, computeScene, flowPoint, planIsometricFlow } from '../../../src/engine';
+import { computeDiagramView, computeScene, flowPoint, indexIsometricFlow, planIsometricFlow, topIsometricFlowSource } from '../../../src/engine';
 
 const appearance = createAppearance('en');
 
@@ -22,13 +22,31 @@ function diagram(edges: Edge[]): Document {
 }
 
 describe('isometric flow', () => {
+  it('starts at the highest directed entry from the current view angle, ahead of intermediate services', () => {
+    const doc = diagram([edge('da', 'd', 'a'), edge('ab', 'a', 'b'), edge('cb', 'c', 'b'), edge('unrelated', 'e', 'b', 'none')]);
+    const scene = computeScene(doc, appearance);
+    const graph = indexIsometricFlow(scene);
+    expect(topIsometricFlowSource(scene, graph, 0)).toBe('c');
+    expect(topIsometricFlowSource(scene, graph, 180)).toBe('d');
+    expect(planIsometricFlow(graph, 'c')[0]?.links.map(({ id }) => id)).toEqual(['cb']);
+  });
+
+  it('uses the highest directed connection when all services form a cycle and can start on an undirected diagram', () => {
+    const cycle = computeScene(diagram([edge('bc', 'b', 'c'), edge('cb', 'c', 'b'), edge('ab', 'a', 'b', 'none')]), appearance);
+    expect(topIsometricFlowSource(cycle, indexIsometricFlow(cycle), 0)).toBe('b');
+    const undirected = computeScene(diagram([edge('nvlink', 'b', 'a', 'none')]), appearance);
+    expect(topIsometricFlowSource(undirected, indexIsometricFlow(undirected), 0)).toBe('a');
+    const empty = computeScene(diagram([]), appearance);
+    expect(topIsometricFlowSource(empty, indexIsometricFlow(empty), 0)).toBeNull();
+  });
+
   it('plays branches and converging routes in waves and visits each edge in a cycle once', () => {
     const doc = diagram([
       edge('ab', 'a', 'b'), edge('ac', 'a', 'c'), edge('bd', 'b', 'd'),
       edge('cd', 'c', 'd'), edge('da', 'd', 'a'), edge('incoming', 'e', 'a'),
     ]);
     const scene = computeScene(doc, appearance);
-    const waves = planIsometricFlow(scene, 'a');
+    const waves = planIsometricFlow(indexIsometricFlow(scene), 'a');
     expect(waves.map(({ sources, links, arrivals }) => [sources, links.map(({ id }) => id), arrivals])).toEqual([
       [['a'], ['ab', 'ac'], ['b', 'c']],
       [['b', 'c'], ['bd', 'cd'], ['d']],
@@ -43,7 +61,7 @@ describe('isometric flow', () => {
       edge('both-reverse', 'd', 'c', 'both'), edge('free', 'd', { kind: 'free', x: 720, y: 180 }),
     ]);
     const scene = computeScene(doc, appearance);
-    const waves = planIsometricFlow(scene, 'b');
+    const waves = planIsometricFlow(indexIsometricFlow(scene), 'b');
     expect(waves.map(({ links }) => links.map(({ id, kind, to }) => [id, kind, to]))).toEqual([
       [['start', 'reverse', 'a']], [['both', 'forward', 'c']],
       [['both-reverse', 'reverse', 'd']], [['free', 'forward', null]],
@@ -56,14 +74,14 @@ describe('isometric flow', () => {
 
   it('highlights an undirected link from either end without propagating across it', () => {
     const scene = computeScene(diagram([edge('nvlink', 'a', 'b', 'none'), edge('bc', 'b', 'c')]), appearance);
-    const fromA = planIsometricFlow(scene, 'a');
+    const fromA = planIsometricFlow(indexIsometricFlow(scene), 'a');
     expect(fromA).toHaveLength(1);
     expect(fromA[0]?.links.map(({ id, kind }) => [id, kind])).toEqual([['nvlink', 'undirected']]);
     expect(fromA[0]?.arrivals).toEqual([]);
-    const fromB = planIsometricFlow(scene, 'b');
+    const fromB = planIsometricFlow(indexIsometricFlow(scene), 'b');
     expect(fromB[0]?.links.map(({ id }) => id)).toEqual(['nvlink', 'bc']);
     expect(fromB[0]?.arrivals).toEqual(['c']);
-    expect(planIsometricFlow(scene, 'e')).toEqual([]);
+    expect(planIsometricFlow(indexIsometricFlow(scene), 'e')).toEqual([]);
   });
 
   it('routes through a folded summary tile using the visible connections and excludes hidden internal edges', () => {
@@ -74,12 +92,12 @@ describe('isometric flow', () => {
       containers: [{ id: 'group', label: 'Group', kind: 'custom', parentId: null, x: 0, y: 0, width: 430, height: 220, locked: false, style: CONTAINER_PRESETS.custom }],
     };
     const scene = computeDiagramView(doc, appearance, { folded: new Set(['group']), layout: null, label: () => ['Group', '2 services'] });
-    const waves = planIsometricFlow(scene, 'group');
+    const waves = planIsometricFlow(indexIsometricFlow(scene), 'group');
     expect(waves.map(({ links }) => links.map(({ id, from, to }) => [id, from, to]))).toEqual([
       [['external', 'group', 'c']], [['next', 'c', 'd']],
     ]);
     expect(waves[0]?.links[0]?.points).toEqual(scene.edges.find(({ id }) => id === 'external')?.points);
-    expect(planIsometricFlow(scene, 'a')).toEqual([]);
+    expect(planIsometricFlow(indexIsometricFlow(scene), 'a')).toEqual([]);
     expect(doc.edges.map(({ id }) => id)).toEqual(['internal', 'external', 'next']);
   });
 

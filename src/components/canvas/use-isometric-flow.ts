@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ancestors, type Document, type Id } from '../../domain';
-import { planIsometricFlow, type FlowWave, type Scene } from '../../engine';
+import { indexIsometricFlow, planIsometricFlow, topIsometricFlowSource, type FlowWave, type Scene } from '../../engine';
 
 const WAVE_MS = 950;
 
@@ -12,17 +12,9 @@ interface Playback {
 }
 
 export function useIsometricFlow(scene: Scene, doc: Document) {
-  const [source, setSource] = useState<{ id: Id; docId: Id } | null>(null);
+  const [source, setSource] = useState<{ id: Id; docId: Id; rotation?: number } | null>(null);
   const [playback, setPlayback] = useState<Playback | null>(null);
-  const sources = useMemo(() => {
-    const ids = new Set<Id>();
-    for (const { points, sourceId, targetId, style } of scene.edges) {
-      if (points.length < 2) continue;
-      if (sourceId && style.arrow !== 'start') ids.add(sourceId);
-      if (targetId && style.arrow !== 'end') ids.add(targetId);
-    }
-    return ids;
-  }, [scene]);
+  const graph = useMemo(() => indexIsometricFlow(scene), [scene]);
   const [reduced, setReduced] = useState(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   useEffect(() => {
     const media = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -33,11 +25,17 @@ export function useIsometricFlow(scene: Scene, doc: Document) {
   const plan = useMemo(() => {
     if (!source || source.docId !== doc.id) return [];
     const visible = scene.rects.has(source.id) ? source.id : ancestors(doc, source.id).find((id) => scene.nodes.some((node) => node.summary && node.id === id));
-    return visible ? planIsometricFlow(scene, visible) : [];
-  }, [scene, doc, source]);
+    if (visible && graph.has(visible)) return planIsometricFlow(graph, visible);
+    const fallback = source.rotation === undefined ? null : topIsometricFlowSource(scene, graph, source.rotation);
+    return fallback ? planIsometricFlow(graph, fallback) : [];
+  }, [scene, doc, source, graph]);
   const current: Playback = playback?.plan === plan ? playback : { plan, step: 0, progress: 0, playing: playback?.playing ?? false };
   const playing = plan.length > 0 && current.playing;
-  const complete = current.step === plan.length - 1 && current.progress === 1;
+
+  const start = (id: Id, rotation?: number) => {
+    setSource({ id, docId: doc.id, rotation });
+    setPlayback({ plan: [], step: 0, progress: 0, playing: true });
+  };
 
   useEffect(() => {
     if (!playing) return;
@@ -48,11 +46,9 @@ export function useIsometricFlow(scene: Scene, doc: Document) {
       previous = now;
       setPlayback((prior) => {
         const state: Playback = prior?.plan === plan ? prior : { plan, step: 0, progress: 0, playing: true };
-        if (!state.playing) return state;
-        const next = state.progress + elapsed / WAVE_MS;
-        if (next < 1) return { ...state, progress: next };
-        if (state.step + 1 < plan.length) return { ...state, step: state.step + 1, progress: 0 };
-        return { ...state, progress: 1, playing: false };
+        if (!state.playing || elapsed === 0) return state;
+        const progress = state.progress + elapsed / WAVE_MS;
+        return { ...state, step: (state.step + Math.floor(progress)) % plan.length, progress: progress % 1 };
       });
       frame = requestAnimationFrame(tick);
     };
@@ -67,20 +63,19 @@ export function useIsometricFlow(scene: Scene, doc: Document) {
     step: current.step,
     progress: current.progress,
     playing,
-    complete,
     reduced,
-    available: sources.size > 0,
-    canStart: (id: Id) => sources.has(id),
-    start(id: Id) {
-      setSource({ id, docId: doc.id });
-      setPlayback({ plan: [], step: 0, progress: 0, playing: !reduced });
+    available: graph.size > 0,
+    canStart: (id: Id) => graph.has(id),
+    start,
+    startFromTop(rotation: number) {
+      const id = topIsometricFlowSource(scene, graph, rotation);
+      if (id) start(id, rotation);
     },
     toggle() {
-      setPlayback(complete ? { plan, step: 0, progress: 0, playing: true } : { ...current, playing: !playing });
+      setPlayback({ ...current, playing: !playing });
     },
     next() {
-      if (complete) return;
-      const step = current.progress === 1 ? current.step + 1 : current.step;
+      const step = current.progress === 1 ? (current.step + 1) % plan.length : current.step;
       setPlayback({ plan, step, progress: 1, playing: false });
     },
     stop() {

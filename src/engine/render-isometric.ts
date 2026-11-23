@@ -1,6 +1,7 @@
 import type { Point, Rect } from '../domain';
 import { AREA_STROKE } from './appearance';
-import { computeIsometricLayout, iso, isoBlockHeight, ISOMETRIC_PLANE, isometricLabelPadding, rotateIsoRect, type IsometricLabel, type IsometricLayout, type IsometricOptions } from './isometric-layout';
+import { center } from './geometry';
+import { computeIsometricLayout, isoBlockHeight, ISOMETRIC_PLANE, isometricLabelPadding, projectIsoRect, rotateIsoPoint, type IsometricLabel, type IsometricLayout, type IsometricOptions } from './isometric-layout';
 import { glyphMarkup, escapeXml, ImageSymbols, labelLeader, LIGHT_THEME, markerDefs, pathData, type DiagramTheme } from './render-svg';
 import { LEGEND_MARKER_WIDTH, type Scene } from './scene';
 import { FONT_FAMILY } from './text';
@@ -50,7 +51,7 @@ export function renderIsometricBody(scene: Scene, theme: DiagramTheme = LIGHT_TH
 export function renderIsometricLayers(scene: Scene, theme: DiagramTheme, layout: IsometricLayout) {
   const images = new ImageSymbols('sl-iso-img');
   const { rotation } = layout;
-  const floor = [markerDefs(theme), `<g transform="${ISOMETRIC_PLANE} rotate(${rotation * 90})">`];
+  const floor = [markerDefs(theme), `<g transform="${ISOMETRIC_PLANE} rotate(${rotation})">`];
   for (const c of scene.containers) {
     const stroke = AREA_STROKE[c.style.color] ?? AREA_STROKE.gray!;
     const r = c.rect;
@@ -64,23 +65,27 @@ export function renderIsometricLayers(scene: Scene, theme: DiagramTheme, layout:
   }
   floor.push('</g>');
   const blocks: string[] = [];
-  const nodes = scene.nodes.map((node) => ({ node, rect: rotateIsoRect(node.rect, rotation) }));
-  const depth = (r: Rect) => r.x + r.y + r.width + r.height;
-  nodes.sort((a, b) => depth(a.rect) - depth(b.rect));
-  for (const { node, rect: r } of nodes) {
+  const nodes = scene.nodes.map((node) => {
+    const base = projectIsoRect(node.rect, rotation);
+    return { node, base, depth: Math.max(...base.map(({ y }) => y)) };
+  });
+  nodes.sort((a, b) => a.depth - b.depth);
+  for (const { node, base } of nodes) {
     const h = isoBlockHeight(node);
     const up = (p: Point) => ({ x: p.x, y: p.y - h });
-    const a = iso(r);
-    const b = iso({ x: r.x + r.width, y: r.y });
-    const c = iso({ x: r.x + r.width, y: r.y + r.height });
-    const d = iso({ x: r.x, y: r.y + r.height });
     blocks.push(`<g data-node="${escapeXml(node.id)}" data-iso-object="${escapeXml(node.id)}">`);
-    blocks.push(polygon([up(d), up(c), c, d], shade(node.color, 0.35)));
-    blocks.push(polygon([up(b), up(c), c, b], shade(node.color, 0.2)));
-    blocks.push(polygon([up(a), up(b), up(c), up(d)], node.color));
+    for (const [index, a] of base.entries()) {
+      const b = base[(index + 1) % base.length]!;
+      if (a.x - b.x < 0.001) continue;
+      const slope = (b.y - a.y) / Math.hypot(b.x - a.x, b.y - a.y);
+      blocks.push(polygon([up(a), up(b), b, a], shade(node.color, 0.28 - 0.15 * slope)));
+    }
+    blocks.push(polygon(base.map(up), node.color));
+    const r = node.rect;
     const size = Math.min(r.width, r.height) * 0.6;
-    const x = r.x + (r.width - size) / 2;
-    const y = r.y + (r.height - size) / 2;
+    const faceCenter = rotateIsoPoint(center(r), rotation);
+    const x = faceCenter.x - size / 2;
+    const y = faceCenter.y - size / 2;
     const face = node.image ? images.use(node.image, x, y, size) : glyphMarkup(node.glyph, x, y, size, '#ffffff', 1.8);
     blocks.push(`<g transform="translate(0 ${-h}) ${ISOMETRIC_PLANE}">${face}</g></g>`);
   }

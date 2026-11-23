@@ -147,7 +147,7 @@ The panels can be hidden. Two toggles — **[left panel] [right panel]** — alw
 <details>
 <summary><b>View, themes and keyboard</b></summary>
 
-- **View** — scroll to pan, ⌘ / Ctrl+scroll to zoom, Space+drag or middle button to pan, ⌘0 to fit. The zoom bar at the bottom right (click the percentage for 100%) and a minimap. On touch, one finger pans and two fingers zoom. The **isometric** view is read-only; exporting SVG / PNG from it produces an isometric drawing. Select **Play flow** at the bottom right, then click a service to follow its connections. Theme (system / light / dark) and language are in **Settings (⚙)** (exports are always light).
+- **View** — scroll to pan, ⌘ / Ctrl+scroll to zoom, Space+drag or middle button to pan, ⌘0 to fit. The zoom bar at the bottom right (click the percentage for 100%) and a minimap. On touch, one finger pans and two fingers zoom. The **isometric** view is read-only; exporting SVG / PNG from it produces an isometric drawing. Select **Play flow** at the bottom right to loop from the highest entry point until you stop it. Enable **Orbit view** and drag horizontally for 360° rotation. The rotation buttons move between 0°, 90°, 180°, and 270°. Select **Default view (0°)** to return to the starting angle. Theme (system / light / dark) and language are in **Settings (⚙)** (exports are always light).
 - **Keyboard** — on the canvas, Tab / Shift+Tab moves between objects, and screen readers announce the selection. Menus open with Enter, move with arrow keys and close with Esc. Open **Help (?) → Keyboard shortcuts** to see the list.
 
 </details>
@@ -222,7 +222,7 @@ The layer rules are enforced in three places, all part of `npm run check` and CI
 ## Tests
 
 <details>
-<summary><b>150 unit tests</b> (<code>tests/unit</code>)</summary>
+<summary><b>155 unit tests</b> (<code>tests/unit</code>)</summary>
 
 - **domain** — hierarchy, local coordinates, children moving with parents, reparenting and cycle rejection, patch undo (including adjacent-delete order), fragment copy / paste, document diff
 - **domain** — three-way merge (fields, grouped positions, delete conflicts, hierarchy repair, cycles)
@@ -246,7 +246,7 @@ The layer rules are enforced in three places, all part of `npm run check` and CI
 </details>
 
 <details>
-<summary><b>52 E2E tests</b> (<code>tests/e2e</code>, production builds)</summary>
+<summary><b>54 E2E tests</b> (<code>tests/e2e</code>, production builds)</summary>
 
 - **Basic flow** — two nodes → connect → save → open → reload → SVG (same paths as the screen), PNG, rejecting an invalid file
 - **Areas** — dragging a VPC then a single undo, dragging into another area, wrapping

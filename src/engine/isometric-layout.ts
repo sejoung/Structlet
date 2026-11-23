@@ -1,5 +1,5 @@
 import type { ContainerStyle, Id, Point, Rect } from '../domain';
-import { containsPoint, inflate, intersects, polylineMidpoint, union } from './geometry';
+import { center, containsPoint, inflate, intersects, polylineMidpoint, union } from './geometry';
 import { LEGEND_MARKER_WIDTH, legendMarker, type LegendMarker, type Scene, type SceneNode } from './scene';
 import { measureText, wrapText } from './text';
 
@@ -7,20 +7,35 @@ const COS = Math.cos(Math.PI / 6);
 const SIN = 0.5;
 export const ISOMETRIC_PLANE = `matrix(${COS} ${SIN} ${-COS} ${SIN} 0 0)`;
 export type IsometricLabels = 'full' | 'compact';
-export type IsometricRotation = 0 | 1 | 2 | 3;
 
 export interface IsometricOptions {
   readonly labels?: IsometricLabels;
-  readonly rotation?: IsometricRotation;
+  readonly rotation?: number;
+  readonly labelOffsets?: ReadonlyMap<Id, Point> | null;
 }
 
-export function rotateIsoPoint(point: Point, rotation: IsometricRotation): Point {
+export function normalizeIsoAngle(degrees: number): number {
+  return ((degrees % 360) + 360) % 360;
+}
+
+export function adjacentIsoPreset(angle: number, direction: -1 | 1): number {
+  const quarter = angle / 90;
+  return ((direction === -1 ? Math.ceil(quarter) : Math.floor(quarter)) + direction) * 90;
+}
+
+export function rotateIsoPoint(point: Point, rotation: number): Point {
   const { x, y } = point;
   switch (rotation) {
-    case 1: return { x: -y, y: x };
-    case 2: return { x: -x, y: -y };
-    case 3: return { x: y, y: -x };
-    default: return point;
+    case 0: return point;
+    case 90: return { x: -y, y: x };
+    case 180: return { x: -x, y: -y };
+    case 270: return { x: y, y: -x };
+    default: {
+      const angle = rotation * Math.PI / 180;
+      const cos = Math.cos(angle);
+      const sin = Math.sin(angle);
+      return { x: x * cos - y * sin, y: x * sin + y * cos };
+    }
   }
 }
 
@@ -28,20 +43,24 @@ export function iso({ x, y }: Point): Point {
   return { x: (x - y) * COS, y: (x + y) * SIN };
 }
 
-export function projectIso(point: Point, rotation: IsometricRotation): Point {
+export function projectIso(point: Point, rotation: number): Point {
   return iso(rotateIsoPoint(point, rotation));
 }
 
-function corners({ x, y, width, height }: Rect): Point[] {
-  return [{ x, y }, { x: x + width, y }, { x: x + width, y: y + height }, { x, y: y + height }];
+export function projectIsoRect({ x, y, width, height }: Rect, rotation: number): [Point, Point, Point, Point] {
+  return [projectIso({ x, y }, rotation), projectIso({ x: x + width, y }, rotation),
+    projectIso({ x: x + width, y: y + height }, rotation), projectIso({ x, y: y + height }, rotation)];
 }
 
 function pointBounds(points: readonly Point[]): Rect | null {
   return union(points.map((point) => ({ ...point, width: 0, height: 0 })));
 }
 
-export function rotateIsoRect(rect: Rect, rotation: IsometricRotation): Rect {
-  return pointBounds(corners(rect).map((point) => rotateIsoPoint(point, rotation)))!;
+function labelAnchorOnRect(rect: Rect, rotation: number, side: -1 | 1): Point {
+  const anchor = projectIso(center(rect), rotation);
+  const direction = rotateIsoPoint({ x: 1, y: 1 }, normalizeIsoAngle(-rotation));
+  const reach = Math.min(rect.width / 2 / Math.abs(direction.x), rect.height / 2 / Math.abs(direction.y));
+  return { x: anchor.x, y: anchor.y + side * reach };
 }
 
 export const isoBlockHeight = (node: SceneNode) => node.variant === 'box' ? 12 : 18;
@@ -81,8 +100,9 @@ export interface IsometricLabel {
 }
 
 export interface IsometricLayout {
-  readonly rotation: IsometricRotation;
+  readonly rotation: number;
   readonly labels: readonly IsometricLabel[];
+  readonly labelOffsets: ReadonlyMap<Id, Point>;
   readonly bounds: Rect;
 }
 
@@ -100,19 +120,23 @@ function measureLabel(input: LabelInput) {
   return { lines, lineHeight, size, weight, width, height: lineHeight * lines.length + LABEL_PAD.y * 2 };
 }
 
+function clearLabel(box: Rect, occupied: readonly Rect[]): boolean {
+  const padded = inflate(box, 4);
+  return !occupied.some((other) => intersects(other, padded));
+}
+
 function locateLabel(input: LabelInput, width: number, height: number, occupied: readonly Rect[], fallback: Point): Rect {
   const { preferred } = input;
   const at = (x: number, y: number) => ({ x: Math.round(x), y: Math.round(y), width, height });
-  const clear = (box: Rect) => !occupied.some((other) => intersects(other, inflate(box, 4)));
   const preferredBox = at(preferred.x - width / 2, preferred.y);
-  if (clear(preferredBox)) return preferredBox;
+  if (clearLabel(preferredBox, occupied)) return preferredBox;
   for (const gap of [8, 26, 52, 92, 144]) {
     const { x, y } = preferredBox;
     const candidates = [
       at(x, y - height - gap), at(x - width / 2 - gap, y), at(x + width / 2 + gap, y),
       at(x, y + gap), at(x - width / 3, y + height + gap), at(x + width / 3, y + height + gap),
     ];
-    const best = candidates.find(clear);
+    const best = candidates.find((box) => clearLabel(box, occupied));
     if (best) return best;
   }
   let box = at(fallback.x, fallback.y);
@@ -124,11 +148,11 @@ function locateLabel(input: LabelInput, width: number, height: number, occupied:
 }
 
 export function computeIsometricLayout(scene: Scene, options: IsometricOptions = {}): IsometricLayout {
-  const rotation = options.rotation ?? 0;
+  const rotation = normalizeIsoAngle(options.rotation ?? 0);
   const project = (point: Point) => projectIso(point, rotation);
-  const projectedRects = scene.containers.map((area) => pointBounds(corners(area.rect).map(project))!);
+  const projectedRects = scene.containers.map((area) => pointBounds(projectIsoRect(area.rect, rotation))!);
   const blocks = scene.nodes.map((node) => {
-    const floor = pointBounds(corners(node.rect).map(project))!;
+    const floor = pointBounds(projectIsoRect(node.rect, rotation))!;
     const h = isoBlockHeight(node);
     return { ...floor, y: floor.y - h, height: floor.height + h };
   });
@@ -140,13 +164,11 @@ export function computeIsometricLayout(scene: Scene, options: IsometricOptions =
   const inputs: LabelInput[] = [];
 
   for (const area of scene.containers) {
-    const rect = rotateIsoRect(area.rect, rotation);
-    const anchor = iso(rect);
+    const anchor = labelAnchorOnRect(area.rect, rotation, -1);
     inputs.push({ kind: 'area', id: area.id, text: area.label, color: area.style.color, anchor, preferred: { x: anchor.x, y: anchor.y - 46 } });
   }
   for (const node of scene.nodes) {
-    const rect = rotateIsoRect(node.rect, rotation);
-    const anchor = iso({ x: rect.x + rect.width, y: rect.y + rect.height });
+    const anchor = labelAnchorOnRect(node.rect, rotation, 1);
     inputs.push({ kind: 'node', id: node.id, text: node.fullLabel ?? node.label.join('\n'), anchor, preferred: { x: anchor.x, y: anchor.y + 8 } });
   }
   for (const note of annotations) {
@@ -163,16 +185,35 @@ export function computeIsometricLayout(scene: Scene, options: IsometricOptions =
 
   const occupied = [...blocks];
   const fallback = { x: ground.x + ground.width + 24, y: ground.y };
-  const labels = inputs.filter((input) => input.text.trim()).map((input): IsometricLabel => {
-    const { width, height, ...text } = measureLabel(input);
-    const box = locateLabel(input, width, height, occupied, fallback);
-    occupied.push(box);
+  const labelOffsets = new Map<Id, Point>();
+  const measured = inputs.filter((input) => input.text.trim()).map((input) => ({ input, ...measureLabel(input) }));
+  const retained = new Map<Id, Rect>();
+  if (options.labelOffsets) {
+    for (const { input, width, height } of measured) {
+      const offset = options.labelOffsets.get(input.id);
+      if (!offset) continue;
+      const x = Math.round(input.anchor.x + offset.x);
+      const y = Math.round(input.anchor.y + offset.y);
+      const box = { x, y, width, height };
+      if (!clearLabel(box, occupied)) continue;
+      retained.set(input.id, box);
+      labelOffsets.set(input.id, offset);
+      occupied.push(box);
+    }
+  }
+  const labels = measured.map(({ input, width, height, ...text }): IsometricLabel => {
+    let box = retained.get(input.id);
+    if (!box) {
+      box = locateLabel(input, width, height, occupied, fallback);
+      occupied.push(box);
+      labelOffsets.set(input.id, { x: box.x - input.anchor.x, y: box.y - input.anchor.y });
+    }
     const nearby = inflate(box, input.kind === 'area' ? 8 : 10);
     return { id: input.id, kind: input.kind, color: input.color, box, ...text, leader: containsPoint(nearby, input.anchor) ? null : input.anchor };
   });
   const leaders = pointBounds(labels.flatMap((label) => label.leader ? [label.leader] : []));
   const bounds = union([ground, ...labels.map((label) => label.box), ...(leaders ? [leaders] : [])])!;
-  return { rotation, labels, bounds: { ...bounds, width: Math.max(1, bounds.width), height: Math.max(1, bounds.height) } };
+  return { rotation, labels, labelOffsets, bounds: { ...bounds, width: Math.max(1, bounds.width), height: Math.max(1, bounds.height) } };
 }
 
 export const isometricLabelPadding = LABEL_PAD;

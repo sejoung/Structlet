@@ -59,7 +59,7 @@ export function App({ editor, store, files, packStore, drive: driveServices, dri
   const [editing, setEditing] = useState<Id | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [view, setView] = useState<ViewMode>('2d');
-  const [isoView, setIsoView] = useState<Required<IsometricOptions>>({ labels: 'full', rotation: 0 });
+  const [isoView, setIsoView] = useState<Required<IsometricOptions>>({ labels: 'full', rotation: 0, labelOffsets: null });
   const [tab, setTab] = useState<SidebarTab>('services');
   const [recent, setRecent] = useState<string[]>(storedRecent);
   const [panels, setPanelsState] = useState<Panels>(storedPanels);

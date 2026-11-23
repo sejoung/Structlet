@@ -1,5 +1,6 @@
 import type { Id, Point } from '../domain';
-import { polylineLength } from './geometry';
+import { center, polylineLength } from './geometry';
+import { projectIso } from './isometric-layout';
 import type { Scene, SceneEdge } from './scene';
 
 export interface FlowLink {
@@ -16,7 +17,9 @@ export interface FlowWave {
   readonly arrivals: readonly Id[];
 }
 
-function linksFromScene(scene: Scene): Map<Id, FlowLink[]> {
+type FlowGraph = ReadonlyMap<Id, readonly FlowLink[]>;
+
+export function indexIsometricFlow(scene: Scene): FlowGraph {
   const bySource = new Map<Id, FlowLink[]>();
   const add = (edge: SceneEdge, from: Id | null, to: Id | null, kind: FlowLink['kind']) => {
     if (!from || edge.points.length < 2) return;
@@ -36,8 +39,29 @@ function linksFromScene(scene: Scene): Map<Id, FlowLink[]> {
   return bySource;
 }
 
-export function planIsometricFlow(scene: Scene, start: Id): FlowWave[] {
-  const graph = linksFromScene(scene);
+export function topIsometricFlowSource(scene: Scene, graph: FlowGraph, rotation: number): Id | null {
+  const incoming = new Set<Id>();
+  for (const links of graph.values()) {
+    for (const link of links) {
+      if (link.kind !== 'undirected' && link.to) incoming.add(link.to);
+    }
+  }
+
+  let best: { id: Id; position: Point; priority: number } | null = null;
+  for (const [id, links] of graph) {
+    const rect = scene.rects.get(id);
+    if (!rect) continue;
+    const directed = links.some((link) => link.kind !== 'undirected');
+    const priority = directed ? (incoming.has(id) ? 1 : 0) : 2;
+    const position = projectIso(center(rect), rotation);
+    if (!best || (priority - best.priority || position.y - best.position.y || position.x - best.position.x || id.localeCompare(best.id)) < 0) {
+      best = { id, position, priority };
+    }
+  }
+  return best?.id ?? null;
+}
+
+export function planIsometricFlow(graph: FlowGraph, start: Id): FlowWave[] {
   const visitedNodes = new Set<Id>([start]);
   const visitedEdges = new Set<Id>();
   const waves: FlowWave[] = [];

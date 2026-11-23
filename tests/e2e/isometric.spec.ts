@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
-import { act, freshApp } from './helpers';
+import { act, drag, freshApp } from './helpers';
 
 test('isometric rotation, label modes and context actions share the exported layout', async ({ page }) => {
   await freshApp(page, 'en', { inspector: false });
@@ -23,7 +23,7 @@ test('isometric rotation, label modes and context actions share the exported lay
     });
   }))).toBe(true);
   await page.getByRole('button', { name: 'Rotate right' }).click();
-  await expect(iso).toHaveAttribute('data-rotation', '1');
+  await expect(iso).toHaveAttribute('data-rotation', '90');
   await page.getByRole('radio', { name: 'Compact' }).click();
   await expect(iso.locator('[data-iso-label="edge"]')).toHaveCount(0);
   await expect(iso.locator('[data-iso-label="node"]')).toHaveCount(16);
@@ -45,7 +45,7 @@ test('isometric rotation, label modes and context actions share the exported lay
   await expect(iso.locator('[data-node="mig-a"]')).toBeVisible();
   await iso.press('Shift+F10');
   await menu.getByRole('menuitem', { name: 'Rotate right' }).click();
-  await expect(iso).toHaveAttribute('data-rotation', '2');
+  await expect(iso).toHaveAttribute('data-rotation', '180');
 
   const [svg] = await Promise.all([page.waitForEvent('download'), act(page, 'tb-svg')]);
   const svgText = readFileSync((await svg.path())!, 'utf8');
@@ -61,4 +61,56 @@ test('isometric rotation, label modes and context actions share the exported lay
   await page.locator('[data-testid="tb-view"] [data-value="2d"]').click();
   await expect(original).toHaveAttribute('x', x!);
   await expect(original).toHaveAttribute('y', y!);
+});
+
+test('smooth rotation buttons snap to the next fixed angle and the default button restores 0°', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await freshApp(page, 'en', { inspector: false });
+  const [picker] = await Promise.all([page.waitForEvent('filechooser'), act(page, 'tb-open')]);
+  await picker.setFiles('samples/commerce-and-ml.structlet');
+  await page.locator('[data-testid="tb-view"] [data-value="isometric"]').click();
+  const iso = page.getByTestId('isometric');
+  const label = iso.locator('[data-iso-label="node"][data-iso-object="checkout"] rect');
+  const labelBefore = { x: await label.getAttribute('x'), y: await label.getAttribute('y') };
+  const zoom = page.getByTestId('zoom-level');
+  const zoomBefore = await zoom.innerText();
+  const home = page.getByRole('button', { name: 'Default view (0°)', exact: true });
+  await expect(home).toBeVisible();
+  await page.clock.install({ time: new Date('2026-01-01T00:00:00Z') });
+  await page.clock.pauseAt(new Date('2026-01-01T00:01:00Z'));
+
+  const orbit = page.getByRole('button', { name: 'Orbit view' });
+  const left = page.getByRole('button', { name: 'Rotate left' });
+  const right = page.getByRole('button', { name: 'Rotate right' });
+  await orbit.click();
+  const box = (await iso.boundingBox())!;
+  const from = { x: box.x + 100, y: box.y + box.height / 2 };
+  const end = { x: from.x + 92, y: from.y };
+  await drag(page, from, end);
+  await expect(iso).toHaveAttribute('data-rotation', '37');
+  await left.click();
+  await page.clock.runFor(80);
+  const intermediate = Number(await iso.getAttribute('data-rotation'));
+  expect(intermediate).toBeGreaterThan(0);
+  expect(intermediate).toBeLessThan(37);
+  await page.clock.runFor(150);
+  await expect(iso).toHaveAttribute('data-rotation', '0');
+
+  await drag(page, from, end);
+  await expect(iso).toHaveAttribute('data-rotation', '37');
+  for (const target of ['90', '180', '270', '0']) {
+    await right.click();
+    await page.clock.runFor(230);
+    await expect(iso).toHaveAttribute('data-rotation', target);
+  }
+
+  await orbit.click();
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await left.click();
+  await expect(iso).toHaveAttribute('data-rotation', '270');
+  await home.click();
+  await expect(iso).toHaveAttribute('data-rotation', '0');
+  await expect(zoom).toHaveText(zoomBefore);
+  await expect(label).toHaveAttribute('x', labelBefore.x!);
+  await expect(label).toHaveAttribute('y', labelBefore.y!);
 });

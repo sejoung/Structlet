@@ -15,45 +15,49 @@ async function downloadText(page: Page, action: string) {
   return readFileSync((await file.path())!, 'utf8');
 }
 
-test('the visible flow button picks an isometric source and can be cancelled without starting playback', async ({ page }) => {
-  await page.emulateMedia({ reducedMotion: 'reduce' });
+async function freezeClock(page: Page) {
+  await page.clock.install({ time: new Date('2026-01-01T00:00:00Z') });
+  await page.clock.pauseAt(new Date('2026-01-01T00:01:00Z'));
+}
+
+test('flow starts from the top without picking a service and loops until stopped', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
   const iso = await openIsometric(page, 'commerce-and-ml', 'ko');
+  await freezeClock(page);
   const launch = page.getByRole('button', { name: '흐름 재생', exact: true });
   const player = page.getByRole('group', { name: '흐름 재생' });
-  const hint = page.getByText('흐름을 시작할 서비스나 그룹을 클릭하세요.', { exact: false });
-  const checkout = iso.locator('[data-iso-label="node"][data-iso-object="checkout"] text').first();
   await expect(launch).toBeVisible();
-  await expect(player).toHaveCount(0);
+  await expect(player.getByRole('status')).toHaveCount(0);
   await launch.click();
-  await expect(launch).toHaveAttribute('aria-pressed', 'true');
-  await expect(hint).toBeVisible();
-  await iso.press('Escape');
+  const first = iso.locator('[data-flow-edge="shopper-to-cdn"]');
+  await expect(player.getByRole('status')).toHaveText('7단계 중 1단계');
+  await expect(first).toBeVisible();
+  await expect(first).toHaveCSS('stroke', 'rgb(211, 61, 0)');
+  await expect(first).toHaveCSS('stroke-width', '5px');
+  await expect(iso.locator('[data-edge="fraud-to-mig-a"]')).toHaveCSS('opacity', '0.44');
+  await expect(iso.locator('[data-flow-dot="shopper-to-cdn"]')).toHaveCSS('fill', 'rgb(255, 220, 86)');
+  await page.clock.runFor(5900);
+  await expect(player.getByRole('status')).toHaveText('7단계 중 7단계');
+  await page.clock.runFor(900);
+  await expect(player.getByRole('status')).toHaveText('7단계 중 1단계');
+  await expect(first).toBeVisible();
+  await page.clock.runFor(6650);
+  await expect(first).toBeVisible();
+  await expect(player.getByRole('button', { name: '일시정지' })).toBeVisible();
+  await player.getByRole('button', { name: '정지', exact: true }).click();
+  await page.clock.runFor(7000);
   await expect(launch).toBeFocused();
-  await expect(hint).toHaveCount(0);
-  await checkout.click();
-  await expect(player).toHaveCount(0);
-
+  await expect(iso.locator('[data-flow-edge]')).toHaveCount(0);
+  await expect(iso.locator('[data-edge="fraud-to-mig-a"]')).toHaveCSS('opacity', '1');
   await launch.click();
-  await iso.locator('[data-iso-label="node"][data-iso-object="alerts"] text').first().click();
-  await expect(hint).toBeVisible();
-  await expect(player).toHaveCount(0);
-  const box = (await checkout.boundingBox())!;
-  const from = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
-  await drag(page, from, { x: from.x + 45, y: from.y - 25 });
-  await expect(player).toHaveCount(0);
-  await checkout.click();
-  await expect(launch).toHaveAttribute('aria-pressed', 'false');
-  await expect(hint).toHaveCount(0);
-  await expect(player.getByRole('status')).toHaveText('4단계 중 1단계');
-  await expect(iso.locator('[data-flow-edge="checkout-to-fraud"]')).toBeVisible();
+  await expect(first).toBeVisible();
 });
 
 test('isometric flow plays and pauses on the drawn routes, advances a branch, and stops without changing the file', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   const iso = await openIsometric(page, 'commerce-and-ml');
   const before = await downloadText(page, 'tb-save');
-  await page.clock.install({ time: new Date('2026-01-01T00:00:00Z') });
-  await page.clock.pauseAt(new Date('2026-01-01T00:01:00Z'));
+  await freezeClock(page);
   await iso.locator('[data-iso-label="node"][data-iso-object="checkout"] text').first().click({ button: 'right' });
   await page.getByRole('menuitem', { name: 'Play flow from here' }).click();
 
@@ -76,6 +80,7 @@ test('isometric flow plays and pauses on the drawn routes, advances a branch, an
   const line = iso.locator('[data-flow-edge="checkout-to-fraud"]');
   const oldPath = await line.getAttribute('d');
   await page.getByRole('button', { name: 'Rotate right' }).click();
+  await page.clock.runFor(230);
   await expect(line).not.toHaveAttribute('d', oldPath!);
   await expect(player.getByRole('status')).toHaveText('Step 1 of 4');
   const endpoints = await line.evaluate((overlay: SVGPathElement) => {
@@ -102,22 +107,26 @@ test('isometric flow plays and pauses on the drawn routes, advances a branch, an
   expect(svg).not.toContain('data-flow-');
   expect(await downloadText(page, 'tb-save')).toBe(before);
   await player.getByRole('button', { name: 'Play', exact: true }).click();
-  await page.clock.runFor(3000);
+  await page.clock.runFor(1250);
   await expect(player.getByRole('status')).toHaveText('Step 4 of 4');
-  await expect(player.getByRole('button', { name: 'Replay' })).toBeVisible();
+  await page.clock.runFor(800);
+  await expect(player.getByRole('status')).toHaveText('Step 1 of 4');
   await player.getByRole('button', { name: 'Stop' }).click();
-  await expect(player).toHaveCount(0);
+  await expect(player.getByRole('status')).toHaveCount(0);
   await expect(iso.locator('[data-flow-edge]')).toHaveCount(0);
 });
 
-test('isometric flow follows folded groups and completes with replay and reduced motion controls', async ({ page }) => {
+test('isometric flow follows folded groups and loops manually with reduced motion', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   const iso = await openIsometric(page, 'commerce-and-ml');
+  await freezeClock(page);
   await iso.locator('[data-iso-label="node"][data-iso-object="checkout"] text').first().click({ button: 'right' });
   await page.getByRole('menuitem', { name: 'Play flow from here' }).click();
   const player = page.getByRole('group', { name: 'Flow playback' });
-  await expect(player.getByRole('button', { name: 'Play', exact: true })).toBeVisible();
   await expect(iso.locator('[data-flow-dot]')).toHaveCount(0);
+  await page.clock.runFor(1100);
+  await expect(player.getByRole('status')).toHaveText('Step 2 of 4');
+  await player.getByRole('button', { name: 'Pause' }).click();
 
   await iso.locator('[data-iso-label="area"][data-iso-object="app-api"] text').first().click({ button: 'right' });
   await page.getByRole('menuitem', { name: 'Collapse Public APIs' }).click();
@@ -130,9 +139,8 @@ test('isometric flow follows folded groups and completes with replay and reduced
   await step.click();
   await step.click();
   await expect(player.getByRole('status')).toHaveText('Step 4 of 4');
-  await expect(step).toBeDisabled();
   await expect(iso.locator('[data-flow-object="alerts"]')).toHaveAttribute('data-flow-state', 'arrived');
-  await player.getByRole('button', { name: 'Replay' }).click();
+  await step.click();
   await expect(player.getByRole('status')).toHaveText('Step 1 of 4');
   await expect(iso.locator('[data-flow-dot]')).toHaveCount(0);
   await page.locator('[data-testid="tb-view"] [data-value="2d"]').click();
@@ -149,6 +157,65 @@ test('the Korean NVLink playback emphasizes only the undirected link', async ({ 
   await expect(iso.locator('[data-flow-edge]')).toHaveCount(1);
   await expect(iso.locator('[data-flow-edge="host-1-gpu-a-to-host-1-nvlink"]')).toHaveAttribute('data-flow-kind', 'undirected');
   await expect(iso.locator('[data-flow-dot]')).toHaveCount(0);
-  await expect(player.getByRole('button', { name: '다시 재생' })).toBeVisible();
+  await expect(iso.locator('[data-flow-kind="undirected"]')).toHaveAttribute('stroke-dasharray', '10 7');
+  await expect(iso.locator('[data-flow-kind="undirected"]')).not.toHaveAttribute('marker-end', /.+/);
+  await expect(player.getByRole('button', { name: '일시정지' })).toBeVisible();
   await expect(iso.locator('[data-flow-state="arrived"]')).toHaveCount(0);
+});
+
+test('dragging in orbit mode rotates through 360 degrees with upright labels and shared flow and export geometry', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  const iso = await openIsometric(page, 'commerce-and-ml');
+  await freezeClock(page);
+  await page.getByRole('button', { name: 'Play flow', exact: true }).click();
+  await page.getByRole('button', { name: 'Pause' }).click();
+  const orbit = page.getByRole('button', { name: 'Orbit view' });
+  const original = iso.locator('[data-edge="shopper-to-cdn"]');
+  const line = iso.locator('[data-flow-edge="shopper-to-cdn"]');
+  const before = await line.getAttribute('d');
+  await orbit.click();
+  await expect(orbit).toHaveAttribute('aria-pressed', 'true');
+  const box = (await iso.boundingBox())!;
+  const from = { x: box.x + 100, y: box.y + box.height / 2 };
+  await drag(page, from, { x: from.x + 92, y: from.y + 12 });
+  await expect(iso).toHaveAttribute('data-rotation', '37');
+  await expect(line).not.toHaveAttribute('d', before!);
+
+  const aligned = await original.evaluate((edge: SVGPathElement) => {
+    const svg = edge.closest('svg')!;
+    const overlay = svg.querySelector<SVGPathElement>('[data-flow-edge="shopper-to-cdn"]')!;
+    const label = svg.querySelector<SVGTextElement>('[data-iso-label="node"] text')!;
+    const matrix = overlay.getCTM()!.inverse().multiply(edge.getCTM()!);
+    const source = edge.getPointAtLength(0).matrixTransform(matrix);
+    const start = overlay.getPointAtLength(0);
+    const { b, c } = label.getCTM()!;
+    return Math.hypot(source.x - start.x, source.y - start.y) < 0.02 && b === 0 && c === 0;
+  });
+  expect(aligned).toBe(true);
+  const diagram = iso.locator(':scope > g');
+  const transform = await diagram.getAttribute('transform');
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move(from.x + 450, from.y, { steps: 6 });
+  await expect(iso).toHaveAttribute('data-rotation', '217');
+  await page.mouse.move(from.x + 900, from.y, { steps: 6 });
+  await page.mouse.up();
+  await expect(iso).toHaveAttribute('data-rotation', '37');
+  await expect(diagram).toHaveAttribute('transform', transform!);
+  const svg = await downloadText(page, 'tb-svg');
+  const label = iso.locator('[data-iso-label="node"][data-iso-object="checkout"] rect');
+  const x = await label.getAttribute('x');
+  const y = await label.getAttribute('y');
+  expect(svg).toContain('rotate(37)');
+  expect(svg).toContain(`<g data-iso-label="node" data-iso-object="checkout"><rect x="${x}" y="${y}"`);
+
+  await iso.press('Home');
+  await expect(iso).toHaveAttribute('data-rotation', '0');
+  await iso.press('ArrowLeft');
+  await expect(iso).toHaveAttribute('data-rotation', '355');
+  await iso.press('Escape');
+  await expect(orbit).toBeFocused();
+  await expect(orbit).toHaveAttribute('aria-pressed', 'false');
+  await drag(page, from, { x: from.x + 60, y: from.y });
+  await expect(iso).toHaveAttribute('data-rotation', '355');
 });

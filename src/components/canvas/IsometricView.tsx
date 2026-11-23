@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import type { Editor } from '../../application';
 import type { Document, Id, Point } from '../../domain';
-import { computeIsometricLayout, fitView, renderIsometricLayers, zoomAt, type DiagramTheme, type IsometricOptions, type IsometricRotation, type Scene, type Viewport } from '../../engine';
+import { adjacentIsoPreset, center, computeIsometricLayout, fitView, normalizeIsoAngle, projectIso, renderIsometricLayers, zoomAt, type DiagramTheme, type IsometricOptions, type Scene, type Viewport } from '../../engine';
 import type { Translate } from '../../i18n/messages';
 import { IconButton, Segmented } from '../ui/controls';
 import { Icon } from '../ui/Icon';
@@ -23,41 +23,104 @@ interface Props {
   presenting: boolean;
 }
 
-function objectAt(target: EventTarget) {
-  return (target as Element).closest('[data-iso-object]')?.getAttribute('data-iso-object') ?? null;
+type Drag = { x: number; y: number; from: Viewport } & (
+  { kind: 'pan' } | { kind: 'orbit'; start: number; angle: number }
+);
+type Preview = Pick<Required<IsometricOptions>, 'rotation' | 'labelOffsets'>;
+
+const ORBIT_DEGREES_PER_PIXEL = 0.4;
+const ROTATION_MS = 200;
+
+function orbitView(view: Viewport, pivot: Point, from: number, to: number): Viewport {
+  const before = projectIso(pivot, from);
+  const after = projectIso(pivot, to);
+  return { ...view, panX: view.panX + (before.x - after.x) * view.zoom, panY: view.panY + (before.y - after.y) * view.zoom };
 }
 
 export function IsometricView({ t, scene, theme, options, onOptions, doc, editor, context, toggle, presenting }: Props) {
   const ref = useRef<SVGSVGElement>(null);
-  const layout = useMemo(() => computeIsometricLayout(scene, options), [scene, options]);
+  const orbitButton = useRef<HTMLButtonElement>(null);
+  const [orbiting, setOrbiting] = useState(false);
+  const [preview, setPreview] = useState<Preview | null>(null);
+  const angle = preview?.rotation ?? options.rotation;
+  const angleDisplay = normalizeIsoAngle(Math.round(angle));
+  const labelOffsets = preview?.labelOffsets ?? options.labelOffsets;
+  const layout = useMemo(() => computeIsometricLayout(scene, { labels: options.labels, rotation: angle, labelOffsets }), [scene, options.labels, angle, labelOffsets]);
   const markup = useMemo(() => {
     const { floor, blocks, labels } = renderIsometricLayers(scene, theme, layout);
     return { floor: { __html: floor }, blocks: { __html: blocks }, labels: { __html: labels } };
   }, [scene, theme, layout]);
   const flow = useIsometricFlow(scene, doc);
-  const launch = useRef<HTMLButtonElement>(null);
-  const [pickingIn, setPickingIn] = useState<Id | null>(null);
-  const picking = pickingIn === doc.id && flow.available;
   const [view, setView] = useState<Viewport | null>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
   const latest = useRef(view);
   latest.current = view;
-  const drag = useRef<{ x: number; y: number; from: Viewport; source: Id | null } | null>(null);
+  const latestOptions = useRef(options);
+  latestOptions.current = options;
+  const latestLayout = useRef(layout);
+  latestLayout.current = layout;
+  const turnFrame = useRef<number | null>(null);
+  const drag = useRef<Drag | null>(null);
   const [menu, setMenu] = useState<ContextRequest | null>(null);
   const activeObject = useRef<Id | null>(null);
+  const pivot = scene.bounds ? center(scene.bounds) : { x: 0, y: 0 };
   const fit = useCallback(() => {
     const r = ref.current?.getBoundingClientRect();
     if (!r || !r.width || !r.height) return;
     const next = { width: r.width, height: r.height };
     setSize(next);
-    setView(fitView(layout.bounds, next));
-  }, [layout.bounds]);
-  const rotate = (step: -1 | 1) => onOptions({ ...options, rotation: ((options.rotation + step + 4) % 4) as IsometricRotation });
+    setView(fitView(latestLayout.current.bounds, next));
+  }, []);
+  const commitRotation = (rotation: number, keepLabels = true) => {
+    setPreview(null);
+    onOptions({ ...latestOptions.current, rotation, labelOffsets: keepLabels ? latestLayout.current.labelOffsets : null });
+  };
+  const cancelTurn = () => {
+    if (turnFrame.current !== null) cancelAnimationFrame(turnFrame.current);
+    turnFrame.current = null;
+  };
+  const turnTo = (target: number, { reset = false, animate = true } = {}) => {
+    cancelTurn();
+    drag.current = null;
+    const end = normalizeIsoAngle(target);
+    let shown = angle;
+    const moveTo = (next: number) => {
+      const before = shown;
+      shown = next;
+      setView((v) => v ? orbitView(v, pivot, before, next) : v);
+    };
+    if (!animate || flow.reduced || angle === end) {
+      if (angle !== end) moveTo(end);
+      commitRotation(end, !reset);
+      return;
+    }
+    const started = performance.now();
+    const tick = (now: number) => {
+      const progress = Math.min(1, (now - started) / ROTATION_MS);
+      if (progress === 1) {
+        turnFrame.current = null;
+        moveTo(end);
+        commitRotation(end, !reset);
+        return;
+      }
+      const eased = progress * progress * (3 - 2 * progress);
+      const next = normalizeIsoAngle(angle + (target - angle) * eased);
+      moveTo(next);
+      setPreview({ rotation: next, labelOffsets: latestLayout.current.labelOffsets });
+      turnFrame.current = requestAnimationFrame(tick);
+    };
+    turnFrame.current = requestAnimationFrame(tick);
+  };
+  const rotate = (direction: -1 | 1) => turnTo(adjacentIsoPreset(angle, direction));
+  const resetRotation = () => turnTo(angle > 180 ? 360 : 0, { reset: true });
 
+  useEffect(() => () => {
+    if (turnFrame.current !== null) cancelAnimationFrame(turnFrame.current);
+  }, []);
+  useEffect(fit, [fit, doc.id, scene, options.labels]);
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    fit();
     const observer = new ResizeObserver(fit);
     observer.observe(el);
     return () => observer.disconnect();
@@ -86,15 +149,17 @@ export function IsometricView({ t, scene, theme, options, onOptions, doc, editor
     activeObject.current = id;
     setMenu({ screen, ids: id ? [id] : [], world: { x: 0, y: 0 }, docId: doc.id });
   };
-  const startFlow = (id: Id) => {
-    activeObject.current = id;
-    setPickingIn(null);
-    flow.start(id);
-  };
   const onContextMenu = (event: MouseEvent<SVGSVGElement>) => {
     event.preventDefault();
     if (presenting) return;
-    showMenu({ x: event.clientX, y: event.clientY }, objectAt(event.target));
+    const object = (event.target as Element).closest('[data-iso-object]')?.getAttribute('data-iso-object') ?? null;
+    showMenu({ x: event.clientX, y: event.clientY }, object);
+  };
+  const finishDrag = () => {
+    const current = drag.current;
+    drag.current = null;
+    if (current?.kind !== 'orbit') return;
+    if (current.angle !== current.start || preview) commitRotation(current.angle);
   };
 
   return (
@@ -103,18 +168,27 @@ export function IsometricView({ t, scene, theme, options, onOptions, doc, editor
         ref={ref}
         className="canvas-svg isometric"
         data-testid="isometric"
-        data-rotation={options.rotation}
-        data-picking-flow={picking || undefined}
+        data-rotation={angle}
+        data-orbiting={orbiting || undefined}
+        data-flow-active={flow.active || undefined}
         role="application"
         aria-label={t('iso.canvas')}
         tabIndex={0}
         onContextMenu={onContextMenu}
         onKeyDown={(e) => {
-          if (picking && e.key === 'Escape') {
+          if (orbiting && e.key === 'Escape') {
             e.preventDefault();
             e.stopPropagation();
-            setPickingIn(null);
-            launch.current?.focus();
+            finishDrag();
+            setOrbiting(false);
+            orbitButton.current?.focus();
+            return;
+          }
+          if (orbiting && view && ['ArrowLeft', 'ArrowRight', 'Home'].includes(e.key)) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (e.key === 'Home') resetRotation();
+            else turnTo(angle + (e.key === 'ArrowLeft' ? -5 : 5), { animate: false });
             return;
           }
           if (!presenting && (e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10'))) {
@@ -131,26 +205,33 @@ export function IsometricView({ t, scene, theme, options, onOptions, doc, editor
           }
         }}
         onPointerDown={(e) => {
-          if (!view || e.button === 2) return;
-          const id = picking && e.button === 0 ? objectAt(e.target) : null;
+          if (!view || e.button === 2 || !e.isPrimary) return;
+          if (turnFrame.current !== null) {
+            cancelTurn();
+            commitRotation(angle);
+          }
           e.currentTarget.setPointerCapture(e.pointerId);
-          drag.current = { x: e.clientX, y: e.clientY, from: view, source: id && flow.canStart(id) ? id : null };
+          const from = { x: e.clientX, y: e.clientY, from: view };
+          drag.current = orbiting && e.button === 0 ? { ...from, kind: 'orbit', start: angle, angle } : { ...from, kind: 'pan' };
         }}
         onPointerMove={(e) => {
           const d = drag.current;
-          if (!d) return;
+          if (!d || !e.isPrimary) return;
           const dx = e.clientX - d.x;
           const dy = e.clientY - d.y;
-          if (d.source && Math.hypot(dx, dy) < 5) return;
-          d.source = null;
+          if (d.kind === 'orbit') {
+            const next = normalizeIsoAngle(d.start + Math.round(dx * ORBIT_DEGREES_PER_PIXEL));
+            if (next === d.angle) return;
+            d.angle = next;
+            setPreview({ rotation: next, labelOffsets: latestLayout.current.labelOffsets });
+            setView(orbitView(d.from, pivot, d.start, next));
+            return;
+          }
           setView({ ...d.from, panX: d.from.panX + dx, panY: d.from.panY + dy });
         }}
-        onPointerUp={() => {
-          const id = drag.current?.source;
-          drag.current = null;
-          if (picking && id && flow.canStart(id)) startFlow(id);
-        }}
-        onPointerCancel={() => (drag.current = null)}
+        onPointerUp={(e) => { if (e.isPrimary) finishDrag(); }}
+        onPointerCancel={(e) => { if (e.isPrimary) finishDrag(); }}
+        onLostPointerCapture={(e) => { if (e.isPrimary) finishDrag(); }}
       >
         {view && (
           <g transform={`translate(${view.panX} ${view.panY}) scale(${view.zoom})`}>
@@ -164,29 +245,32 @@ export function IsometricView({ t, scene, theme, options, onOptions, doc, editor
       </svg>
       {menu?.docId === doc.id && !presenting && (
         <ContextMenu {...context} t={t} doc={doc} scene={scene} editor={editor} request={menu} fit={fit}
-          toggle={toggle} dismiss={dismiss} readOnly rotate={rotate} flow={{ canStart: flow.canStart, start: startFlow }} />
+          toggle={toggle} dismiss={dismiss} readOnly rotate={rotate} flow={flow} />
       )}
       <div className="readonly-note" role="status">{t('canvas.readonly')}</div>
-      {picking && <div className="tool-hint" role="status">{t('flow.pickSource')}</div>}
+      {orbiting && <div className="tool-hint" role="status">{t('iso.orbitHint')}</div>}
       {view && (
         <div className="canvas-corner">
-          {flow.active && <FlowControls t={t} flow={flow} />}
+          <FlowControls t={t} flow={flow} rotation={angle} />
           <div className="iso-controls">
-            <button type="button" ref={launch} className="chip-button iso-flow-launch" aria-pressed={picking}
-              disabled={!flow.available} title={flow.available ? undefined : t('flow.noSource')}
-              onClick={() => {
-                setPickingIn(picking ? null : doc.id);
-                if (!picking) ref.current?.focus({ preventScroll: true });
-              }}>
-              <Icon name="play" size={14} />{t('flow.launch')}
+            <button type="button" ref={orbitButton} className="chip-button iso-orbit-toggle" aria-pressed={orbiting} onClick={() => {
+              setOrbiting(!orbiting);
+              if (!orbiting) ref.current?.focus({ preventScroll: true });
+            }}>
+              <Icon name="rotateRight" size={14} />{t('iso.orbit')}
             </button>
-            <Segmented label={t('iso.labels')} value={options.labels} onChange={(labels) => onOptions({ ...options, labels })}
+            <Segmented label={t('iso.labels')} value={options.labels} onChange={(labels) => {
+              cancelTurn();
+              setPreview(null);
+              onOptions({ labels, rotation: angle, labelOffsets: null });
+            }}
               options={(['compact', 'full'] as const).map((value) => ({ value, label: t(`iso.${value}`) }))} />
             <div className="zoombar">
               <IconButton icon="rotateLeft" label={t('iso.rotateLeft')} onClick={() => rotate(-1)} />
-              <span className="iso-angle" aria-label={t('iso.angle', { degrees: options.rotation * 90 })}>{options.rotation * 90}°</span>
+              <span className="iso-angle" aria-label={t('iso.angle', { degrees: angleDisplay })}>{angleDisplay}°</span>
               <IconButton icon="rotateRight" label={t('iso.rotateRight')} onClick={() => rotate(1)} />
             </div>
+            <button type="button" className="chip-button" onClick={resetRotation}>{t('iso.home')}</button>
           </div>
           <ZoomBar t={t} viewport={view} size={size} setViewport={setView} onFit={fit} />
         </div>
