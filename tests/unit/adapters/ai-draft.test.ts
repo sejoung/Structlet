@@ -5,11 +5,11 @@ import { join } from 'node:path';
 import { strFromU8, unzipSync } from 'fflate';
 import { expect, it } from 'vitest';
 import { buildStructletSkill } from '../../../scripts/structlet-skill';
-import { findService } from '../../../src/adapters/catalog/services';
+import { createAppearance, findService } from '../../../src/adapters/catalog/services';
 import { compileDraft } from '../../../src/adapters/draft/compile';
 import { parseStructlet } from '../../../src/adapters/format/structlet-format';
 import { emptyDocument, worldRect } from '../../../src/domain';
-import { containsRect } from '../../../src/engine';
+import { computeScene, containsRect, intersects } from '../../../src/engine';
 
 const prompts = new URL('../../../samples/ai/structlet/references/', import.meta.url);
 
@@ -49,7 +49,16 @@ it('runs the standalone skill compiler in another directory and keeps the origin
     writeFileSync(script, files['structlet/scripts/compile.mjs']!);
     const run = (...params: string[]) => spawnSync(process.execPath, [script, ...params], { cwd: dir, encoding: 'utf8' });
     const input = join(dir, 'architecture.draft.json');
-    writeFileSync(input, readFileSync(new URL('../../../samples/draft-example.json', import.meta.url)));
+    const draft = JSON.parse(readFileSync(new URL('../../../samples/draft-example.json', import.meta.url), 'utf8'));
+    const text = '연결이 지연되면 관측 자료는 보관 영역에서 다시 읽습니다.\n'.repeat(8);
+    draft.annotations.push(
+      { id: 'detail', kind: 'text', text, target: 'api' },
+      { id: 'report', kind: 'text', text, target: 'api' },
+      { id: 'boundary', kind: 'text', text, target: 'private' },
+      { id: 'footer', kind: 'text', text },
+      { id: 'fixed', kind: 'text', text: 'Manually positioned', x: -120, y: -80 },
+    );
+    writeFileSync(input, JSON.stringify(draft));
     const built = run('architecture.draft.json');
     expect(built.status, built.stderr).toBe(0);
     expect(built.stdout.trim()).toBe('architecture.structlet');
@@ -58,6 +67,13 @@ it('runs the standalone skill compiler in another directory and keeps the origin
     const original = parseStructlet(before);
     expect(original.ok).toBe(true);
     if (!original.ok) return;
+    expect(original.document.annotations.find(({ id }) => id === 'fixed')).toMatchObject({ x: -120, y: -80 });
+    const scene = computeScene(original.document, createAppearance('en'));
+    const nodeBounds = scene.nodes.flatMap(({ rect, labelBox, specCaption }) => [rect, ...(labelBox ? [labelBox] : []), ...(specCaption ? [specCaption.box] : [])]);
+    for (const note of scene.annotations.filter(({ kind }) => kind !== 'step')) {
+      expect(nodeBounds.every((rect) => !intersects(note.rect, rect)), note.id).toBe(true);
+      expect(scene.annotations.every((other) => other === note || !intersects(note.rect, other.rect)), note.id).toBe(true);
+    }
 
     writeFileSync(join(dir, 'update.json'), JSON.stringify({ nodes: [{ id: 'api', label: 'Updated API' }] }));
     const edit = run('update.json', 'revised.structlet', '--base', 'architecture.structlet');
@@ -67,6 +83,7 @@ it('runs the standalone skill compiler in another directory and keeps the origin
     if (!revised.ok) return;
     const oldApi = original.document.nodes.find(({ id }) => id === 'api')!;
     expect(revised.document.nodes.find(({ id }) => id === 'api')).toEqual({ ...oldApi, label: 'Updated API' });
+    expect(revised.document.annotations).toEqual(original.document.annotations);
 
     expect(run('update.json', 'architecture.structlet', '--base', 'architecture.structlet').status).toBe(1);
     expect(readFileSync(output, 'utf8')).toBe(before);

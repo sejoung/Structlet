@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
+import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, type MouseEvent, type Ref } from 'react';
 import type { Editor } from '../../application';
-import type { Document, Id, Point } from '../../domain';
-import { adjacentIsoPreset, center, computeIsometricLayout, fitView, groupBounds, MAX_ZOOM, normalizeIsoAngle, projectIso, renderIsometricLayers, zoomAt, type DiagramTheme, type IsometricOptions, type Scene, type Viewport } from '../../engine';
+import type { Document, Id, Point, Rect } from '../../domain';
+import { adjacentIsoPreset, center, computeIsometricLayout, fitView, groupBounds, MAX_ZOOM, normalizeIsoAngle, objectBounds, projectIso, renderIsometricLayers, zoomAt, type DiagramTheme, type IsometricOptions, type Scene, type Viewport } from '../../engine';
 import type { Translate } from '../../i18n/messages';
 import { IconButton, Segmented } from '../ui/controls';
 import { Icon } from '../ui/Icon';
@@ -20,6 +20,7 @@ interface Props {
   editor: Editor;
   context: ContextActions;
   toggle(id: Id): void;
+  focusObjects: Ref<(ids: readonly Id[]) => void>;
   presenting: boolean;
 }
 
@@ -37,7 +38,7 @@ function orbitView(view: Viewport, pivot: Point, from: number, to: number): View
   return { ...view, panX: view.panX + (before.x - after.x) * view.zoom, panY: view.panY + (before.y - after.y) * view.zoom };
 }
 
-export function IsometricView({ t, scene, theme, options, onOptions, doc, editor, context, toggle, presenting }: Props) {
+export function IsometricView({ t, scene, theme, options, onOptions, doc, editor, context, toggle, presenting, focusObjects }: Props) {
   const ref = useRef<SVGSVGElement>(null);
   const orbitButton = useRef<HTMLButtonElement>(null);
   const [orbiting, setOrbiting] = useState(false);
@@ -63,24 +64,25 @@ export function IsometricView({ t, scene, theme, options, onOptions, doc, editor
   const drag = useRef<Drag | null>(null);
   const [menu, setMenu] = useState<ContextRequest | null>(null);
   const activeObject = useRef<Id | null>(null);
-  const focusedArea = useRef<Id | null>(null);
-  const pivotBounds = (focusedArea.current ? scene.rects.get(focusedArea.current) : undefined) ?? scene.bounds;
+  const focusedBounds = useRef<Rect | null>(null);
+  const pivotBounds = focusedBounds.current ?? scene.bounds;
   const pivot = pivotBounds ? center(pivotBounds) : { x: 0, y: 0 };
   const fit = useCallback(() => {
     const r = ref.current?.getBoundingClientRect();
     if (!r || !r.width || !r.height) return;
     const next = { width: r.width, height: r.height };
-    focusedArea.current = null;
+    focusedBounds.current = null;
     setSize(next);
     setView(fitView(latestLayout.current.bounds, next));
   }, []);
-  const fitGroup = (id: Id) => {
+  const showBounds = (bounds: Rect | null, world: Rect | null, maximum?: number) => {
     const r = ref.current?.getBoundingClientRect();
-    const bounds = groupBounds(doc, scene, id, layout);
     if (!bounds || !r?.width || !r.height) return;
-    focusedArea.current = id;
-    setView(fitView(bounds, r, 48, MAX_ZOOM));
+    focusedBounds.current = world;
+    setView(fitView(bounds, r, 48, maximum));
   };
+  const fitGroup = (id: Id) => showBounds(groupBounds(doc, scene, id, layout), scene.rects.get(id) ?? null, MAX_ZOOM);
+  useImperativeHandle(focusObjects, () => (ids) => showBounds(objectBounds(scene, ids, layout), objectBounds(scene, ids)));
   const commitRotation = (rotation: number, keepLabels = true) => {
     setPreview(null);
     onOptions({ ...latestOptions.current, rotation, labelOffsets: keepLabels ? latestLayout.current.labelOffsets : null });

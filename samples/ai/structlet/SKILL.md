@@ -21,4 +21,6 @@ The compiler validates through Structlet's importer, lays out new objects, and s
 
 For Terraform diagrams, label the source as declared configuration and state which environment it covers. Describe observed deployment state only when supported by separate evidence. Label traffic, management actions, and configuration dependencies by their meaning. Attach security group ports, IAM roles, and remote-state references as notes when they explain a connection. When a referenced script or configuration file is unavailable, show the declared association and mark the implementation as unverified.
 
+For Argo CD diagrams, use Application or ApplicationSet declarations to show source references and destination clusters or namespaces. Expand generated apps when their generator inputs are available. Use accessible Helm, Kustomize, or rendered Kubernetes manifests to verify Ingress → Service → workload paths, selectors, and configuration references. Show unresolved sources as GitOps references and use separate evidence for sync or deployment status.
+
 When compilation is blocked, report the specific problem. The draft can be converted in **User guide → Build a diagram with AI** for a new diagram, or applied through **File → Import** with the existing diagram open for a revision. Share the draft when the user asks for it.

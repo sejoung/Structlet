@@ -13,6 +13,7 @@ export * from './routing/route';
 export * from './routing/edit';
 export * from './layout/arrange';
 export * from './layout/place';
+export * from './layout/imported-annotations';
 export * from './layout/document';
 export * from './diagram-view';
 export * from './render-isometric';

@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent } from 'react';
+import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, type DragEvent, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent, type Ref } from 'react';
 import type { Editor, SessionSnapshot } from '../../application';
-import { indexDocument, type Id, type Point } from '../../domain';
-import { fitView, groupBounds, MAX_ZOOM, polylineMidpoint, renderSceneBody, screenToWorld, worldToScreen, zoomAt, type DiagramTheme, type IsometricOptions, type Scene, type Viewport } from '../../engine';
+import { indexDocument, type Id, type Point, type Rect } from '../../domain';
+import { fitView, groupBounds, MAX_ZOOM, objectBounds, polylineMidpoint, renderSceneBody, screenToWorld, worldToScreen, zoomAt, type DiagramTheme, type IsometricOptions, type Scene, type Viewport } from '../../engine';
 import type { Translate } from '../../i18n/messages';
 import { SERVICE_DRAG_TYPE } from '../sidebar/types';
 import type { ViewMode } from '../Toolbar';
@@ -21,6 +21,7 @@ interface CanvasProps {
   scene: Scene;
   viewport: Viewport;
   setViewport(v: Viewport): void;
+  focusObjects: Ref<(ids: readonly Id[]) => void>;
   onResize(size: { width: number; height: number }): void;
   onDropService(serviceId: string, world: Point): void;
   summary: boolean;
@@ -46,6 +47,15 @@ export function Canvas(props: CanvasProps) {
   const { t, editor, snapshot, scene, viewport, setViewport } = props;
   const svgRef = useRef<SVGSVGElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const isoFocus = useRef<(ids: readonly Id[]) => void>(null);
+  const showBounds = (bounds: Rect | null, maximum?: number) => {
+    const size = svgRef.current?.getBoundingClientRect();
+    if (bounds && size?.width && size.height) setViewport(fitView(bounds, size, 48, maximum));
+  };
+  useImperativeHandle(props.focusObjects, () => (ids) => {
+    if (props.view === 'isometric') isoFocus.current?.(ids);
+    else showBounds(objectBounds(scene, ids));
+  });
   const [menu, setMenu] = useState<ContextRequest | null>(null);
   const dismissMenu = useCallback((restoreFocus: boolean) => {
     setMenu(null);
@@ -206,17 +216,13 @@ export function Canvas(props: CanvasProps) {
     return (
       <div ref={wrapRef} className="canvas">
         <IsometricView t={t} scene={scene} theme={props.theme} options={props.isoView} onOptions={props.onIsoView}
-          doc={snapshot.document} editor={editor} context={props.context} toggle={props.onToggleArea} presenting={props.presenting} />
+          doc={snapshot.document} editor={editor} context={props.context} toggle={props.onToggleArea} presenting={props.presenting} focusObjects={isoFocus} />
       </div>
     );
   }
 
   const empty = snapshot.document.nodes.length === 0 && snapshot.document.containers.length === 0 && snapshot.document.annotations.length === 0;
-  const fitGroup = (id: Id) => {
-    const size = svgRef.current?.getBoundingClientRect();
-    const bounds = groupBounds(snapshot.document, scene, id);
-    if (bounds && size?.width && size.height) setViewport(fitView(bounds, size, 48, MAX_ZOOM));
-  };
+  const fitGroup = (id: Id) => showBounds(groupBounds(snapshot.document, scene, id), MAX_ZOOM);
   const grid = 16 * viewport.zoom;
   const z = viewport.zoom;
 

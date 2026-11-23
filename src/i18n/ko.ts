@@ -1,8 +1,10 @@
+import { checksKo } from './checks';
 import { manual } from './manual-ko';
 import type { MessageKey } from './en';
 import { specsKo } from './specs';
 export const ko: Record<MessageKey, string> = {
   ...manual,
+  ...checksKo,
   ...specsKo,
   'app.untitled': '제목 없는 구성도',
   'toolbar.new': '새로 만들기',
@@ -122,14 +124,6 @@ export const ko: Record<MessageKey, string> = {
   'props.target': '붙은 대상',
   'props.noTarget': '없음',
   'props.regenerateLegend': '구성도에서 다시 만들기',
-  'checks.title': '점검',
-  'checks.none': '발견된 항목이 없습니다.',
-  'checks.data-in-public-subnet': '퍼블릭 서브넷 안의 데이터 저장소',
-  'checks.client-to-data': '클라이언트·외부 시스템이 데이터 저장소에 직접 연결됨',
-  'checks.unknown-service': '알 수 없는 서비스 종류',
-  'checks.unconnected': '연결이 없는 서비스',
-  'checks.unnamed': '이름 없는 서비스',
-  'checks.empty-area': '비어 있는 영역',
   'canvas.label': '구성도 캔버스. Tab으로 객체 사이를 이동합니다.',
   'canvas.selected': '{kind} "{label}" 선택됨',
   'iso.canvas': '아이소메트릭 구성도',

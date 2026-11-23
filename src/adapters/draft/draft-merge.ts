@@ -15,7 +15,7 @@ import {
   type Id,
   type Node,
 } from '../../domain';
-import { placeNew, union, worldRects, type LayoutMode } from '../../engine';
+import { placeImportedAnnotations, placeNew, type LayoutMode } from '../../engine';
 import type { Draft } from './draft-format';
 
 export type MergeResult = { ok: true; document: Document; created: Id[] } | { ok: false; errors: string[] };
@@ -187,28 +187,9 @@ export function mergeDraft(base: Document, draft: Draft): MergeResult {
     }
     doc = { ...doc, nodes: [...nodes.values()], containers: [...containers.values()] };
     doc = placeNew(doc, place, modes);
-    doc = placeNotes(doc, unplacedNotes);
+    doc = placeImportedAnnotations(doc, unplacedNotes);
   }
   const final = validateDocument(doc);
   if (final.length) return { ok: false, errors: final.map((i) => i.message) };
   return { ok: true, document: doc, created };
-}
-
-function placeNotes(doc: Document, ids: readonly Id[]): Document {
-  if (ids.length === 0) return doc;
-  const rects = worldRects(doc);
-  const bounds = union([...rects.values()]);
-  let below = bounds ? bounds.y + bounds.height + 32 : 40;
-  const pending = new Set(ids);
-  return {
-    ...doc,
-    annotations: doc.annotations.map((a) => {
-      if (!pending.has(a.id)) return a;
-      const target = a.targetId ? rects.get(a.targetId) : undefined;
-      if (target) return { ...a, x: Math.round(target.x - 14), y: Math.round(target.y - 14) };
-      const placed = { ...a, x: bounds ? Math.round(bounds.x) : 40, y: Math.round(below) };
-      below += 48;
-      return placed;
-    }),
-  };
 }

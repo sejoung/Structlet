@@ -111,6 +111,7 @@ export function App({ editor, store, files, packStore, drive: driveServices, dri
   const search = useCallback((q: string) => searchServices(q, packServices(packs)).map(toPalette(language, appearance)), [language, appearance, packs]);
   const findings = useMemo<PanelFinding[]>(() => runChecks(snapshot.committed, (id) => !!appearance.service(id)).map((f) => ({ severity: f.severity, ids: f.ids, message: `${t(`checks.${f.code}`)} · ${label(snapshot.committed, f.ids[0]!)}` })), [snapshot.committed, t]);
   const stageRef = useRef<HTMLElement>(null);
+  const focusObjects = useRef<(ids: readonly Id[]) => void>(null);
   const sizeRef = useRef(size);
   sizeRef.current = size;
   const sceneRef = useRef(scene);
@@ -340,6 +341,7 @@ export function App({ editor, store, files, packStore, drive: driveServices, dri
             scene={scene}
             viewport={viewport}
             setViewport={setViewport}
+            focusObjects={focusObjects}
             onResize={onCanvasResize}
             onDropService={(id, world) => addService(id, world)}
             summary={diagram.active}
@@ -365,6 +367,7 @@ export function App({ editor, store, files, packStore, drive: driveServices, dri
           appearance={appearance}
           services={services}
           findings={findings}
+          focusObjects={(ids) => focusObjects.current?.(ids)}
           actions={panelActions}
           onWrap={(ids, kind) => editor.wrapInArea(ids, kind, t(`area.${kind}`))}
         />

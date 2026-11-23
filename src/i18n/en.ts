@@ -1,7 +1,9 @@
+import { checksEn } from './checks';
 import { manual } from './manual-en';
 import { specsEn } from './specs';
 export const en = {
   ...manual,
+  ...checksEn,
   ...specsEn,
   'app.untitled': 'Untitled diagram',
   'toolbar.new': 'New',
@@ -121,14 +123,6 @@ export const en = {
   'props.target': 'Attached to',
   'props.noTarget': 'Nothing',
   'props.regenerateLegend': 'Regenerate from diagram',
-  'checks.title': 'Checks',
-  'checks.none': 'No findings.',
-  'checks.data-in-public-subnet': 'Data store inside a public subnet',
-  'checks.client-to-data': 'Client or external system talks to a data store directly',
-  'checks.unknown-service': 'Unknown service type',
-  'checks.unconnected': 'Service without connections',
-  'checks.unnamed': 'Service without a name',
-  'checks.empty-area': 'Empty area',
   'canvas.label': 'Diagram canvas. Tab moves between objects.',
   'canvas.selected': '{kind} "{label}" selected',
   'iso.canvas': 'Isometric diagram',

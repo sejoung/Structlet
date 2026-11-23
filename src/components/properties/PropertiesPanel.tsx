@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { Editor, SessionSnapshot } from '../../application';
 import { CONTAINER_KINDS, getBox, indexDocument, topmost, type ContainerKind, type Id } from '../../domain';
 import { alignDeltas, AREA_STROKE, distributeDeltas, type AlignMode, type Appearance, type Scene } from '../../engine';
@@ -6,7 +6,7 @@ import type { Translate } from '../../i18n/messages';
 import { GlyphIcon, ServiceTile } from '../GlyphIcon';
 import type { PaletteService } from '../sidebar/types';
 import { Icon, type IconName } from '../ui/Icon';
-import { IconButton, Row, Section } from '../ui/controls';
+import { IconButton, Row, Section, Segmented } from '../ui/controls';
 import { AnnotationSection, ContainerSection, EdgeSection, LayoutButtons, NodeSection, type PanelActions } from './sections';
 
 export interface PanelFinding {
@@ -23,6 +23,7 @@ interface PropertiesProps {
   appearance: Appearance;
   services: readonly PaletteService[];
   findings: readonly PanelFinding[];
+  focusObjects(ids: readonly Id[]): void;
   actions: PanelActions;
   onWrap(ids: readonly Id[], kind: ContainerKind): void;
 }
@@ -37,14 +38,41 @@ const ALIGN: { mode: AlignMode; icon: IconName; key: string }[] = [
 ];
 
 export function PropertiesPanel(props: PropertiesProps) {
+  const { t, editor, findings } = props;
+  const [view, setView] = useState<'properties' | 'checks'>('properties');
+  const switcher = useRef<HTMLDivElement>(null);
+  const onFinding = (ids: readonly Id[]) => {
+    editor.session.select(ids);
+    props.focusObjects(ids);
+    setView('properties');
+    switcher.current?.querySelector<HTMLButtonElement>('[data-value="properties"]')?.focus({ preventScroll: true });
+  };
+  return (
+    <aside className="inspector" aria-label={t('checks.inspector')}>
+      <div className="inspector-switch row-control" ref={switcher}>
+        <Segmented<'properties' | 'checks'> label={t('checks.inspector')} value={view} onChange={setView} options={[
+          { value: 'properties', label: t('checks.properties') },
+          { value: 'checks', label: findings.length ? `${t('checks.title')} (${findings.length})` : t('checks.title') },
+        ]} />
+      </div>
+      {view === 'checks' ? (
+        <div className="inspector-body"><ChecksSection t={t} findings={findings} onFinding={onFinding} /></div>
+      ) : (
+        <div className="inspector-content"><SelectionView {...props} onFinding={onFinding} /></div>
+      )}
+    </aside>
+  );
+}
+
+function SelectionView(props: PropertiesProps & { onFinding(ids: readonly Id[]): void }) {
   const { t, editor, snapshot, scene, appearance } = props;
   const doc = snapshot.document;
   const index = indexDocument(doc);
   const selection = snapshot.selection;
 
-  if (selection.length === 0) return <aside className="inspector" aria-label={t('section.document')}><DocumentView {...props} /></aside>;
+  if (selection.length === 0) return <DocumentView {...props} />;
 
-  if (selection.length > 1) return <aside className="inspector" aria-label={t('props.multi', { count: selection.length })}><MultiView {...props} /></aside>;
+  if (selection.length > 1) return <MultiView {...props} />;
 
   const id = selection[0]!;
   const node = index.nodes.get(id);
@@ -59,7 +87,7 @@ export function PropertiesPanel(props: PropertiesProps) {
   const title = (node?.label ?? container?.label ?? edge?.label ?? annotation?.text ?? '').split('\n')[0] || (node ? t('props.node') : container ? t(`area.${container.kind}`) : edge ? t('props.edge') : t('props.annotation'));
   const subtitle = node ? look!.name : container ? t(`area.${container.kind}`) : edge ? t('props.edge') : annotation ? t(`note.${annotation.kind}`) : '';
   return (
-    <aside className="inspector" aria-label={title}>
+    <>
       <header className="inspector-head">
         <span className="inspector-icon" aria-hidden="true">
           {look ? (look.image ? <img src={look.image} alt="" width={28} height={28} /> : <ServiceTile glyph={look.glyph} color={look.color} size={28} />) : container ? (
@@ -84,13 +112,12 @@ export function PropertiesPanel(props: PropertiesProps) {
         {edge && <EdgeSection key={id} {...common} edge={edge} />}
         {annotation && <AnnotationSection key={id} {...common} annotation={annotation} />}
       </div>
-    </aside>
+    </>
   );
 }
 
-function DocumentView({ t, editor, snapshot, findings }: PropertiesProps) {
+function DocumentView({ t, snapshot, findings, onFinding }: PropertiesProps & { onFinding(ids: readonly Id[]): void }) {
   const doc = snapshot.document;
-  const index = indexDocument(doc);
   return (
     <>
       <header className="inspector-head">
@@ -101,24 +128,28 @@ function DocumentView({ t, editor, snapshot, findings }: PropertiesProps) {
       </header>
       <div className="inspector-body">
         <p className="section-hint padded">{t('props.empty')}</p>
-        <Section title={t('checks.title')} testId="checks" actions={findings.length ? <span className="count">{findings.length}</span> : undefined}>
-          {findings.length === 0 ? (
-            <p className="section-hint">{t('checks.none')}</p>
-          ) : (
-            <ul className="findings">
-              {findings.map((f, i) => (
-                <li key={i}>
-                  <button type="button" className={`finding ${f.severity}`} onClick={() => editor.session.select(f.ids.filter((id) => index.nodes.has(id) || index.containers.has(id) || index.edges.has(id)))}>
-                    <Icon name={f.severity === 'warning' ? 'warning' : 'info'} size={14} />
-                    <span>{f.message}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Section>
+        <ChecksSection t={t} findings={findings} onFinding={onFinding} />
       </div>
     </>
+  );
+}
+
+function ChecksSection({ t, findings, onFinding }: { t: Translate; findings: readonly PanelFinding[]; onFinding(ids: readonly Id[]): void }) {
+  return (
+    <Section title={t('checks.title')} testId="checks" actions={findings.length ? <span className="count">{findings.length}</span> : undefined}>
+      {findings.length === 0 ? <p className="section-hint">{t('checks.none')}</p> : (
+        <ul className="findings">
+          {findings.map((finding, i) => (
+            <li key={i}>
+              <button type="button" className={`finding ${finding.severity}`} onClick={() => onFinding(finding.ids)}>
+                <Icon name={finding.severity === 'warning' ? 'warning' : 'info'} size={14} />
+                <span>{finding.message}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Section>
   );
 }
 

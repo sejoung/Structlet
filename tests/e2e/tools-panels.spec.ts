@@ -1,11 +1,73 @@
 import { expect, test } from '@playwright/test';
-import { center, drag, freshApp, openSample } from './helpers';
+import { act, center, drag, freshApp, openSample } from './helpers';
 
 const transform = (page: import('@playwright/test').Page) => page.locator('.canvas-svg > g').first().getAttribute('transform');
 const saved = async (page: import('@playwright/test').Page) => {
   await page.waitForTimeout(500);
   return page.evaluate(() => JSON.parse(localStorage.getItem('structlet:autosave:v1') ?? 'null'));
 };
+
+test('checks stay accessible and bring affected objects into view in 2D and isometric', async ({ page }) => {
+  await freshApp(page, 'ko');
+  const [picker] = await Promise.all([page.waitForEvent('filechooser'), act(page, 'tb-import')]);
+  await picker.setFiles({ name: 'checks.draft.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify({
+    nodes: [
+      { id: 'relay', service: 'server', label: '관측 중계기', x: 40, y: 40 },
+      { id: 'public', service: 'internet', label: '외부 인터넷', x: 1300, y: 260 },
+      { id: 'data', service: 'database', label: '관측 저장소', x: 1600, y: 260 },
+    ],
+    edges: [{ from: 'public', to: 'data' }],
+  })) });
+  await expect(page.getByTestId('node-relay')).toBeVisible();
+  await page.getByTestId('tb-fit').click();
+  await page.getByTestId('node-relay').locator('rect').first().click();
+  const properties = page.getByRole('radio', { name: '속성' });
+  const checks = page.getByRole('radio', { name: '점검 (2)' });
+  const findings = page.getByTestId('checks');
+  await expect(page.getByTestId('prop-label')).toHaveValue('관측 중계기');
+  await checks.click();
+  await expect(findings).toContainText('연결이 없는 서비스');
+  await expect(findings).toContainText('클라이언트·외부 시스템이 데이터 저장소에 직접 연결됨');
+  await properties.click();
+  await expect(page.getByTestId('prop-label')).toHaveValue('관측 중계기');
+
+  await checks.click();
+  const initial = await transform(page);
+  await findings.getByRole('button', { name: /연결이 없는 서비스/ }).click();
+  await expect(properties).toHaveAttribute('aria-checked', 'true');
+  await expect(properties).toBeFocused();
+  await expect(page.getByTestId('prop-label')).toHaveValue('관측 중계기');
+  await expect.poll(() => transform(page)).not.toBe(initial);
+  const camera = await transform(page);
+  const viewport = (await page.getByTestId('canvas').boundingBox())!;
+  const visibleNodes = async (ids: string[]) => Promise.all(ids.map(async (id) => {
+    const bounds = (await page.locator(`.diagram [data-node="${id}"]`).boundingBox())!;
+    return bounds.x >= viewport.x && bounds.x + bounds.width <= viewport.x + viewport.width &&
+      bounds.y >= viewport.y && bounds.y + bounds.height <= viewport.y + viewport.height;
+  }));
+  expect(await visibleNodes(['relay', 'public'])).toEqual([true, false]);
+
+  await checks.click();
+  await findings.getByRole('button', { name: /데이터 저장소에 직접 연결됨/ }).click();
+  await expect(properties).toHaveAttribute('aria-checked', 'true');
+  await expect(page.locator('.inspector-title strong')).toContainText('3');
+  await expect.poll(() => transform(page)).not.toBe(camera);
+  expect(await visibleNodes(['public', 'data'])).toEqual([true, true]);
+
+  await checks.click();
+  await expect(findings).toBeVisible();
+  await page.getByTestId('tb-view').locator('[data-value="isometric"]').click();
+  const iso = page.getByTestId('isometric');
+  const isoTransform = iso.locator(':scope > g').first();
+  await expect(isoTransform).toHaveAttribute('transform', /scale/);
+  const isoBefore = await isoTransform.getAttribute('transform');
+  await findings.getByRole('button', { name: /연결이 없는 서비스/ }).click();
+  await expect(isoTransform).not.toHaveAttribute('transform', isoBefore!);
+  const isoCanvas = (await iso.boundingBox())!;
+  const target = (await iso.locator('[data-node="relay"]').boundingBox())!;
+  expect(Math.abs(target.x + target.width / 2 - isoCanvas.x - isoCanvas.width / 2)).toBeLessThan(80);
+  expect(Math.abs(target.y + target.height / 2 - isoCanvas.y - isoCanvas.height / 2)).toBeLessThan(80);
+});
 
 test('panels fold away and come back, and the choice is remembered', async ({ page }) => {
   await freshApp(page);

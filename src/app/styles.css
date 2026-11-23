@@ -192,8 +192,9 @@ button.twisty:hover { background: var(--surface-3); color: var(--ink); }
 .layer-lock { color: var(--muted); display: inline-grid; }
 .layer-group { display: flex; align-items: center; gap: 4px; height: 28px; margin-top: 8px; padding: 0 4px; border: 0; background: transparent; color: var(--ink-2); font-weight: 600; font-size: 12px; text-align: left; border-radius: 6px; }
 .layer-group:hover { background: var(--surface-2); }
-
-.inspector { display: grid; grid-template-rows: auto minmax(0, 1fr); width: 288px; border-left: 1px solid var(--line); background: var(--surface); min-height: 0; }
+.inspector, .inspector-content { display: grid; grid-template-rows: auto minmax(0, 1fr); min-height: 0; }
+.inspector { width: 288px; border-left: 1px solid var(--line); background: var(--surface); }
+.inspector-switch { padding: 8px 12px; border-bottom: 1px solid var(--line); }
 .inspector-head { display: flex; align-items: center; gap: 10px; min-height: 60px; padding: 10px 10px 10px 14px; border-bottom: 1px solid var(--line); }
 .inspector-icon { flex: none; display: inline-grid; place-items: center; }
 .inspector-icon img { object-fit: contain; }
@@ -235,7 +236,6 @@ button.twisty:hover { background: var(--surface-3); color: var(--ink); }
 .finding:hover { background: var(--surface-2); color: var(--ink); }
 .finding svg { flex: none; margin-top: 1px; color: var(--muted); }
 .finding.warning svg { color: var(--warn); }
-
 .canvas { position: relative; overflow: hidden; background-color: var(--canvas); background-image: radial-gradient(var(--dot) 1px, transparent 1px); min-width: 0; min-height: 0; }
 .canvas-svg { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; user-select: none; display: block; }
 .canvas-svg:focus, .canvas-svg:focus-visible { outline: none; }

@@ -20,7 +20,7 @@
 | `nodes[]` | `id`, `service`(서비스 ID, 예: `database`, `aws.lambda`; 모르는 ID는 일반 아이콘으로 보존), `label`(`\n`으로 줄바꿈: 첫 줄은 역할, 둘째 줄은 기술), `parent`, `x`, `y`, `variant`(`icon`, `box`), `size`(`s`, `m`, `l`), `locked`, `specs` |
 | `nodes[].specs` | `instanceType`, `vcpus`, `memoryGiB`, `gpu`, `diskGiB`(시스템 디스크), `showDetails`(2D에서 상세 사양 표시) |
 | `edges[]` | `id`, `from`, `to`, `label`, `dashed`(비동기), `arrow`(end, start, both, none), `shape`(orthogonal, straight) |
-| `annotations[]` | `id`, `kind`(text, step, legend), `text`, `x`, `y`(월드 좌표), `target`(붙을 객체; 좌표가 없으면 대상 옆에 놓인다) |
+| `annotations[]` | `id`, `kind`(text, step, legend), `text`, `x`, `y`(월드 좌표), `target`(붙을 객체). 좌표 없는 새 주석은 실제 텍스트 높이를 계산해 대상 옆 빈 공간이나 구성도 아래에 배치한다. |
 
 범례 `text`의 줄은 `#rrggbb 이름`(색 견본), `--- 이름`(실선 견본), `- - 이름`(점선 견본)으로 시작할 수 있다.
 

@@ -135,7 +135,7 @@ The panels can be hidden. Two toggles — **[left panel] [right panel]** — alw
 - **Notes** — the **Notes** panel adds text, flow numbers and a legend. The legend fills itself from the role colors and line styles used in the diagram; "Rebuild" refreshes it. Notes attached to an object move with it.
 - **Import** — **File → Import** merges a draft JSON ([format](docs/draft-format.md), [example](samples/draft-example.json)), `docker-compose.yml`, Kubernetes manifests (`kubectl get -o yaml|json`, `helm template`) or `terraform show -json` output into the current diagram. Existing objects keep their IDs, positions and pins; only new objects are placed. If anything is invalid, nothing changes. One undo reverts it. Pasting the same content also works. Terraform VM specifications appear in the node inspector. Enable detailed specs on the canvas to show them in 2D, or use **All labels** in isometric view.
 - **Copy and paste** — ⌘C / ⌘X / ⌘V. Areas copy with their contents and internal connections, and paste into the selected area.
-- **Checks** — with nothing selected, the inspector lists findings (data stores in a public subnet, direct client → DB connections, unknown services, unconnected services, empty areas). Clicking one selects the object.
+- **Checks** — switch between **Properties** and **Checks** at the top of the inspector. Choosing a finding brings the related objects into view and opens their properties. Your selection stays in place when you return to the list.
 
 </details>
 
@@ -253,7 +253,7 @@ The layer rules are enforced in three places, all part of `npm run check` and CI
 </details>
 
 <details>
-<summary><b>59 E2E tests</b> (<code>tests/e2e</code>, production builds)</summary>
+<summary><b>60 E2E tests</b> (<code>tests/e2e</code>, production builds)</summary>
 
 - **Basic flow** — two nodes → connect → save → open → reload → SVG (same paths as the screen), PNG, rejecting an invalid file
 - **Areas** — dragging a VPC then a single undo, dragging into another area, wrapping
