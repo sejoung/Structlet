@@ -64,20 +64,29 @@ export function karpenterProvisioning(value: unknown): NodeProvisioningDetails |
   });
 }
 
-export function karpenterNodeClass(value: unknown): NodeClassDetails | undefined {
-  const spec = record(value);
-  const amiSelectorTerms = array(spec.amiSelectorTerms).flatMap((input) => {
-    const term = record(input);
+function selectorTerms(value: unknown) {
+  const terms = array(value).map(record);
+  return terms.map((term) => {
     const tags = Object.entries(record(term.tags)).flatMap(([key, value]) =>
       text(key) && typeof value === 'string' && value.length <= 2048 ? [{ key, value }] : []);
-    return present({
-      alias: text(term.alias), id: text(term.id), name: text(term.name), owner: text(term.owner),
-      ssmParameter: text(term.ssmParameter), tags: tags.length ? tags : undefined,
-    }) ?? [];
+    return { term, tags: tags.length ? tags : undefined };
   });
+}
+
+export function karpenterNodeClass(value: unknown): NodeClassDetails | undefined {
+  const spec = record(value);
+  const ami = selectorTerms(spec.amiSelectorTerms).flatMap(({ term, tags }) => present({
+    alias: text(term.alias), id: text(term.id), name: text(term.name), owner: text(term.owner), ssmParameter: text(term.ssmParameter), tags,
+  }) ?? []);
+  const subnets = selectorTerms(spec.subnetSelectorTerms).flatMap(({ term, tags }) => present({ id: text(term.id), tags }) ?? []);
+  const groups = selectorTerms(spec.securityGroupSelectorTerms).flatMap(({ term, tags }) => present({
+    id: text(term.id), name: text(term.name), tags,
+  }) ?? []);
   return present({
     amiFamily: text(spec.amiFamily), role: text(spec.role), instanceProfile: text(spec.instanceProfile),
-    amiSelectorTerms: amiSelectorTerms.length ? amiSelectorTerms : undefined,
+    amiSelectorTerms: ami.length ? ami : undefined,
+    subnetSelectorTerms: subnets.length ? subnets : undefined,
+    securityGroupSelectorTerms: groups.length ? groups : undefined,
   });
 }
 

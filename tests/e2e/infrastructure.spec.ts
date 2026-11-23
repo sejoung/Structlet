@@ -114,4 +114,37 @@ test('imported workloads, Argo CD and node provisioning details are visible in K
   await expect(dialog.getByText('암호화', { exact: true })).toBeVisible();
   await expect(dialog.getByText('KarpenterNodeRole-example')).toBeVisible();
   await expect(dialog.getByText('/platform/amis/approved')).toBeVisible();
+  await expect(dialog.getByText('subnet-synthetic')).toBeVisible();
+  await expect(dialog.getByText('worker-*')).toBeVisible();
+});
+
+test('CloudFront cache behaviors and WAF rules are readable after saving and reopening', async ({ page }) => {
+  await freshApp(page);
+  const [picker] = await Promise.all([page.waitForEvent('filechooser'), act(page, 'tb-import')]);
+  await picker.setFiles('tests/unit/adapters/fixtures/terraform-edge-policies.json');
+
+  const cloudFront = page.getByTestId('node-tf-aws_cloudfront_distribution.website').locator('rect').first();
+  await cloudFront.click();
+  const inspector = page.getByTestId('infrastructure-details');
+  await expect(inspector.getByText('website-policy')).toBeVisible();
+  await expect(inspector.getByText('whitelist, Accept-Language')).toBeVisible();
+  await expect(inspector.getByText('policy-unavailable')).toBeVisible();
+
+  const [saved] = await Promise.all([page.waitForEvent('download'), act(page, 'tb-save')]);
+  const [open] = await Promise.all([page.waitForEvent('filechooser'), act(page, 'tb-open')]);
+  await open.setFiles((await saved.path())!);
+
+  await page.getByTestId('tb-present').click();
+  const dialog = page.getByRole('dialog', { name: 'Infrastructure details' });
+  await cloudFront.click();
+  await expect(dialog.getByText('/static/*')).toBeVisible();
+  await expect(dialog.getByText('images-policy')).toBeVisible();
+  await dialog.getByRole('button', { name: 'Close' }).click();
+  await page.getByTestId('exit-present').click();
+
+  await page.locator('[data-testid="tb-view"] [data-value="isometric"]').click();
+  await page.getByTestId('isometric').locator('[data-iso-label="node"][data-iso-object="tf-aws_wafv2_web_acl.website"] text').first().click();
+  await expect(dialog.getByText('managed-baseline')).toBeVisible();
+  await expect(dialog.getByText('Scope-down conditions')).toBeVisible();
+  await expect(dialog.getByText('KR, JP')).toBeVisible();
 });

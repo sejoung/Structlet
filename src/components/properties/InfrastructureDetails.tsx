@@ -1,29 +1,14 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import type { Editor } from '../../application';
 import { readInfrastructure, type ArgoCdDetails, type BlockDeviceDetails, type InfrastructureDetails as Details, type Node, type NodeClassDetails, type NodeProvisioningDetails, type PlacementSelector, type WorkloadDetails } from '../../domain';
 import type { Translate } from '../../i18n/messages';
 import { Section } from '../ui/controls';
-
-function List({ title, children }: { title: string; children: ReactNode[] | undefined }) {
-  if (!children?.length) return null;
-  return <section><h3>{title}</h3><ul>{children.map((item, index) => <li key={index}>{item}</li>)}</ul></section>;
-}
-
-function Entry({ name, values }: { name: string; values?: readonly string[] }) {
-  return values?.length ? <div><strong>{name}</strong><span>{values.join(', ')}</span></div> : null;
-}
+import { CloudFront, Waf } from './EdgeInfrastructure';
+import { Entry, Fields, List } from './InfrastructureFields';
 
 function displaySelectors(selectors: readonly PlacementSelector[]): string[] {
   return selectors.map(({ key, operator, source, values }) =>
     [source === 'field' ? `matchFields.${key}` : key, operator, values?.join(', ')].filter(Boolean).join(' '));
-}
-
-type Value = string | number | boolean | undefined;
-
-function Fields({ t, fields }: { t: Translate; fields: readonly (readonly [Parameters<Translate>[0], Value])[] }) {
-  return fields.map(([key, value]) => <Entry key={key} name={t(key)} values={value === undefined ? undefined : [
-    typeof value === 'boolean' ? t(value ? 'infra.enabled' : 'infra.disabled') : String(value),
-  ]} />);
 }
 
 function ArgoCd({ details, t }: { details: ArgoCdDetails; t: Translate }) {
@@ -99,6 +84,10 @@ function NodeProvisioning({ details, t }: { details: NodeProvisioningDetails; t:
   );
 }
 
+function tagsText(tags: readonly { key: string; value: string }[] | undefined) {
+  return tags?.map(({ key, value }) => `${key}=${value === '' ? '""' : value}`);
+}
+
 function NodeClass({ details, t }: { details: NodeClassDetails; t: Translate }) {
   return <section>
     <h3>{t('infra.nodeClass')}</h3>
@@ -111,7 +100,19 @@ function NodeClass({ details, t }: { details: NodeClassDetails; t: Translate }) 
           ['infra.amiAlias', term.alias], ['infra.amiId', term.id], ['infra.amiName', term.name],
           ['infra.amiOwner', term.owner], ['infra.amiParameter', term.ssmParameter],
         ]} />
-        <Entry name={t('infra.amiTags')} values={term.tags?.map(({ key, value }) => `${key}=${value === '' ? '""' : value}`)} />
+        <Entry name={t('infra.amiTags')} values={tagsText(term.tags)} />
+      </>
+    ))}</List>
+    <List title={t('infra.subnetTerms')}>{details.subnetSelectorTerms?.map((term) => (
+      <>
+        <Fields t={t} fields={[['infra.subnetId', term.id]]} />
+        <Entry name={t('infra.tags')} values={tagsText(term.tags)} />
+      </>
+    ))}</List>
+    <List title={t('infra.securityGroupTerms')}>{details.securityGroupSelectorTerms?.map((term) => (
+      <>
+        <Fields t={t} fields={[['infra.securityGroupId', term.id], ['infra.securityGroupName', term.name]]} />
+        <Entry name={t('infra.tags')} values={tagsText(term.tags)} />
       </>
     ))}</List>
   </section>;
@@ -132,7 +133,7 @@ function BlockDevices({ devices, t }: { devices: readonly BlockDeviceDetails[]; 
 }
 
 export function InfrastructureDetails({ details, t }: { details: Details; t: Translate }) {
-  const { securityGroupRules, iamStatements, iamPolicyRefs, remoteStates, placement, argoCd, workload, nodeProvisioning, nodeClass, blockDevices } = details;
+  const { securityGroupRules, iamStatements, iamPolicyRefs, remoteStates, placement, argoCd, workload, nodeProvisioning, nodeClass, blockDevices, cloudFront, waf } = details;
   return (
     <div className="infra-details">
       {argoCd && <ArgoCd details={argoCd} t={t} />}
@@ -140,6 +141,8 @@ export function InfrastructureDetails({ details, t }: { details: Details; t: Tra
       {nodeProvisioning && <NodeProvisioning details={nodeProvisioning} t={t} />}
       {nodeClass && <NodeClass details={nodeClass} t={t} />}
       {blockDevices && <BlockDevices devices={blockDevices} t={t} />}
+      {cloudFront && <CloudFront details={cloudFront} t={t} />}
+      {waf && <Waf details={waf} t={t} />}
       <List title={t('infra.security')}>{securityGroupRules?.map(({ direction, protocol, fromPort, toPort, peers, group, description }) => (
         <>
           <strong>{t(`infra.${direction}`)} · {protocol === '-1' ? t('infra.protocols') : protocol}

@@ -95,16 +95,51 @@ const blockDevice = shape({ deviceName: text }, {
   rootVolume: boolean, volumeType: text, volumeSize: text, encrypted: boolean, deleteOnTermination: boolean,
   iops: integer, throughput: integer, snapshotId: text, kmsKeyId: text, volumeInitializationRate: integer,
 });
-const amiTerm = shape({}, {
-  alias: text, id: text, name: text, owner: text, ssmParameter: text,
-  tags: list(shape({ key: text, value: labelValue }, {})),
-});
+const tags = list(shape({ key: text, value: labelValue }, {}));
+const amiTerm = shape({}, { alias: text, id: text, name: text, owner: text, ssmParameter: text, tags });
+const subnetTerm = shape({}, { id: text, tags });
+const securityGroupTerm = shape({}, { id: text, name: text, tags });
 const nodeClass = shape({}, {
   amiFamily: text, amiSelectorTerms: list(amiTerm), role: text, instanceProfile: text,
+  subnetSelectorTerms: list(subnetTerm), securityGroupSelectorTerms: list(securityGroupTerm),
+});
+const cacheKey = shape({ behavior: text }, { items: strings });
+const cachePolicy = shape({}, {
+  id: text, name: text, minTtl: count(0), defaultTtl: count(0), maxTtl: count(0),
+  headers: cacheKey, cookies: cacheKey, queryStrings: cacheKey, gzip: boolean, brotli: boolean,
+});
+const cacheBehavior = shape({}, {
+  pathPattern: text, originId: text, cachePolicy, originRequestPolicyId: text,
+});
+const cloudFront = shape({}, { webAclId: text, cacheBehaviors: list(cacheBehavior) });
+const action = choice('allow', 'block', 'count', 'captcha', 'challenge');
+const actionOverride = shape({ name: text, action }, {});
+const wafStatementFields = {
+  reference: text, name: text, vendor: text, version: text, limit: count(1), windowSeconds: count(1),
+  aggregateKeyType: text, countryCodes: strings, actionOverrides: list(actionOverride),
+};
+
+export interface WafStatement extends Shape<{ kind: typeof text }, typeof wafStatementFields> {
+  readonly children?: readonly WafStatement[];
+  readonly scopeDown?: readonly WafStatement[];
+}
+
+function readWafStatement(value: unknown, path: string, depth = 0): WafStatement {
+  if (depth > 10) invalid(path, 'WAF statement nesting exceeds 10 levels');
+  const nested = list((entry, entryPath) => readWafStatement(entry, entryPath, depth + 1));
+  return shape({ kind: text }, { ...wafStatementFields, children: nested, scopeDown: nested })(value, path);
+}
+
+const wafRule = shape({ name: text, priority: count(0) }, {
+  action, overrideAction: choice('none', 'count'), statements: list(readWafStatement),
+});
+const waf = shape({}, {
+  id: text, scope: text, defaultAction: choice('allow', 'block'), rules: list(wafRule),
 });
 const infrastructure = shape({}, {
   securityGroupRules: list(securityRule), iamStatements: list(iamStatement), iamPolicyRefs: strings,
   remoteStates: list(remoteState), placement, argoCd, workload, nodeProvisioning, nodeClass, blockDevices: list(blockDevice),
+  cloudFront, waf,
 });
 
 export type InfrastructureDetails = Read<typeof infrastructure>;
@@ -119,6 +154,10 @@ export type NodeProvisioningDetails = Read<typeof nodeProvisioning>;
 export type NodeClassDetails = Read<typeof nodeClass>;
 export type NodeTaint = Read<typeof nodeTaint>;
 export type BlockDeviceDetails = Read<typeof blockDevice>;
+export type CloudFrontDetails = Read<typeof cloudFront>;
+export type CachePolicyDetails = Read<typeof cachePolicy>;
+export type WafDetails = Read<typeof waf>;
+export type WafRuleDetails = Read<typeof wafRule>;
 
 export function readInfrastructure(value: unknown, path = 'infrastructure'): InfrastructureDetails {
   return infrastructure(value, path);

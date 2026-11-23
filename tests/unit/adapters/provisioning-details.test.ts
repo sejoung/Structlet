@@ -50,6 +50,14 @@ it('imports workload, Argo CD, NodePool and EC2NodeClass declarations', async ()
   expect(details('k8s.karpenter-ec2nodeclass')).toMatchObject({
     nodeClass: {
       amiFamily: 'AL2023', role: 'KarpenterNodeRole-example',
+      subnetSelectorTerms: [
+        { tags: [{ key: 'tier', value: 'private' }, { key: 'platform.example.test/discovery', value: '' }] },
+        { id: 'subnet-synthetic' },
+      ],
+      securityGroupSelectorTerms: [
+        { name: 'worker-*', tags: [{ key: 'environment', value: 'test' }] },
+        { id: 'sg-synthetic' },
+      ],
       amiSelectorTerms: [
         { name: 'eks-linux-*', owner: 'self', tags: [{ key: 'release-channel', value: '' }] },
         { id: 'ami-synthetic' },

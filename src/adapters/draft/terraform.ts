@@ -1,4 +1,5 @@
-import { terraformInfrastructure, type TerraformResource as Resource } from './terraform-infrastructure';
+import { terraformInfrastructure } from './terraform-infrastructure';
+import type { TerraformResource as Resource } from './terraform-resource';
 import type { Draft, DraftContainer, DraftEdge, DraftNode } from './draft-format';
 import { ec2InstanceType, terraformNodeSpecs } from './terraform-specs';
 

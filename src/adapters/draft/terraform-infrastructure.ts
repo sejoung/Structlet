@@ -1,16 +1,10 @@
 import type { IamStatement, InfrastructureDetails, RemoteStateReference, SecurityGroupRule } from '../../domain';
 import { array, integer, present, record, text, texts } from './infrastructure-values';
 import { nodeTaints } from './node-provisioning';
+import { cloudFrontIndex } from './terraform-cloudfront';
+import { wafIndex } from './terraform-waf';
 
-export interface TerraformResource {
-  address: string;
-  type: string;
-  name: string;
-  mode?: string;
-  values?: Record<string, unknown>;
-  sensitive_values?: Record<string, unknown>;
-  depends_on?: string[];
-}
+import type { TerraformResource } from './terraform-resource';
 
 function distinct<T>(values: Iterable<T>): T[] {
   return [...new Set(values)].slice(0, 1024);
@@ -172,6 +166,8 @@ function remoteStates(r: TerraformResource, refs: readonly string[], datasets: M
 export function terraformInfrastructure(resources: readonly TerraformResource[], all: readonly TerraformResource[]) {
   const groups = securityGroups(resources);
   const iam = iamIndex(resources);
+  const cloudFrontFor = cloudFrontIndex(all);
+  const wafFor = wafIndex(resources);
   const datasets = new Map(all.filter((r) => r.mode === 'data' && r.type === 'terraform_remote_state').map((r) => [r.address, r]));
   return (r: TerraformResource, refs: readonly string[], expressions: readonly string[]): InfrastructureDetails | undefined => {
     const v = r.values ?? {};
@@ -188,6 +184,8 @@ export function terraformInfrastructure(resources: readonly TerraformResource[],
       ...(iamPolicyRefs.length ? { iamPolicyRefs } : {}),
       ...(remote.length ? { remoteStates: remote } : {}),
       ...(taints ? { nodeProvisioning: { taints } } : {}),
+      cloudFront: cloudFrontFor(r),
+      waf: wafFor(r),
     });
   };
 }

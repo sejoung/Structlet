@@ -99,6 +99,16 @@ metadata:
 spec:
   amiFamily: AL2023
   role: KarpenterNodeRole-example
+  subnetSelectorTerms:
+    - tags:
+        tier: private
+        platform.example.test/discovery: ""
+    - id: subnet-synthetic
+  securityGroupSelectorTerms:
+    - name: worker-*
+      tags:
+        environment: test
+    - id: sg-synthetic
   amiSelectorTerms:
     - name: eks-linux-*
       owner: self

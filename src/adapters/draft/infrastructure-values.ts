@@ -25,3 +25,18 @@ export function boolean(value: unknown): boolean | undefined {
 export function present<T extends object>(fields: T): T | undefined {
   return Object.values(fields).some((value) => value !== undefined) ? fields : undefined;
 }
+
+export function blocks(value: unknown): Record<string, unknown>[] {
+  return (Array.isArray(value) ? value : [value])
+    .filter((item) => item !== null && typeof item === 'object' && !Array.isArray(item))
+    .map(record);
+}
+
+export function block(value: unknown): Record<string, unknown> {
+  return blocks(value)[0] ?? {};
+}
+
+export function natural(value: unknown, minimum = 0): number | undefined {
+  const n = integer(value);
+  return n !== undefined && n >= minimum ? n : undefined;
+}
