@@ -36,6 +36,9 @@ const ALIASES: Record<PackProvider, Record<string, string>> = {
     'vpc-internet-gateway': 'aws.igw', 'identity-and-access-management': 'aws.iam', 'key-management-service': 'aws.kms',
     'simple-email-service': 'aws.ses', 'sagemaker-ai': 'aws.sagemaker', 'elastic-load-balancing': 'aws.elb',
     'elastic-load-balancing-application-load-balancer': 'aws.elb', 'opensearch-service': 'aws.opensearch',
+    'elastic-container-registry': 'aws.ecr', docdb: 'aws.documentdb',
+    'managed-streaming-for-apache-kafka': 'aws.msk', 'managed-streaming-for-kafka': 'aws.msk', ssm: 'aws.systems-manager',
+    'vpc-gateway-endpoint': 'aws.vpc-endpoint', 's3-gateway-endpoint': 'aws.vpc-endpoint',
   },
   gcp: { 'pub-sub': 'gcp.pubsub', pubsub: 'gcp.pubsub', gke: 'gcp.gke', 'kubernetes-engine': 'gcp.gke', gcs: 'gcp.cloud-storage', 'cloud-load-balancing': 'gcp.cloud-load-balancing', 'load-balancing': 'gcp.cloud-load-balancing', 'identity-and-access-management': 'gcp.iam', 'key-management-service': 'gcp.kms', 'vertexai': 'gcp.vertex-ai' },
   azure: {

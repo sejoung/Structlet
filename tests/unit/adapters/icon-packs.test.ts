@@ -73,6 +73,46 @@ describe('building a pack', () => {
     expect(packServices([p]).map((s) => s.id)).toEqual(['aws.pack.chime']);
   });
 
+  it('attaches user-loaded AWS service and endpoint icons to the built-in service IDs', () => {
+    const names = {
+      'aws.ecr': 'Arch_Amazon-Elastic-Container-Registry_48.svg',
+      'aws.documentdb': 'Arch_Amazon-DocumentDB_48.svg',
+      'aws.msk': 'Arch_Amazon-Managed-Streaming-for-Apache-Kafka_48.svg',
+      'aws.systems-manager': 'Arch_AWS-Systems-Manager_48.svg',
+      'aws.acm': 'Arch_AWS-Certificate-Manager_48.svg',
+      'aws.vpc-endpoint': 'Res_Amazon-VPC_Endpoints_48.svg',
+    };
+    const result = buildIconPack(Object.values(names).map(file), 'auto', 'AWS icons', 'pack-aws-services');
+    if (!result.ok) throw new Error(result.error);
+    expect(result.pack.provider).toBe('aws');
+    expect(result.pack.extras).toEqual([]);
+    const withPack = createAppearance('ko', [result.pack]);
+    const withoutPack = createAppearance('ko');
+    for (const [id, name] of Object.entries(names)) {
+      expect(atob(result.pack.icons[id]!.data)).toContain(name);
+      expect(withPack.service(id)?.image).toMatch(/^data:image\/svg\+xml;base64,/);
+      expect(withoutPack.service(id)?.glyph).toBeDefined();
+      expect(withoutPack.service(id)?.image).toBeUndefined();
+    }
+  });
+
+  it('links new AWS nodes to previously loaded packs and old nodes to re-imported packs', () => {
+    const service = 'aws.ecr';
+    const legacy = 'aws.pack.elastic-container-registry';
+    const result = buildIconPack([file('Arch_Amazon-Elastic-Container-Registry_48.svg')], 'aws', 'AWS', 'p');
+    if (!result.ok) throw new Error(result.error);
+    const current = createAppearance('en', [result.pack]);
+    const stored = createAppearance('en', [{
+      ...result.pack,
+      icons: { [legacy]: result.pack.icons[service]! },
+      extras: [{ id: legacy, name: 'Elastic Container Registry' }],
+    }]);
+    for (const appearance of [current, stored]) {
+      expect(appearance.service(legacy)?.image).toBe(current.service(service)?.image);
+      expect(appearance.service(service)?.image).toBe(current.service(service)?.image);
+    }
+  });
+
   it('reads zips, including a nested zip', () => {
     const inner = zipSync({ 'Arch_AWS-Lambda_48.svg': svg('lambda') });
     const outer = zipSync({ 'Asset-Package/Arch_Amazon-EC2_48.svg': svg('ec2'), 'Asset-Package/readme.txt': new Uint8Array([1]), 'Asset-Package/more.zip': inner });

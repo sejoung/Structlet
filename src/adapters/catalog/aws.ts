@@ -1,9 +1,10 @@
-import { Activity, Archive, ArrowLeftRight, Boxes, Brain, BrickWall, Container, Database, Earth, FolderOpen, Globe, HardDrive, Inbox, Key, KeyRound, Lambda, Layers, Lock, Mail, MemoryStick, Radio, ScrollText, Search, Server, Signpost, Sparkles, Split, Table2, UserCheck, Warehouse, Waves, Waypoints, Webhook, Workflow } from 'lucide';
+import { Activity, Archive, ArrowLeftRight, Boxes, Brain, BrickWall, Container, Database, Earth, FolderOpen, Globe, HardDrive, Inbox, Key, KeyRound, Lambda, Layers, Lock, Mail, MemoryStick, Package, Radio, Router, ScrollText, Search, Server, ShieldCheck, Signpost, SlidersHorizontal, Sparkles, Split, Table2, UserCheck, Warehouse, Waves, Waypoints, Webhook, Workflow } from 'lucide';
 import { define, type Row } from './types.ts';
 
 const ROWS: Row[] = [
   ['aws.ec2', 'Amazon EC2', 'Amazon EC2', Server, 'compute', 'instance vm 인스턴스'],
   ['aws.ecs', 'Amazon ECS', 'Amazon ECS', Container, 'compute', 'container docker'],
+  ['aws.ecr', 'Amazon ECR', 'Amazon ECR', Package, 'storage', 'elastic container registry docker image 이미지 레지스트리'],
   ['aws.eks', 'Amazon EKS', 'Amazon EKS', Boxes, 'compute', 'kubernetes k8s'],
   ['aws.fargate', 'AWS Fargate', 'AWS Fargate', Layers, 'compute', 'container serverless'],
   ['aws.lambda', 'AWS Lambda', 'AWS Lambda', Lambda, 'compute', 'function serverless 함수'],
@@ -12,12 +13,14 @@ const ROWS: Row[] = [
   ['aws.efs', 'Amazon EFS', 'Amazon EFS', FolderOpen, 'storage', 'file nfs'],
   ['aws.rds', 'Amazon RDS', 'Amazon RDS', Database, 'data', 'database mysql postgres'],
   ['aws.aurora', 'Amazon Aurora', 'Amazon Aurora', Database, 'data', 'database'],
+  ['aws.documentdb', 'Amazon DocumentDB', 'Amazon DocumentDB', Database, 'data', 'docdb mongodb document 도큐먼트'],
   ['aws.dynamodb', 'Amazon DynamoDB', 'Amazon DynamoDB', Table2, 'data', 'nosql key value'],
   ['aws.elasticache', 'Amazon ElastiCache', 'Amazon ElastiCache', MemoryStick, 'data', 'redis cache'],
   ['aws.sqs', 'Amazon SQS', 'Amazon SQS', Inbox, 'integration', 'queue 큐'],
   ['aws.sns', 'Amazon SNS', 'Amazon SNS', Radio, 'integration', 'topic notification'],
   ['aws.eventbridge', 'Amazon EventBridge', 'Amazon EventBridge', Waypoints, 'integration', 'event bus'],
   ['aws.kinesis', 'Amazon Kinesis', 'Amazon Kinesis', Waves, 'analytics', 'stream'],
+  ['aws.msk', 'Amazon MSK', 'Amazon MSK', Waves, 'integration', 'managed streaming apache kafka broker 카프카'],
   ['aws.stepfunctions', 'AWS Step Functions', 'AWS Step Functions', Workflow, 'integration', 'workflow state machine'],
   ['aws.apigateway', 'Amazon API Gateway', 'Amazon API Gateway', Webhook, 'network', 'api rest'],
   ['aws.cloudfront', 'Amazon CloudFront', 'Amazon CloudFront', Globe, 'network', 'cdn'],
@@ -25,13 +28,16 @@ const ROWS: Row[] = [
   ['aws.elb', 'Elastic Load Balancing', 'Elastic Load Balancing', Split, 'network', 'alb nlb load balancer 로드밸런서'],
   ['aws.natgateway', 'NAT gateway', 'NAT 게이트웨이', ArrowLeftRight, 'network', 'nat'],
   ['aws.igw', 'Internet gateway', '인터넷 게이트웨이', Earth, 'network', 'igw internet'],
+  ['aws.vpc-endpoint', 'VPC endpoint', 'VPC 엔드포인트', Router, 'network', 'vpce privatelink gateway interface s3 엔드포인트 게이트웨이'],
   ['aws.iam', 'AWS IAM', 'AWS IAM', KeyRound, 'security', 'identity role policy'],
   ['aws.cognito', 'Amazon Cognito', 'Amazon Cognito', UserCheck, 'security', 'auth user pool'],
   ['aws.secretsmanager', 'AWS Secrets Manager', 'AWS Secrets Manager', Lock, 'security', 'secrets'],
   ['aws.kms', 'AWS KMS', 'AWS KMS', Key, 'security', 'key encryption'],
+  ['aws.acm', 'AWS Certificate Manager', 'AWS Certificate Manager', ShieldCheck, 'security', 'acm certificate tls ssl 인증서'],
   ['aws.waf', 'AWS WAF', 'AWS WAF', BrickWall, 'security', 'firewall'],
   ['aws.cloudwatch', 'Amazon CloudWatch', 'Amazon CloudWatch', Activity, 'operations', 'monitoring logs metrics'],
   ['aws.cloudtrail', 'AWS CloudTrail', 'AWS CloudTrail', ScrollText, 'operations', 'audit'],
+  ['aws.systems-manager', 'AWS Systems Manager', 'AWS Systems Manager', SlidersHorizontal, 'operations', 'ssm session parameter store 시스템 관리자 세션'],
   ['aws.ses', 'Amazon SES', 'Amazon SES', Mail, 'integration', 'email'],
   ['aws.opensearch', 'Amazon OpenSearch Service', 'Amazon OpenSearch Service', Search, 'analytics', 'search elasticsearch'],
   ['aws.redshift', 'Amazon Redshift', 'Amazon Redshift', Warehouse, 'analytics', 'warehouse'],

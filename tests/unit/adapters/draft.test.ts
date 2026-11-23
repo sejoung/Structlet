@@ -139,6 +139,32 @@ describe('draft import', () => {
     noOverlaps(doc);
   });
 
+  it('imports AWS services with IDs that match uploaded icon packs and nests VPC endpoints', async () => {
+    const services = {
+      aws_ecr_repository: 'aws.ecr',
+      aws_docdb_cluster: 'aws.documentdb',
+      aws_msk_serverless_cluster: 'aws.msk',
+      aws_ssm_document: 'aws.systems-manager',
+      aws_acm_certificate: 'aws.acm',
+      aws_vpc_endpoint: 'aws.vpc-endpoint',
+    };
+    const resources = [
+      { address: 'aws_vpc.main', name: 'main', type: 'aws_vpc', values: { id: 'vpc-main' } },
+      ...Object.keys(services).map((type) => ({
+        address: `${type}.main`, name: 'main', type,
+        values: type === 'aws_vpc_endpoint' ? { vpc_id: 'vpc-main', vpc_endpoint_type: 'Gateway' } : {},
+      })),
+    ];
+    const state = JSON.stringify({ format_version: '1.0', values: { root_module: { resources } } });
+    const result = await importInto(emptyDocument('d', 'x'), state);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const byId = Object.fromEntries(result.document.nodes.map((node) => [node.id, node]));
+    for (const [type, serviceId] of Object.entries(services)) expect(byId[`tf-${type}.main`]?.serviceId).toBe(serviceId);
+    expect(byId['tf-aws_vpc_endpoint.main']?.parentId).toBe('tf-aws_vpc.main');
+    noOverlaps(result.document);
+  });
+
   it('reads equipment values from Terraform plan data and refreshes the specs of an existing node', async () => {
     const plan = (resources: unknown[]) => JSON.stringify({ format_version: '1.0', planned_values: { root_module: { resources } } });
     const instance = (instanceType: string) => ({

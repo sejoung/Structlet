@@ -13,6 +13,9 @@ const AWS: Record<string, string> = {
   cognito_user_pool: 'aws.cognito', secretsmanager_secret: 'aws.secretsmanager', kms_key: 'aws.kms', wafv2_web_acl: 'aws.waf',
   cloudwatch_log_group: 'aws.cloudwatch', opensearch_domain: 'aws.opensearch', elasticsearch_domain: 'aws.opensearch',
   redshift_cluster: 'aws.redshift', sagemaker_endpoint: 'aws.sagemaker', ses_domain_identity: 'aws.ses',
+  ecr_repository: 'aws.ecr', ecrpublic_repository: 'aws.ecr', docdb_cluster: 'aws.documentdb', docdb_instance: 'aws.documentdb',
+  msk_cluster: 'aws.msk', msk_serverless_cluster: 'aws.msk', ssm_document: 'aws.systems-manager', ssm_parameter: 'aws.systems-manager',
+  ssm_association: 'aws.systems-manager', acm_certificate: 'aws.acm', vpc_endpoint: 'aws.vpc-endpoint',
 };
 
 const GOOGLE: Record<string, string> = {

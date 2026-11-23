@@ -226,7 +226,7 @@ The layer rules are enforced in three places, all part of `npm run check` and CI
 ## Tests
 
 <details>
-<summary><b>163 unit tests</b> (<code>tests/unit</code>)</summary>
+<summary><b>166 unit tests</b> (<code>tests/unit</code>)</summary>
 
 - **domain** — hierarchy, local coordinates, children moving with parents, reparenting and cycle rejection, patch undo (including adjacent-delete order), fragment copy / paste, document diff
 - **domain** — three-way merge (fields, grouped positions, delete conflicts, hierarchy repair, cycles)
@@ -242,7 +242,7 @@ The layer rules are enforced in three places, all part of `npm run check` and CI
   - Draft: laying out an empty document, partial updates (keeping IDs, positions, pins), rejecting 4 error kinds, the documented example
   - AI drafts: both prompt examples, invalid references, standalone skill compiler, and preserving the original during updates
   - compose, Kubernetes, Terraform (AWS · Azure · GCP) conversion
-  - Icon packs: per-provider matching, auto-detection, zip, limits, rendering
+  - Icon packs: per-provider matching, AWS service ID compatibility across pack reloads, auto-detection, zip, limits, rendering
   - SVG matches the canvas paths and labels; checks; legend; saving to the same file
   - Drive: REST contract, name numbering, lost responses, failure handling; token, tab sharing, settings
   - Usage statistics: nothing sent before consent, listed events only, caps, cookie deletion on refusal; CSP setup

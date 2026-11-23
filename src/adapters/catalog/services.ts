@@ -1,7 +1,8 @@
 import { Box, Boxes, Building2, Cloud, Flag, FolderTree, Lock, MapPin, Network } from 'lucide';
 import type { ContainerKind } from '../../domain';
 import type { Appearance, Glyph, ServiceAppearance } from '../../engine';
-import { dataUri, type IconPack } from '../icon-packs/pack.ts';
+import { createMatcher } from '../icon-packs/matching.ts';
+import { dataUri, type IconAsset, type IconPack } from '../icon-packs/pack.ts';
 import { AWS_SERVICES } from './aws.ts';
 import { AZURE_SERVICES } from './azure.ts';
 import { GCP_SERVICES } from './gcp.ts';
@@ -15,6 +16,12 @@ export { ROLE_COLORS, PROVIDERS, type Provider, type ServiceDefinition } from '.
 
 export const SERVICES: readonly ServiceDefinition[] = [...GENERAL_SERVICES, ...AWS_SERVICES, ...GCP_SERVICES, ...AZURE_SERVICES, ...K8S_SERVICES, ...NVIDIA_SERVICES];
 const BY_ID = new Map(SERVICES.map((s) => [s.id, s]));
+const matchAwsIcon = createMatcher('aws', AWS_SERVICES);
+const AWS_PACK_PREFIX = 'aws.pack.';
+
+function awsServiceForPackId(id: string): string | null {
+  return id.startsWith(AWS_PACK_PREFIX) ? matchAwsIcon.service(id.slice(AWS_PACK_PREFIX.length)) : null;
+}
 
 export function findService(id: string): ServiceDefinition | undefined {
   return BY_ID.get(id);
@@ -62,12 +69,21 @@ const CONTAINER_GLYPHS: Record<ContainerKind, Glyph | null> = {
 
 export function createAppearance(language: 'en' | 'ko', packs: readonly IconPack[] = []): Appearance {
   const enabled = packs.filter((p) => p.enabled);
+  const packImages = enabled.map((pack) => {
+    const aliases = new Map<string, IconAsset>();
+    for (const { id } of pack.extras) {
+      const service = awsServiceForPackId(id);
+      const icon = pack.icons[id];
+      if (service && icon && !aliases.has(service)) aliases.set(service, icon);
+    }
+    return { pack, aliases };
+  });
   const fallback: ServiceAppearance = { name: language === 'ko' ? '알 수 없는 서비스' : 'Unknown service', glyph: Box, color: '#8a94a3' };
   const extras = new Map(packServices(enabled).map((s) => [s.id, s]));
   const cache = new Map<string, ServiceAppearance | null>();
-  const imageFor = (id: string) => {
-    for (const p of enabled) {
-      const icon = p.icons[id];
+  const imageFor = (id: string, canonical: string) => {
+    for (const { pack, aliases } of packImages) {
+      const icon = pack.icons[id] ?? pack.icons[canonical] ?? aliases.get(canonical);
       if (icon) return dataUri(icon);
     }
     return undefined;
@@ -76,8 +92,9 @@ export function createAppearance(language: 'en' | 'ko', packs: readonly IconPack
     service(serviceId) {
       const hit = cache.get(serviceId);
       if (hit !== undefined) return hit ?? undefined;
-      const def = BY_ID.get(serviceId) ?? extras.get(serviceId);
-      const look = def ? { name: def.name[language], glyph: def.glyph, color: def.color, image: imageFor(serviceId) } : null;
+      const canonical = awsServiceForPackId(serviceId) ?? serviceId;
+      const def = BY_ID.get(canonical) ?? extras.get(serviceId);
+      const look = def ? { name: def.name[language], glyph: def.glyph, color: def.color, image: imageFor(serviceId, canonical) } : null;
       cache.set(serviceId, look);
       return look ?? undefined;
     },

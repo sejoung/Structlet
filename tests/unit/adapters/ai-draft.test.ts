@@ -39,7 +39,9 @@ it('rejects an empty AI draft and invalid references', () => {
 it('runs the standalone skill compiler in another directory and keeps the original file during updates', async () => {
   const files = unzipSync(await buildStructletSkill());
   expect(strFromU8(files['structlet/SKILL.md']!)).toContain('name: structlet');
-  expect(strFromU8(files['structlet/references/services.tsv']!)).toContain('aws.ec2\tAmazon EC2');
+  const catalog = strFromU8(files['structlet/references/services.tsv']!);
+  expect(catalog).toContain('aws.ec2\tAmazon EC2');
+  expect(catalog).toContain('aws.vpc-endpoint\tVPC endpoint');
   expect(files['structlet/references/prompt-ko.md']).toBeDefined();
   const dir = mkdtempSync(join(tmpdir(), 'structlet-compile-'));
   try {

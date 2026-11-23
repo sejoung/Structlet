@@ -222,7 +222,7 @@ docs/adr/       설계 기록. stormlet-reference/ 에 참고한 Stormlet ADR �
 ## 검증 현황
 
 <details>
-<summary><b>단위 163개</b> (<code>tests/unit</code>)</summary>
+<summary><b>단위 166개</b> (<code>tests/unit</code>)</summary>
 
 - **domain** — 계층·로컬 좌표·자식 동반 이동, 부모 변경·순환 거부, 패치 undo(인접 삭제 순서 포함), 조각 복사·붙여넣기, 문서 차이
 - **domain** — 3방향 병합(필드·위치 묶음·삭제 충돌·계층 복구·순환)
@@ -238,7 +238,7 @@ docs/adr/       설계 기록. stormlet-reference/ 에 참고한 Stormlet ADR �
   - 초안: 빈 문서 배치, 부분 수정(ID·위치·고정 유지), 오류 4종 거부, 문서화된 예시
   - AI 초안: 한·영 프롬프트 예제, 잘못된 참조 거부, 독립 실행형 스킬 변환기, 수정 시 원본 유지
   - compose, Kubernetes, Terraform(AWS·Azure·GCP) 변환
-  - 아이콘 팩: 제공자별 짝짓기, 자동 감지, zip, 한도, 렌더링
+  - 아이콘 팩: 제공자별 짝짓기, 팩을 다시 불러올 때 AWS 서비스 ID 호환, 자동 감지, zip, 한도, 렌더링
   - SVG가 캔버스와 같은 경로·라벨인지, 점검, 범례, 같은 파일에 저장
   - Drive: REST 계약·이름 번호·유실 응답·실패 대응, 토큰·탭 공유·설정
   - 사용 통계: 동의 전 무전송, 목록 이벤트만, 상한, 거부 시 쿠키 삭제; CSP 구성
