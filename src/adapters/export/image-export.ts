@@ -1,5 +1,5 @@
 import type { Document, Rect } from '../../domain';
-import { computeDiagramView, computeScene, renderIsometricSvg, renderStandaloneSvg, type Appearance, type DiagramTheme, type DiagramView } from '../../engine';
+import { computeDiagramView, computeScene, renderIsometricSvg, renderStandaloneSvg, type Appearance, type DiagramTheme, type DiagramView, type IsometricOptions } from '../../engine';
 
 export type ExportView = '2d' | 'isometric';
 
@@ -7,11 +7,12 @@ export interface ExportOptions {
   readonly view?: ExportView;
   readonly theme?: DiagramTheme;
   readonly diagram?: DiagramView;
+  readonly isometric?: IsometricOptions;
 }
 
 function render(doc: Document, appearance: Appearance, options: ExportOptions): { svg: string; box: Rect } {
   const scene = options.diagram ? computeDiagramView(doc, appearance, options.diagram) : computeScene(doc, appearance);
-  return options.view === 'isometric' ? renderIsometricSvg(scene, { theme: options.theme, title: doc.title }) : renderStandaloneSvg(scene, { title: doc.title, theme: options.theme });
+  return options.view === 'isometric' ? renderIsometricSvg(scene, { ...options.isometric, theme: options.theme, title: doc.title }) : renderStandaloneSvg(scene, { title: doc.title, theme: options.theme });
 }
 
 export function exportSvg(doc: Document, appearance: Appearance, options: ExportOptions = {}): string {

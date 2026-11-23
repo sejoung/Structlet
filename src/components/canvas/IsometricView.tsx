@@ -1,22 +1,53 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { isometricBounds, renderIsometricBody, zoomAt, type DiagramTheme, type Scene, type Viewport } from '../../engine';
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
+import type { Editor } from '../../application';
+import type { Document, Id, Point } from '../../domain';
+import { computeIsometricLayout, fitView, renderIsometricBody, zoomAt, type DiagramTheme, type IsometricOptions, type IsometricRotation, type Scene, type Viewport } from '../../engine';
+import type { Translate } from '../../i18n/messages';
+import { IconButton, Segmented } from '../ui/controls';
+import { ContextMenu, type ContextActions, type ContextRequest } from './ContextMenu';
+import { ZoomBar } from './ZoomBar';
 
-export function IsometricView({ scene, theme, notice }: { scene: Scene; theme: DiagramTheme; notice: string }) {
+interface Props {
+  t: Translate;
+  scene: Scene;
+  theme: DiagramTheme;
+  options: Required<IsometricOptions>;
+  onOptions(options: Required<IsometricOptions>): void;
+  doc: Document;
+  editor: Editor;
+  context: ContextActions;
+  toggle(id: Id): void;
+  presenting: boolean;
+}
+
+export function IsometricView({ t, scene, theme, options, onOptions, doc, editor, context, toggle, presenting }: Props) {
   const ref = useRef<SVGSVGElement>(null);
-  const markup = useMemo(() => renderIsometricBody(scene, theme), [scene, theme]);
+  const layout = useMemo(() => computeIsometricLayout(scene, options), [scene, options]);
+  const markup = useMemo(() => renderIsometricBody(scene, theme, layout), [scene, theme, layout]);
   const [view, setView] = useState<Viewport | null>(null);
+  const [size, setSize] = useState({ width: 0, height: 0 });
   const latest = useRef(view);
   latest.current = view;
   const drag = useRef<{ x: number; y: number; from: Viewport } | null>(null);
+  const [menu, setMenu] = useState<ContextRequest | null>(null);
+  const activeObject = useRef<Id | null>(null);
+  const fit = useCallback(() => {
+    const r = ref.current?.getBoundingClientRect();
+    if (!r || !r.width || !r.height) return;
+    const next = { width: r.width, height: r.height };
+    setSize(next);
+    setView(fitView(layout.bounds, next));
+  }, [layout.bounds]);
+  const rotate = (step: -1 | 1) => onOptions({ ...options, rotation: ((options.rotation + step + 4) % 4) as IsometricRotation });
 
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const r = el.getBoundingClientRect();
-    const b = isometricBounds(scene);
-    const zoom = Math.min(1.4, Math.max(0.2, Math.min((r.width - 96) / b.width, (r.height - 96) / b.height)));
-    setView({ zoom, panX: (r.width - b.width * zoom) / 2 - b.x * zoom, panY: (r.height - b.height * zoom) / 2 - b.y * zoom });
-  }, [scene.bounds]);
+    fit();
+    const observer = new ResizeObserver(fit);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [fit]);
 
   useEffect(() => {
     const el = ref.current;
@@ -33,14 +64,48 @@ export function IsometricView({ scene, theme, notice }: { scene: Scene; theme: D
     return () => el.removeEventListener('wheel', onWheel);
   }, []);
 
+  const dismiss = useCallback((restoreFocus: boolean) => {
+    setMenu(null);
+    if (restoreFocus) ref.current?.focus({ preventScroll: true });
+  }, []);
+  const showMenu = (screen: Point, id: Id | null) => {
+    activeObject.current = id;
+    setMenu({ screen, ids: id ? [id] : [], world: { x: 0, y: 0 }, docId: doc.id });
+  };
+  const onContextMenu = (event: MouseEvent<SVGSVGElement>) => {
+    event.preventDefault();
+    if (presenting) return;
+    const object = (event.target as Element).closest('[data-iso-object]')?.getAttribute('data-iso-object') ?? null;
+    showMenu({ x: event.clientX, y: event.clientY }, object);
+  };
+
   return (
     <>
       <svg
         ref={ref}
         className="canvas-svg isometric"
         data-testid="isometric"
+        data-rotation={options.rotation}
+        role="application"
+        aria-label={t('iso.canvas')}
+        tabIndex={0}
+        onContextMenu={onContextMenu}
+        onKeyDown={(e) => {
+          if (!presenting && (e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10'))) {
+            e.preventDefault();
+            const box = e.currentTarget.getBoundingClientRect();
+            const id = activeObject.current ?? editor.session.selected[0];
+            showMenu({ x: box.left + box.width / 2, y: box.top + box.height / 2 }, id && scene.rects.has(id) ? id : null);
+          }
+          if ((e.ctrlKey || e.metaKey) && ['0', '+', '=', '-', '_'].includes(e.key)) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (e.key === '0') fit();
+            else setView((v) => v ? zoomAt(v, { x: size.width / 2, y: size.height / 2 }, e.key === '-' || e.key === '_' ? 1 / 1.2 : 1.2) : v);
+          }
+        }}
         onPointerDown={(e) => {
-          if (!view) return;
+          if (!view || e.button === 2) return;
           e.currentTarget.setPointerCapture(e.pointerId);
           drag.current = { x: e.clientX, y: e.clientY, from: view };
         }}
@@ -49,10 +114,29 @@ export function IsometricView({ scene, theme, notice }: { scene: Scene; theme: D
           if (d) setView({ ...d.from, panX: d.from.panX + e.clientX - d.x, panY: d.from.panY + e.clientY - d.y });
         }}
         onPointerUp={() => (drag.current = null)}
+        onPointerCancel={() => (drag.current = null)}
       >
         {view && <g transform={`translate(${view.panX} ${view.panY}) scale(${view.zoom})`} dangerouslySetInnerHTML={{ __html: markup }} />}
       </svg>
-      <div className="readonly-note" role="status">{notice}</div>
+      {menu?.docId === doc.id && !presenting && (
+        <ContextMenu {...context} t={t} doc={doc} scene={scene} editor={editor} request={menu} fit={fit}
+          toggle={toggle} dismiss={dismiss} readOnly rotate={rotate} />
+      )}
+      <div className="readonly-note" role="status">{t('canvas.readonly')}</div>
+      {view && (
+        <div className="canvas-corner">
+          <div className="iso-controls">
+            <Segmented label={t('iso.labels')} value={options.labels} onChange={(labels) => onOptions({ ...options, labels })}
+              options={(['compact', 'full'] as const).map((value) => ({ value, label: t(`iso.${value}`) }))} />
+            <div className="zoombar">
+              <IconButton icon="rotateLeft" label={t('iso.rotateLeft')} onClick={() => rotate(-1)} />
+              <span className="iso-angle" aria-label={t('iso.angle', { degrees: options.rotation * 90 })}>{options.rotation * 90}°</span>
+              <IconButton icon="rotateRight" label={t('iso.rotateRight')} onClick={() => rotate(1)} />
+            </div>
+          </div>
+          <ZoomBar t={t} viewport={view} size={size} setViewport={setView} onFit={fit} />
+        </div>
+      )}
     </>
   );
 }

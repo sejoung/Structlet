@@ -6,7 +6,7 @@ import { downloadBlob, downloadText } from '../adapters/files/browser-files';
 import type { LocalFileAccess } from '../adapters/files/file-access';
 import { FILE_EXTENSION, fileNameFor, MIME_TYPE, parseStructlet, serializeStructlet } from '../adapters/format/structlet-format';
 import { emptyDocument, type Document } from '../domain';
-import type { Appearance, DiagramView } from '../engine';
+import type { Appearance, DiagramTheme, DiagramView, IsometricOptions } from '../engine';
 import type { Translate } from '../i18n/messages';
 
 export interface DocumentActions {
@@ -30,14 +30,20 @@ interface Deps {
   notify(message: string): void;
   onOpened(doc: Document): void;
   view(): ExportView;
+  isometric(): IsometricOptions & { theme: DiagramTheme };
   diagram(doc: Document): DiagramView;
   drive?: () => { beforeReplace(): Promise<boolean>; markFresh(): void; linked: boolean; saveNow(): void } | null;
 }
 
 const SOURCE_NAMES: Record<ImportSource, string> = { draft: 'draft JSON', compose: 'docker-compose', terraform: 'Terraform', kubernetes: 'Kubernetes' };
 
-export function createDocumentActions({ editor, files, newId, appearance, t, notify, onOpened, view, diagram, drive }: Deps): DocumentActions {
+export function createDocumentActions({ editor, files, newId, appearance, t, notify, onOpened, view, isometric, diagram, drive }: Deps): DocumentActions {
   const session = editor.session;
+  const exportOptions = (doc: Document) => {
+    const mode = view();
+    const options = mode === 'isometric' ? isometric() : undefined;
+    return { view: mode, diagram: diagram(doc), isometric: options, theme: options?.theme };
+  };
   const replace = async (doc: Document, keepFile = false): Promise<boolean> => {
     const d = drive?.();
     if (d && !(await d.beforeReplace())) return false;
@@ -125,14 +131,14 @@ export function createDocumentActions({ editor, files, newId, appearance, t, not
     exportSvg() {
       const doc = session.committedDocument;
       const suffix = view() === 'isometric' ? '-isometric' : '';
-      downloadText(exportSvg(doc, appearance(), { view: view(), diagram: diagram(doc) }), fileNameFor(doc.title + suffix, '.svg'), 'image/svg+xml');
+      downloadText(exportSvg(doc, appearance(), exportOptions(doc)), fileNameFor(doc.title + suffix, '.svg'), 'image/svg+xml');
       log.info('files.exported', { format: 'svg', view: view() });
     },
     async exportPng() {
       const doc = session.committedDocument;
       try {
         const suffix = view() === 'isometric' ? '-isometric' : '';
-        downloadBlob(await exportPng(doc, appearance(), { view: view(), diagram: diagram(doc) }), fileNameFor(doc.title + suffix, '.png'));
+        downloadBlob(await exportPng(doc, appearance(), exportOptions(doc)), fileNameFor(doc.title + suffix, '.png'));
         log.info('files.exported', { format: 'png', view: view() });
       } catch {
         log.error('files.png-failed');

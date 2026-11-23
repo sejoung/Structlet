@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent } from 'react';
 import type { Editor, SessionSnapshot } from '../../application';
 import { indexDocument, type Id, type Point } from '../../domain';
-import { polylineMidpoint, renderSceneBody, screenToWorld, worldToScreen, zoomAt, type DiagramTheme, type Scene, type Viewport } from '../../engine';
+import { polylineMidpoint, renderSceneBody, screenToWorld, worldToScreen, zoomAt, type DiagramTheme, type IsometricOptions, type Scene, type Viewport } from '../../engine';
 import type { Translate } from '../../i18n/messages';
 import { SERVICE_DRAG_TYPE } from '../sidebar/types';
 import type { ViewMode } from '../Toolbar';
@@ -30,6 +30,8 @@ interface CanvasProps {
   setEditing(id: Id | null): void;
   theme: DiagramTheme;
   view: ViewMode;
+  isoView: Required<IsometricOptions>;
+  onIsoView(view: Required<IsometricOptions>): void;
   onFit(): void;
   tool: CanvasTool;
   onTool(tool: CanvasTool): void;
@@ -203,7 +205,8 @@ export function Canvas(props: CanvasProps) {
   if (props.view === 'isometric') {
     return (
       <div ref={wrapRef} className="canvas">
-        <IsometricView scene={scene} theme={props.theme} notice={t('canvas.readonly')} />
+        <IsometricView t={t} scene={scene} theme={props.theme} options={props.isoView} onOptions={props.onIsoView}
+          doc={snapshot.document} editor={editor} context={props.context} toggle={props.onToggleArea} presenting={props.presenting} />
       </div>
     );
   }

@@ -2,7 +2,7 @@ import {
   AlignCenterHorizontal, AlignCenterVertical, AlignEndHorizontal, AlignEndVertical, AlignHorizontalSpaceAround, AlignStartHorizontal,
   AlignStartVertical, AlignVerticalSpaceAround, ArrowLeftRight, Check, ChevronDown, ChevronRight, CircleHelp, Copy, Download, FileInput,
   FilePlus, FolderOpen, Keyboard, Languages, Layers, LayoutGrid, Link, Lock, LockOpen, Maximize, Minus, Monitor, Moon, Package, Plus,
-  Redo2, RotateCcw, Save, Search, Settings, Shapes, SquareDashed, StickyNote, Sun, Trash2, TriangleAlert, Info, Undo2, X, Group, Workflow,
+  Redo2, RotateCcw, RotateCw, Save, Search, Settings, Shapes, SquareDashed, StickyNote, Sun, Trash2, TriangleAlert, Info, Undo2, X, Group, Workflow,
   PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Hand, MousePointer2, Spline, Presentation, PanelLeft, PanelRight,
   Cloud, CloudAlert, CloudCheck, CloudOff, CloudUpload, HardDrive,
 } from 'lucide';
@@ -15,7 +15,7 @@ export const ICONS = {
   chevronDown: ChevronDown, chevronRight: ChevronRight, help: CircleHelp, copy: Copy, download: Download, import: FileInput,
   newFile: FilePlus, open: FolderOpen, keyboard: Keyboard, language: Languages, layers: Layers, grid: LayoutGrid, link: Link,
   lock: Lock, unlock: LockOpen, fit: Maximize, minus: Minus, system: Monitor, moon: Moon, pack: Package, plus: Plus, redo: Redo2,
-  reset: RotateCcw, save: Save, search: Search, settings: Settings, services: Shapes, areas: SquareDashed, notes: StickyNote,
+  reset: RotateCcw, rotateLeft: RotateCcw, rotateRight: RotateCw, save: Save, search: Search, settings: Settings, services: Shapes, areas: SquareDashed, notes: StickyNote,
   sun: Sun, trash: Trash2, warning: TriangleAlert, info: Info, undo: Undo2, close: X, group: Group, flow: Workflow,
   leftClose: PanelLeftClose, leftOpen: PanelLeftOpen, rightClose: PanelRightClose, rightOpen: PanelRightOpen,
   hand: Hand, pointer: MousePointer2, connector: Spline, present: Presentation, panelLeft: PanelLeft, panelRight: PanelRight,

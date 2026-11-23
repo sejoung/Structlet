@@ -15,3 +15,4 @@ export * from './layout/place';
 export * from './layout/document';
 export * from './diagram-view';
 export * from './render-isometric';
+export * from './isometric-layout';

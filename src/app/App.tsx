@@ -7,7 +7,7 @@ import { summarize, type IconPack } from '../adapters/icon-packs/pack';
 import type { IconPackStore } from '../adapters/storage/icon-pack-store';
 import type { LocalFileAccess } from '../adapters/files/file-access';
 import { CONTAINER_PRESETS, getBox, indexDocument, NODE_SIZE, type AnnotationKind, type ContainerKind, type Document, type Id, type Point } from '../domain';
-import { AREA_STROKE, computeDiagramView, layoutDocument, containerAt, fitView, onSurface, screenToWorld, zoomAt, DEFAULT_VIEWPORT, type Viewport } from '../engine';
+import { AREA_STROKE, computeDiagramView, layoutDocument, containerAt, fitView, onSurface, screenToWorld, zoomAt, DEFAULT_VIEWPORT, type IsometricOptions, type Viewport } from '../engine';
 import { createTranslator, type Language } from '../i18n/messages';
 import { Canvas } from '../components/canvas/Canvas';
 import { IconPacksDialog } from '../components/IconPacksDialog';
@@ -59,6 +59,7 @@ export function App({ editor, store, files, packStore, drive: driveServices, dri
   const [editing, setEditing] = useState<Id | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [view, setView] = useState<ViewMode>('2d');
+  const [isoView, setIsoView] = useState<Required<IsometricOptions>>({ labels: 'full', rotation: 0 });
   const [tab, setTab] = useState<SidebarTab>('services');
   const [recent, setRecent] = useState<string[]>(storedRecent);
   const [panels, setPanelsState] = useState<Panels>(storedPanels);
@@ -114,8 +115,8 @@ export function App({ editor, store, files, packStore, drive: driveServices, dri
   sizeRef.current = size;
   const sceneRef = useRef(scene);
   sceneRef.current = scene;
-  const viewRef = useRef(view);
-  viewRef.current = view;
+  const viewRef = useRef({ view, isoView, canvasTheme });
+  viewRef.current = { view, isoView, canvasTheme };
   const presentingRef = useRef(false);
   const toolRef = useRef<CanvasTool>('select');
 
@@ -135,7 +136,8 @@ export function App({ editor, store, files, packStore, drive: driveServices, dri
   const actions = useMemo(
     () =>
       createDocumentActions({
-        editor, files, newId, appearance: () => appearanceRef.current, t, notify: setNotice, onOpened: fitTo, view: () => viewRef.current, diagram: optionsFor,
+        editor, files, newId, appearance: () => appearanceRef.current, t, notify: setNotice, onOpened: fitTo, view: () => viewRef.current.view, diagram: optionsFor,
+        isometric: () => ({ ...viewRef.current.isoView, theme: viewRef.current.canvasTheme }),
         drive: () => {
           const d = driveRef.current;
           return d ? { beforeReplace: d.beforeReplace, markFresh: d.markFresh, linked: d.linked, saveNow: d.actions.saveNow } : null;
@@ -217,13 +219,13 @@ export function App({ editor, store, files, packStore, drive: driveServices, dri
     togglePanels: () => togglePanels(),
     toggleInspector: () => setPanels({ ...panelsRef.current, right: !panelsRef.current.right }),
     presenting: () => presentingRef.current,
-    summary: () => diagram.active,
+    summary: () => diagram.active || viewRef.current.view === 'isometric',
     setPresenting,
     tool: () => toolRef.current,
   });
 
   const pasteAt = useClipboard({
-    summary: () => diagram.active,
+    summary: () => diagram.active || viewRef.current.view === 'isometric',
     editor,
     pasteParent: () => {
       const sel = editor.session.selected;
@@ -346,7 +348,7 @@ export function App({ editor, store, files, packStore, drive: driveServices, dri
             editing={editing}
             setEditing={setEditing}
             theme={canvasTheme}
-            view={view}
+            view={view} isoView={isoView} onIsoView={setIsoView}
             onFit={fit}
             tool={view === 'isometric' ? 'hand' : tool}
             onTool={setTool}

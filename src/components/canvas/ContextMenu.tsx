@@ -37,14 +37,16 @@ interface Props extends ContextActions {
   editor: Editor;
   request: ContextRequest;
   fit(): void;
-  edit(id: Id): void;
+  edit?(id: Id): void;
   toggle(id: Id): void;
   dismiss(restoreFocus: boolean): void;
+  readOnly?: boolean;
+  rotate?(step: -1 | 1): void;
 }
 
 const ALIGNMENTS: readonly AlignMode[] = ['left', 'center', 'right', 'top', 'middle', 'bottom'];
 
-function groups({ t, doc, scene, editor, diagram, actions, paste, request, fit, edit, toggle }: Props): Group[] {
+function groups({ t, doc, scene, editor, diagram, actions, paste, request, fit, edit, toggle, readOnly, rotate }: Props): Group[] {
   const index = indexDocument(doc);
   const ids = request.ids;
   const id = ids.length === 1 ? ids[0]! : null;
@@ -60,21 +62,22 @@ function groups({ t, doc, scene, editor, diagram, actions, paste, request, fit, 
     const label = t(folded ? 'summary.expandArea' : 'summary.foldArea', { name: area.label || t(`area.${area.kind}`) });
     add({ label, run: () => toggle(area.id) });
   }
-  if (ids.length === 0 || diagram.active) {
+  if (ids.length === 0 || diagram.active || readOnly) {
     add(
-      ...(!diagram.active ? [{ label: t('context.paste'), run: () => paste(request.world) }] : []),
+      ...(!diagram.active && !readOnly ? [{ label: t('context.paste'), run: () => paste(request.world) }] : []),
       { label: t('zoom.fit'), run: fit },
       { label: t('summary.foldTop'), run: diagram.foldTop, disabled: !diagram.canFoldTop },
       { label: t('summary.foldMiddle'), run: diagram.foldMiddle, disabled: !diagram.canFoldMiddle },
       ...(diagram.active ? [{ label: t('summary.expandAll'), run: diagram.expandAll }] : []),
     );
     if (diagram.active) result.push(layout(t('summary.layout'), diagram.arrange));
-    if (diagram.hasObjects && !ids.length) result.push(layout(t('summary.layoutAll'), diagram.layoutAll));
+    if (rotate) add({ label: t('iso.rotateLeft'), run: () => rotate(-1) }, { label: t('iso.rotateRight'), run: () => rotate(1) });
+    if (diagram.hasObjects && !ids.length && !readOnly) result.push(layout(t('summary.layoutAll'), diagram.layoutAll));
     return result;
   }
 
   const boxes = topmost(doc, ids.filter((selected) => getBox(doc, selected)));
-  if (id) add({ label: t(edge ? 'context.edgeLabel' : 'sc.rename'), run: () => edit(id) });
+  if (id && edit) add({ label: t(edge ? 'context.edgeLabel' : 'sc.rename'), run: () => edit(id) });
   if (edge) add(
     { label: t('props.swap'), run: () => editor.reverseEdge(edge.id) },
     { label: t('props.resetRoute'), disabled: edge.routingMode !== 'manual', run: () => editor.resetRoute(edge.id) },

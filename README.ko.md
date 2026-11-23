@@ -218,7 +218,7 @@ docs/adr/       설계 기록. stormlet-reference/ 에 참고한 Stormlet ADR �
 ## 검증 현황
 
 <details>
-<summary><b>단위 142개</b> (<code>tests/unit</code>)</summary>
+<summary><b>단위 145개</b> (<code>tests/unit</code>)</summary>
 
 - **domain** — 계층·로컬 좌표·자식 동반 이동, 부모 변경·순환 거부, 패치 undo(인접 삭제 순서 포함), 조각 복사·붙여넣기, 문서 차이
 - **domain** — 3방향 병합(필드·위치 묶음·삭제 충돌·계층 복구·순환)
@@ -241,7 +241,7 @@ docs/adr/       설계 기록. stormlet-reference/ 에 참고한 Stormlet ADR �
 </details>
 
 <details>
-<summary><b>E2E 47개</b> (<code>tests/e2e</code>, 프로덕션 빌드)</summary>
+<summary><b>E2E 48개</b> (<code>tests/e2e</code>, 프로덕션 빌드)</summary>
 
 - **기본 흐름** — 노드 두 개 → 연결 → 저장 → 열기 → 새로 고침 → SVG(화면과 같은 경로), PNG, 잘못된 파일 거부
 - **영역** — VPC 끌기 후 한 번의 undo, 다른 영역으로 끌어 넣기, 감싸기

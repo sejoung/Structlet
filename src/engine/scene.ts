@@ -46,6 +46,7 @@ export interface SceneNode {
   readonly summary?: boolean;
   readonly rect: Rect;
   readonly label: readonly string[];
+  readonly fullLabel?: string;
   readonly labelBox: Rect | null;
   readonly glyph: Glyph;
   readonly image: string | null;
@@ -59,6 +60,7 @@ export interface SceneEdge {
   readonly id: Id;
   readonly points: readonly Point[];
   readonly label: readonly string[];
+  readonly fullLabel?: string;
   readonly labelBox: Rect | null;
   readonly labelAnchor: Point | null;
   readonly labelTints: readonly string[];
@@ -71,6 +73,7 @@ export interface SceneEdge {
 export interface SceneAnnotation {
   readonly id: Id;
   readonly kind: AnnotationKind;
+  readonly fullText?: string;
   readonly rect: Rect;
   readonly lines: readonly string[];
 }
@@ -172,7 +175,7 @@ export function computeScene(doc: Document, appearance: Appearance, summaries?: 
       image: appearance.containerImage?.(group.kind) ?? undefined,
     } : appearance.service(n.serviceId);
     const look = service ?? appearance.fallback;
-    const base = { id: n.id, summary: !!group, variant: n.variant, rect, glyph: look.glyph, image: look.image ?? null, color: look.color, serviceName: look.name, knownService: !!service, locked: n.locked };
+    const base = { id: n.id, fullLabel: n.label, summary: !!group, variant: n.variant, rect, glyph: look.glyph, image: look.image ?? null, color: look.color, serviceName: look.name, knownService: !!service, locked: n.locked };
     blockers.push({ id: n.id, rect });
     if (n.variant === 'box') {
       const textWidth = rect.width - BOX_NODE.pad - BOX_NODE.icon - BOX_NODE.gap - BOX_NODE.pad;
@@ -198,7 +201,7 @@ export function computeScene(doc: Document, appearance: Appearance, summaries?: 
     return { ...base, label, labelBox };
   });
 
-  const annotations: SceneAnnotation[] = doc.annotations.map((a) => ({ id: a.id, kind: a.kind, ...annotationRect(a) }));
+  const annotations: SceneAnnotation[] = doc.annotations.map((a) => ({ id: a.id, kind: a.kind, fullText: a.text, ...annotationRect(a) }));
   obstacles.push(...annotations.filter((note) => note.kind !== 'step').map((note) => note.rect));
   const ends = resolveEndpoints(doc.edges, frames, blockers);
   const edges: SceneEdge[] = [];
@@ -236,7 +239,7 @@ export function computeScene(doc: Document, appearance: Appearance, summaries?: 
       taken.push(labelBox);
     }
     const labelTints = labelBox ? tintsAt(containers, { x: labelBox.x + labelBox.width / 2, y: labelBox.y + labelBox.height / 2 }) : [];
-    edges.push({ id: e.id, points, label, labelBox, labelAnchor, labelTints, style: e.style, manual, sourceSide: pair.source.side, targetSide: pair.target.side });
+    edges.push({ id: e.id, points, label, fullLabel: e.label, labelBox, labelAnchor, labelTints, style: e.style, manual, sourceSide: pair.source.side, targetSide: pair.target.side });
   }
 
   const all: Rect[] = [

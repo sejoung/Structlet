@@ -222,7 +222,7 @@ The layer rules are enforced in three places, all part of `npm run check` and CI
 ## Tests
 
 <details>
-<summary><b>142 unit tests</b> (<code>tests/unit</code>)</summary>
+<summary><b>145 unit tests</b> (<code>tests/unit</code>)</summary>
 
 - **domain** — hierarchy, local coordinates, children moving with parents, reparenting and cycle rejection, patch undo (including adjacent-delete order), fragment copy / paste, document diff
 - **domain** — three-way merge (fields, grouped positions, delete conflicts, hierarchy repair, cycles)
@@ -245,7 +245,7 @@ The layer rules are enforced in three places, all part of `npm run check` and CI
 </details>
 
 <details>
-<summary><b>47 E2E tests</b> (<code>tests/e2e</code>, production builds)</summary>
+<summary><b>48 E2E tests</b> (<code>tests/e2e</code>, production builds)</summary>
 
 - **Basic flow** — two nodes → connect → save → open → reload → SVG (same paths as the screen), PNG, rejecting an invalid file
 - **Areas** — dragging a VPC then a single undo, dragging into another area, wrapping

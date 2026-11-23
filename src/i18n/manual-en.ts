@@ -22,6 +22,7 @@ export const manual = {
   'manual.fullStep': 'Automatically lay out the detailed diagram',
   'manual.fullBody': 'Under Diagram → Auto-layout entire diagram, choose a direction or Grid. This expands all groups and updates the editable layout. Locked objects stay in place. Manual connections are rerouted if their endpoints move differently or an attached area is resized. Use Undo to restore the previous layout.',
   'manual.fullPreview': 'Detailed commerce and ML architecture after applying grid layout to the entire diagram',
+  'manual.isometricGuide': 'In isometric view, rotate in 90-degree steps and switch between Compact and All labels. Right-click an area heading or summary tile to collapse or expand it. SVG and PNG exports use the current angle and label mode.',
   'manual.contextGuide': 'Right-click the canvas or press Shift+F10 with the canvas focused. The menu adapts to what you select, with options such as editing a connection, arranging a selection, or collapsing groups.',
   'manual.editingGuide': 'Editing, importing, and saving',
   'manual.areaGuide': 'Use Areas to draw a boundary around related services. Select multiple objects and choose an area to wrap them, or move a service to a different group in Layers.',
