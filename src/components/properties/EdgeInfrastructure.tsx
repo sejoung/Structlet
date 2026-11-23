@@ -22,7 +22,9 @@ function CachePolicy({ policy, t }: { policy: CachePolicyDetails; t: Translate }
 export function CloudFront({ details, t }: { details: CloudFrontDetails; t: Translate }) {
   return <section>
     <h3>{t('infra.cloudFront')}</h3>
-    <Fields t={t} fields={[['infra.webAclReference', details.webAclId]]} />
+    <Fields t={t} fields={[
+      ['infra.webAclReference', details.webAclId], ['infra.viewerMinimumTls', details.viewerCertificate?.minimumProtocolVersion],
+    ]} />
     <List title={t('infra.cacheBehaviors')}>{details.cacheBehaviors?.map((behavior) => (
       <>
         <strong>{behavior.pathPattern ?? t('infra.defaultBehavior')}</strong>
@@ -31,6 +33,7 @@ export function CloudFront({ details, t }: { details: CloudFrontDetails; t: Tran
           ['infra.behaviorCompression', behavior.compress], ['infra.originRequestPolicy', behavior.originRequestPolicyId],
         ]} />
         <Entry name={t('infra.allowedMethods')} values={behavior.allowedMethods} />
+        <Entry name={t('infra.cachedMethods')} values={behavior.cachedMethods} />
         {behavior.cachePolicy && <CachePolicy policy={behavior.cachePolicy} t={t} />}
       </>
     ))}</List>

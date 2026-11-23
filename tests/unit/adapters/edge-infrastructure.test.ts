@@ -17,9 +17,11 @@ it('imports CloudFront behavior settings, WAF visibility and scoped IP sets from
   const webAcl = 'arn:aws:wafv2:us-east-1:000000000000:global/webacl/example/acl';
   const cloudFront = details('aws.cloudfront')?.cloudFront;
   expect(cloudFront?.webAclId).toBe(webAcl);
+  expect(cloudFront?.viewerCertificate).toEqual({ minimumProtocolVersion: 'TLSv1.2_2021' });
   expect(cloudFront?.cacheBehaviors).toEqual([
     {
-      originId: 'website', viewerProtocolPolicy: 'redirect-to-https', allowedMethods: ['GET', 'HEAD', 'OPTIONS'], compress: true,
+      originId: 'website', viewerProtocolPolicy: 'redirect-to-https',
+      allowedMethods: ['GET', 'HEAD', 'OPTIONS'], cachedMethods: ['GET', 'HEAD'], compress: true,
       cachePolicy: {
         id: 'policy-custom', name: 'website-policy', minTtl: 0, defaultTtl: 600, maxTtl: 1800,
         headers: { behavior: 'whitelist', items: ['Accept-Language'] }, cookies: { behavior: 'none' },
@@ -28,7 +30,9 @@ it('imports CloudFront behavior settings, WAF visibility and scoped IP sets from
     },
     {
       pathPattern: '/static/*', originId: 'assets', cachePolicy: { id: 'policy-unavailable' }, originRequestPolicyId: 'requests-assets',
-      viewerProtocolPolicy: 'https-only', allowedMethods: ['GET', 'HEAD'], compress: false,
+      viewerProtocolPolicy: 'https-only',
+      allowedMethods: ['DELETE', 'GET', 'HEAD', 'OPTIONS', 'PATCH', 'POST', 'PUT'],
+      cachedMethods: ['GET', 'HEAD', 'OPTIONS'], compress: false,
     },
     { pathPattern: '/legacy/*', originId: 'compatibility', cachePolicy: { minTtl: 0, defaultTtl: 30, maxTtl: 300 } },
     { pathPattern: '/images/*', originId: 'assets', cachePolicy: { id: 'policy-data', name: 'images-policy', minTtl: 10 } },
@@ -90,6 +94,8 @@ it.each([
   [{ nodeClass: { subnetSelectorTerms: [{ id: 32 }] } }, 'nodeClass.subnetSelectorTerms[0].id'],
   [{ cloudFront: { cacheBehaviors: [{ cachePolicy: { defaultTtl: -1 } }] } }, 'cloudFront.cacheBehaviors[0].cachePolicy.defaultTtl'],
   [{ cloudFront: { cacheBehaviors: [{ viewerProtocolPolicy: 'http-only' }] } }, 'cloudFront.cacheBehaviors[0].viewerProtocolPolicy'],
+  [{ cloudFront: { cacheBehaviors: [{ cachedMethods: 'GET' }] } }, 'cloudFront.cacheBehaviors[0].cachedMethods'],
+  [{ cloudFront: { viewerCertificate: { minimumProtocolVersion: 1.2 } } }, 'cloudFront.viewerCertificate.minimumProtocolVersion'],
   [{ waf: { visibility: { sampledRequestsEnabled: 'false' } } }, 'waf.visibility.sampledRequestsEnabled'],
   [{ waf: { rules: [{ name: 'test', priority: 0, action: 'bad' }] } }, 'waf.rules[0].action'],
 ])('rejects malformed edge infrastructure', (infrastructure, path) => {
