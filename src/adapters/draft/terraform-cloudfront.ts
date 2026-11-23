@@ -54,11 +54,15 @@ export function cloudFrontIndex(resources: readonly TerraformResource[]) {
       ...blocks(v.default_cache_behavior).flatMap((entry) => behavior(entry, false) ?? []),
       ...blocks(v.ordered_cache_behavior).flatMap((entry) => behavior(entry, true) ?? []),
     ];
-    const minimumProtocolVersion = text(block(v.viewer_certificate).minimum_protocol_version);
+    const certificate = block(v.viewer_certificate);
     return present({
       webAclId: text(v.web_acl_id),
+      defaultRootObject: text(v.default_root_object),
       cacheBehaviors: cacheBehaviors.length ? cacheBehaviors : undefined,
-      viewerCertificate: minimumProtocolVersion ? { minimumProtocolVersion } : undefined,
+      viewerCertificate: present({
+        minimumProtocolVersion: text(certificate.minimum_protocol_version),
+        sslSupportMethod: text(certificate.ssl_support_method),
+      }),
     });
   };
 }

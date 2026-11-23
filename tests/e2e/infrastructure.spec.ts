@@ -135,6 +135,10 @@ test('CloudFront cache behaviors and WAF rules are readable after saving and reo
   await expect(defaultBehavior.getByText('Cached HTTP methods')).toBeVisible();
   await expect(defaultBehavior.getByText('GET, HEAD', { exact: true })).toBeVisible();
   await expect(inspector.getByText('TLSv1.2_2021')).toBeVisible();
+  await expect(inspector.getByText('Viewer certificate SSL support method')).toBeVisible();
+  await expect(inspector.getByText('sni-only', { exact: true })).toBeVisible();
+  await expect(inspector.getByText('Default root object')).toBeVisible();
+  await expect(inspector.getByText('index.html', { exact: true })).toBeVisible();
 
   const [saved] = await Promise.all([page.waitForEvent('download'), act(page, 'tb-save')]);
   const [open] = await Promise.all([page.waitForEvent('filechooser'), act(page, 'tb-open')]);
@@ -149,6 +153,8 @@ test('CloudFront cache behaviors and WAF rules are readable after saving and reo
   await expect(staticBehavior.getByText('https-only')).toBeVisible();
   await expect(staticBehavior.getByText('GET, HEAD, OPTIONS', { exact: true })).toBeVisible();
   await expect(dialog.getByText('TLSv1.2_2021')).toBeVisible();
+  await expect(dialog.getByText('sni-only', { exact: true })).toBeVisible();
+  await expect(dialog.getByText('index.html', { exact: true })).toBeVisible();
   await expect(staticBehavior.getByText('Disabled', { exact: true })).toBeVisible();
   await dialog.getByRole('button', { name: 'Close' }).click();
   await page.getByTestId('exit-present').click();
@@ -157,6 +163,8 @@ test('CloudFront cache behaviors and WAF rules are readable after saving and reo
   const iso = page.getByTestId('isometric');
   await iso.locator('[data-iso-label="node"][data-iso-object="tf-aws_cloudfront_distribution.website"] text').first().click();
   await expect(dialog.getByText('TLSv1.2_2021')).toBeVisible();
+  await expect(dialog.getByText('sni-only', { exact: true })).toBeVisible();
+  await expect(dialog.getByText('index.html', { exact: true })).toBeVisible();
   await dialog.getByRole('button', { name: 'Close' }).click();
   await iso.locator('[data-iso-label="node"][data-iso-object="tf-aws_wafv2_web_acl.website"] text').first().click();
   await expect(dialog.getByText('managed-baseline')).toBeVisible();

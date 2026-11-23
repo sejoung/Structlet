@@ -17,7 +17,8 @@ it('imports CloudFront behavior settings, WAF visibility and scoped IP sets from
   const webAcl = 'arn:aws:wafv2:us-east-1:000000000000:global/webacl/example/acl';
   const cloudFront = details('aws.cloudfront')?.cloudFront;
   expect(cloudFront?.webAclId).toBe(webAcl);
-  expect(cloudFront?.viewerCertificate).toEqual({ minimumProtocolVersion: 'TLSv1.2_2021' });
+  expect(cloudFront?.defaultRootObject).toBe('index.html');
+  expect(cloudFront?.viewerCertificate).toEqual({ minimumProtocolVersion: 'TLSv1.2_2021', sslSupportMethod: 'sni-only' });
   expect(cloudFront?.cacheBehaviors).toEqual([
     {
       originId: 'website', viewerProtocolPolicy: 'redirect-to-https',
@@ -76,6 +77,26 @@ it('imports CloudFront behavior settings, WAF visibility and scoped IP sets from
   expect(file).not.toContain('SYNTHETIC_PRIVATE_MATCH_VALUE');
   expect(file).not.toContain('2001:db8::/32');
   expect(parseStructlet(file)).toEqual({ ok: true, document });
+});
+
+it('imports a default root path and SSL support method when the minimum TLS policy is unavailable', async () => {
+  const input = JSON.stringify({
+    planned_values: { root_module: { resources: [{
+      address: 'aws_cloudfront_distribution.website',
+      type: 'aws_cloudfront_distribution',
+      name: 'website',
+      values: { default_root_object: 'site/index.html', viewer_certificate: [{ ssl_support_method: 'sni-only' }] },
+    }] } },
+  });
+  const result = await importInto(base, input);
+  expect(result.ok).toBe(true);
+  if (!result.ok) return;
+  const stored = parseStructlet(serializeStructlet(result.document));
+  expect(stored.ok).toBe(true);
+  if (!stored.ok) return;
+  expect(stored.document.nodes[0]?.infrastructure?.cloudFront).toStrictEqual({
+    defaultRootObject: 'site/index.html', viewerCertificate: { sslSupportMethod: 'sni-only' },
+  });
 });
 
 it('retains a WAF IP set at the AWS address quota', () => {

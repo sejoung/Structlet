@@ -23,7 +23,10 @@ export function CloudFront({ details, t }: { details: CloudFrontDetails; t: Tran
   return <section>
     <h3>{t('infra.cloudFront')}</h3>
     <Fields t={t} fields={[
-      ['infra.webAclReference', details.webAclId], ['infra.viewerMinimumTls', details.viewerCertificate?.minimumProtocolVersion],
+      ['infra.webAclReference', details.webAclId],
+      ['infra.defaultRootObject', details.defaultRootObject],
+      ['infra.viewerMinimumTls', details.viewerCertificate?.minimumProtocolVersion],
+      ['infra.viewerSslSupportMethod', details.viewerCertificate?.sslSupportMethod],
     ]} />
     <List title={t('infra.cacheBehaviors')}>{details.cacheBehaviors?.map((behavior) => (
       <>

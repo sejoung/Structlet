@@ -115,8 +115,8 @@ const cacheBehavior = shape({}, {
   viewerProtocolPolicy: choice(...CLOUDFRONT_VIEWER_PROTOCOL_POLICIES), allowedMethods: strings, cachedMethods: strings, compress: boolean,
 });
 const cloudFront = shape({}, {
-  webAclId: text, cacheBehaviors: list(cacheBehavior),
-  viewerCertificate: shape({ minimumProtocolVersion: text }, {}),
+  webAclId: text, defaultRootObject: text, cacheBehaviors: list(cacheBehavior),
+  viewerCertificate: shape({}, { minimumProtocolVersion: text, sslSupportMethod: text }),
 });
 const action = choice('allow', 'block', 'count', 'captcha', 'challenge');
 const actionOverride = shape({ name: text, action }, {});
