@@ -65,3 +65,41 @@ test('saved infrastructure details are editable in the inspector and readable in
   const [exported] = await Promise.all([page.waitForEvent('download'), act(page, 'tb-svg')]);
   expect(readFileSync((await exported.path())!, 'utf8')).toContain('stroke-dasharray="6 4"');
 });
+
+test('imported Argo CD, node lifecycle and EBS details are visible in Korean viewers', async ({ page }) => {
+  await freshApp(page, 'ko');
+  const [picker] = await Promise.all([page.waitForEvent('filechooser'), act(page, 'tb-import')]);
+  await picker.setFiles('tests/unit/adapters/fixtures/kubernetes-infrastructure.yaml');
+  const app = page.getByTestId('node-k8s-argocd-application-billing').locator('rect').first();
+  await app.click();
+  const inspector = page.getByTestId('infrastructure-details');
+  await expect(inspector.getByText('https://charts.example.test/public')).toBeVisible();
+  await expect(inspector.getByRole('heading', { name: '자동 동기화' })).toBeVisible();
+  await expect(inspector.getByText('미사용', { exact: true })).toHaveCount(3);
+
+  const [saved] = await Promise.all([page.waitForEvent('download'), act(page, 'tb-save')]);
+  const [open] = await Promise.all([page.waitForEvent('filechooser'), act(page, 'tb-open')]);
+  await open.setFiles((await saved.path())!);
+  const dialog = page.getByRole('dialog', { name: '인프라 상세' });
+
+  await page.getByTestId('tb-present').click();
+  await app.click();
+  await expect(dialog.getByText('$values/profiles/test.yaml')).toBeVisible();
+  await dialog.getByRole('button', { name: '닫기' }).click();
+  await page.getByTestId('exit-present').click();
+
+  await page.locator('[data-testid="tb-view"] [data-value="isometric"]').click();
+  const iso = page.getByTestId('isometric');
+  const label = (id: string) => iso.locator(`[data-iso-label="node"][data-iso-object="${id}"] text`).first();
+  await label('k8s-cluster-nodepool-compute').click();
+  await expect(dialog.getByText('512Gi')).toBeVisible();
+  await expect(dialog.getByText('workload=gpu')).toBeVisible();
+  await expect(dialog.getByText('WhenEmptyOrUnderutilized')).toBeVisible();
+  await expect(dialog.getByText('20%')).toBeVisible();
+  await dialog.getByRole('button', { name: '닫기' }).click();
+  await label('k8s-cluster-ec2nodeclass-linux').click({ button: 'right' });
+  await page.getByRole('menuitem', { name: '인프라 상세 보기' }).click();
+  await expect(dialog.getByText('/dev/xvda · gp3 · 80Gi')).toBeVisible();
+  await expect(dialog.getByText('snap-example')).toBeVisible();
+  await expect(dialog.getByText('암호화', { exact: true })).toBeVisible();
+});

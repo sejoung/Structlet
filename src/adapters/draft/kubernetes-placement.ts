@@ -1,12 +1,6 @@
 import type { PlacementSelector, WorkloadPlacement } from '../../domain';
 
-function record(value: unknown): Record<string, unknown> {
-  return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
-}
-
-function array(value: unknown): unknown[] {
-  return Array.isArray(value) ? value : [];
-}
+import { array, record } from './infrastructure-values';
 
 function selectors(value: unknown): PlacementSelector[] {
   const term = record(value);

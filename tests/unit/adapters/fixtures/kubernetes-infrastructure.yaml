@@ -1,0 +1,103 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: billing
+  namespace: argocd
+spec:
+  source:
+    repoURL: https://unused.example.test/unused.git
+  sources:
+    - repoURL: https://synthetic-user:SYNTHETIC_PASSWORD@charts.example.test/public?token=SYNTHETIC_TOKEN
+      chart: billing
+      targetRevision: "1.4.2"
+      helm:
+        releaseName: billing-api
+        valueFiles:
+          - $values/profiles/test.yaml
+        ignoreMissingValueFiles: false
+        valuesObject:
+          secret: SYNTHETIC_VALUES
+    - repoURL: https://git.example.test/platform.git
+      ref: values
+      targetRevision: main
+  destination:
+    name: in-cluster
+    namespace: billing
+  syncPolicy:
+    automated:
+      enabled: false
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: platform
+  namespace: argocd
+spec:
+  template:
+    spec:
+      source:
+        repoURL: https://git.example.test/platform.git
+        path: "clusters/{{ .name }}"
+        targetRevision: main
+      syncPolicy:
+        automated: {}
+---
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: compute
+spec:
+  limits:
+    cpu: 120
+    memory: 512Gi
+    nvidia.com/gpu: "4"
+  disruption:
+    consolidationPolicy: WhenEmptyOrUnderutilized
+    consolidateAfter: 30m
+    budgets:
+      - nodes: "20%"
+        reasons: [Empty, Drifted]
+      - nodes: "0"
+        schedule: "0 10 * * mon-fri"
+        duration: 8h
+  template:
+    spec:
+      expireAfter: Never
+      terminationGracePeriod: 1h
+      taints:
+        - key: workload
+          value: gpu
+          effect: NoSchedule
+      startupTaints:
+        - key: node.example.test/initialize
+          effect: NoExecute
+      nodeClassRef:
+        group: karpenter.k8s.aws
+        kind: EC2NodeClass
+        name: linux
+---
+apiVersion: karpenter.k8s.aws/v1
+kind: EC2NodeClass
+metadata:
+  name: linux
+spec:
+  blockDeviceMappings:
+    - deviceName: /dev/xvda
+      rootVolume: true
+      ebs:
+        volumeType: gp3
+        volumeSize: 80Gi
+        encrypted: true
+        deleteOnTermination: false
+        iops: 3500
+        throughput: 150
+    - deviceName: /dev/xvdb
+      ebs:
+        snapshotID: snap-example
+        kmsKeyID: key-example
+        volumeInitializationRate: 100

@@ -1,4 +1,6 @@
 import type { IamStatement, InfrastructureDetails, RemoteStateReference, SecurityGroupRule } from '../../domain';
+import { array, integer, present, record, text, texts } from './infrastructure-values';
+import { nodeTaints } from './node-provisioning';
 
 export interface TerraformResource {
   address: string;
@@ -8,26 +10,6 @@ export interface TerraformResource {
   values?: Record<string, unknown>;
   sensitive_values?: Record<string, unknown>;
   depends_on?: string[];
-}
-
-function record(value: unknown): Record<string, unknown> {
-  return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
-}
-
-function array(value: unknown): unknown[] {
-  return Array.isArray(value) ? value : [];
-}
-
-function text(value: unknown): string | undefined {
-  return typeof value === 'string' && value.length > 0 && value.length <= 2048 ? value : undefined;
-}
-
-function texts(value: unknown): string[] {
-  return (Array.isArray(value) ? value : [value]).flatMap((entry) => text(entry) ?? []);
-}
-
-function integer(value: unknown): number | undefined {
-  return typeof value === 'number' && Number.isSafeInteger(value) ? value : undefined;
 }
 
 function distinct<T>(values: Iterable<T>): T[] {
@@ -199,12 +181,13 @@ export function terraformInfrastructure(resources: readonly TerraformResource[],
     const securityGroupRules = distinct(keys.flatMap((key) => groups.get(key) ?? []));
     const { iamStatements, iamPolicyRefs } = iam(r, refs);
     const remote = remoteStates(r, expressions, datasets);
-    const details: InfrastructureDetails = {
+    const taints = r.type === 'aws_eks_node_group' && !r.sensitive_values?.taint ? nodeTaints(v.taint) : undefined;
+    return present({
       ...(securityGroupRules.length ? { securityGroupRules } : {}),
       ...(iamStatements.length ? { iamStatements } : {}),
       ...(iamPolicyRefs.length ? { iamPolicyRefs } : {}),
       ...(remote.length ? { remoteStates: remote } : {}),
-    };
-    return Object.keys(details).length ? details : undefined;
+      ...(taints ? { nodeProvisioning: { taints } } : {}),
+    });
   };
 }

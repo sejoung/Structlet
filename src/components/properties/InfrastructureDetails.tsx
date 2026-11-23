@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import type { Editor } from '../../application';
-import { readInfrastructure, type InfrastructureDetails as Details, type Node, type PlacementSelector } from '../../domain';
+import { readInfrastructure, type ArgoCdDetails, type BlockDeviceDetails, type InfrastructureDetails as Details, type NodeProvisioningDetails, type Node, type PlacementSelector } from '../../domain';
 import type { Translate } from '../../i18n/messages';
 import { Section } from '../ui/controls';
 
@@ -18,10 +18,93 @@ function displaySelectors(selectors: readonly PlacementSelector[]): string[] {
     [source === 'field' ? `matchFields.${key}` : key, operator, values?.join(', ')].filter(Boolean).join(' '));
 }
 
+type Value = string | number | boolean | undefined;
+
+function Fields({ t, fields }: { t: Translate; fields: readonly (readonly [Parameters<Translate>[0], Value])[] }) {
+  return fields.map(([key, value]) => <Entry key={key} name={t(key)} values={value === undefined ? undefined : [
+    typeof value === 'boolean' ? t(value ? 'infra.enabled' : 'infra.disabled') : String(value),
+  ]} />);
+}
+
+function ArgoCd({ details, t }: { details: ArgoCdDetails; t: Translate }) {
+  const { automated, destination } = details;
+  return (
+    <section>
+      <h3>{t(details.template ? 'infra.argoTemplate' : 'infra.argoCd')}</h3>
+      {destination && <Entry name={t('infra.destination')} values={[destination.name ?? destination.server ?? '', destination.namespace ?? ''].filter(Boolean)} />}
+      <List title={t('infra.sources')}>{details.sources?.map((source) => (
+        <>
+          <strong>{source.repoURL}</strong>
+          <Fields t={t} fields={[
+            ['infra.revision', source.targetRevision], ['infra.path', source.path], ['infra.chart', source.chart],
+            ['infra.sourceRef', source.ref], ['infra.releaseName', source.helm?.releaseName],
+            ['infra.ignoreMissingValueFiles', source.helm?.ignoreMissingValueFiles],
+          ]} />
+          <Entry name={t('infra.valueFiles')} values={source.helm?.valueFiles} />
+        </>
+      ))}</List>
+      {automated && <section>
+        <h3>{t('infra.autoSync')}</h3>
+        <Fields t={t} fields={[
+          ['infra.autoSyncStatus', automated.enabled], ['infra.prune', automated.prune],
+          ['infra.selfHeal', automated.selfHeal], ['infra.allowEmpty', automated.allowEmpty],
+        ]} />
+      </section>}
+      <Entry name={t('infra.syncOptions')} values={details.syncOptions} />
+    </section>
+  );
+}
+
+function NodeProvisioning({ details, t }: { details: NodeProvisioningDetails; t: Translate }) {
+  const { disruption } = details;
+  const taintLabel = ({ key, value, effect }: NonNullable<NodeProvisioningDetails['taints']>[number]) =>
+    <><strong>{value === undefined ? key : `${key}=${value}`}</strong><span>{effect}</span></>;
+  return (
+    <section>
+      <h3>{t('infra.provisioning')}</h3>
+      <List title={t('infra.taints')}>{details.taints?.map(taintLabel)}</List>
+      <List title={t('infra.startupTaints')}>{details.startupTaints?.map(taintLabel)}</List>
+      <List title={t('infra.limits')}>{details.limits?.map(({ resource, quantity }) => <Entry name={resource} values={[quantity]} />)}</List>
+      {disruption && <section>
+        <h3>{t('infra.disruption')}</h3>
+        <Fields t={t} fields={[
+          ['infra.consolidationPolicy', disruption.consolidationPolicy], ['infra.consolidateAfter', disruption.consolidateAfter],
+          ['infra.expireAfter', disruption.expireAfter], ['infra.terminationGracePeriod', disruption.terminationGracePeriod],
+        ]} />
+        <List title={t('infra.budgets')}>{disruption.budgets?.map((budget) => (
+          <>
+            <Fields t={t} fields={[
+              ['infra.budgetNodes', budget.nodes], ['infra.schedule', budget.schedule], ['infra.duration', budget.duration],
+            ]} />
+            <Entry name={t('infra.reasons')} values={budget.reasons} />
+          </>
+        ))}</List>
+      </section>}
+    </section>
+  );
+}
+
+function BlockDevices({ devices, t }: { devices: readonly BlockDeviceDetails[]; t: Translate }) {
+  return <List title={t('infra.blockDevices')}>{devices.map((device) => (
+    <>
+      <strong>{[device.deviceName, device.volumeType, device.volumeSize].filter(Boolean).join(' · ')}</strong>
+      <Fields t={t} fields={[
+        ['infra.rootVolume', device.rootVolume], ['infra.encrypted', device.encrypted],
+        ['infra.deleteOnTermination', device.deleteOnTermination], ['infra.iops', device.iops],
+        ['infra.throughput', device.throughput], ['infra.snapshot', device.snapshotId],
+        ['infra.kmsKey', device.kmsKeyId], ['infra.volumeInitializationRate', device.volumeInitializationRate],
+      ]} />
+    </>
+  ))}</List>;
+}
+
 export function InfrastructureDetails({ details, t }: { details: Details; t: Translate }) {
-  const { securityGroupRules, iamStatements, iamPolicyRefs, remoteStates, placement } = details;
+  const { securityGroupRules, iamStatements, iamPolicyRefs, remoteStates, placement, argoCd, nodeProvisioning, blockDevices } = details;
   return (
     <div className="infra-details">
+      {argoCd && <ArgoCd details={argoCd} t={t} />}
+      {nodeProvisioning && <NodeProvisioning details={nodeProvisioning} t={t} />}
+      {blockDevices && <BlockDevices devices={blockDevices} t={t} />}
       <List title={t('infra.security')}>{securityGroupRules?.map(({ direction, protocol, fromPort, toPort, peers, group, description }) => (
         <>
           <strong>{t(`infra.${direction}`)} · {protocol === '-1' ? t('infra.protocols') : protocol}

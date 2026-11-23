@@ -16,6 +16,9 @@ const text: Reader<string> = (value, path) =>
 const integer: Reader<number> = (value, path) =>
   typeof value === 'number' && Number.isSafeInteger(value) ? value : invalid(path, 'expected an integer');
 
+const boolean: Reader<boolean> = (value, path) =>
+  typeof value === 'boolean' ? value : invalid(path, 'expected true or false');
+
 function choice<const T extends string[]>(...options: T): Reader<T[number]> {
   return (value, path) => options.includes(value as T[number]) ? value as T[number] : invalid(path, `expected ${options.join(' or ')}`);
 }
@@ -53,9 +56,33 @@ const placement = shape({}, {
   nodePools: strings, nodeGroups: strings, nodeSelector: list(selector), required: list(list(selector)),
   preferred: list(shape({ weight: integer, selectors: list(selector) }, {})),
 });
+const helm = shape({}, { releaseName: text, valueFiles: strings, ignoreMissingValueFiles: boolean });
+const argoSource = shape({ repoURL: text }, { targetRevision: text, path: text, chart: text, ref: text, helm });
+const argoCd = shape({}, {
+  template: boolean,
+  sources: list(argoSource),
+  destination: shape({}, { namespace: text, server: text, name: text }),
+  automated: shape({ enabled: boolean }, { prune: boolean, selfHeal: boolean, allowEmpty: boolean }),
+  syncOptions: strings,
+});
+const nodeTaint = shape({ key: text, effect: choice('NoSchedule', 'PreferNoSchedule', 'NoExecute') }, { value: text });
+const disruptionBudget = shape({ nodes: text }, { schedule: text, duration: text, reasons: strings });
+const nodeProvisioning = shape({}, {
+  taints: list(nodeTaint),
+  startupTaints: list(nodeTaint),
+  limits: list(shape({ resource: text, quantity: text }, {})),
+  disruption: shape({}, {
+    consolidationPolicy: text, consolidateAfter: text, expireAfter: text, terminationGracePeriod: text,
+    budgets: list(disruptionBudget),
+  }),
+});
+const blockDevice = shape({ deviceName: text }, {
+  rootVolume: boolean, volumeType: text, volumeSize: text, encrypted: boolean, deleteOnTermination: boolean,
+  iops: integer, throughput: integer, snapshotId: text, kmsKeyId: text, volumeInitializationRate: integer,
+});
 const infrastructure = shape({}, {
   securityGroupRules: list(securityRule), iamStatements: list(iamStatement), iamPolicyRefs: strings,
-  remoteStates: list(remoteState), placement,
+  remoteStates: list(remoteState), placement, argoCd, nodeProvisioning, blockDevices: list(blockDevice),
 });
 
 export type InfrastructureDetails = Read<typeof infrastructure>;
@@ -64,6 +91,10 @@ export type IamStatement = Read<typeof iamStatement>;
 export type RemoteStateReference = Read<typeof remoteState>;
 export type PlacementSelector = Read<typeof selector>;
 export type WorkloadPlacement = Read<typeof placement>;
+export type ArgoCdDetails = Read<typeof argoCd>;
+export type NodeProvisioningDetails = Read<typeof nodeProvisioning>;
+export type NodeTaint = Read<typeof nodeTaint>;
+export type BlockDeviceDetails = Read<typeof blockDevice>;
 
 export function readInfrastructure(value: unknown, path = 'infrastructure'): InfrastructureDetails {
   return infrastructure(value, path);

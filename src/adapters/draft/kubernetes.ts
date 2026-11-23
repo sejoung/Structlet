@@ -1,4 +1,8 @@
 import { parseAllDocuments } from 'yaml';
+import type { InfrastructureDetails } from '../../domain';
+import { argoCdDetails } from './argo-cd-details';
+import { present } from './infrastructure-values';
+import { karpenterBlockDevices, karpenterProvisioning } from './node-provisioning';
 import { workloadPlacement } from './kubernetes-placement';
 import type { Draft, DraftContainer, DraftEdge, DraftNode } from './draft-format';
 
@@ -55,6 +59,15 @@ function second(o: Obj): string {
   return o.kind ?? '';
 }
 
+function infrastructureOf(o: Obj): InfrastructureDetails | undefined {
+  const service = serviceFor(o);
+  if (service === 'k8s.argocd-application') return present({ argoCd: argoCdDetails(o.spec, false) });
+  if (service === 'k8s.argocd-applicationset') return present({ argoCd: argoCdDetails(o.spec?.template?.spec, true) });
+  if (service === 'k8s.karpenter-nodepool') return present({ nodeProvisioning: karpenterProvisioning(o.spec) });
+  if (service === 'k8s.karpenter-ec2nodeclass') return present({ blockDevices: karpenterBlockDevices(o.spec) });
+  return WORKLOADS.has(o.kind!) ? present({ placement: workloadPlacement(podOf(o)?.spec) }) : undefined;
+}
+
 export function kubernetesToDraft(text: string, title = 'Kubernetes'): Draft {
   const manifests = objects(text);
   const all = manifests.filter((o) => serviceFor(o) && !(o.kind === 'Pod' && o.metadata?.ownerReferences?.length) && !(o.kind === 'Secret' && /service-account-token|helm\.sh\/release/.test(o.type ?? '')));
@@ -72,11 +85,11 @@ export function kubernetesToDraft(text: string, title = 'Kubernetes'): Draft {
     ...namespaces.map((n): DraftContainer => ({ id: safe(`k8s-ns-${n}`), kind: 'namespace', label: n, parent: cluster, layout: 'flow' })),
   ];
   const nodes: DraftNode[] = all.map((o) => {
-    const placement = WORKLOADS.has(o.kind!) ? workloadPlacement(podOf(o)?.spec) : undefined;
+    const infrastructure = infrastructureOf(o);
     return {
       id: idOf(o), service: serviceFor(o)!, label: `${o.metadata!.name}\n${second(o)}`,
       parent: CLUSTER_KINDS.has(o.kind!) ? cluster : safe(`k8s-ns-${ns(o)}`),
-      ...(placement ? { infrastructure: { placement } } : {}),
+      ...(infrastructure ? { infrastructure } : {}),
     };
   });
   const byId = new Map(nodes.map((n) => [n.id, n]));
