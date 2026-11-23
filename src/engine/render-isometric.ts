@@ -43,21 +43,27 @@ export function isometricBounds(scene: Scene, options: IsometricOptions = {}): R
 }
 
 export function renderIsometricBody(scene: Scene, theme: DiagramTheme = LIGHT_THEME, layout: IsometricLayout = computeIsometricLayout(scene)): string {
+  const { floor, blocks, labels } = renderIsometricLayers(scene, theme, layout);
+  return floor + blocks + labels;
+}
+
+export function renderIsometricLayers(scene: Scene, theme: DiagramTheme, layout: IsometricLayout) {
   const images = new ImageSymbols('sl-iso-img');
   const { rotation } = layout;
-  const out: string[] = [markerDefs(theme), `<g transform="${ISOMETRIC_PLANE} rotate(${rotation * 90})">`];
+  const floor = [markerDefs(theme), `<g transform="${ISOMETRIC_PLANE} rotate(${rotation * 90})">`];
   for (const c of scene.containers) {
     const stroke = AREA_STROKE[c.style.color] ?? AREA_STROKE.gray!;
     const r = c.rect;
     const fill = c.style.filled ? `fill="${stroke}" fill-opacity="${theme.areaFillOpacity + 0.04}"` : `fill="${stroke}" fill-opacity="0.025"`;
-    out.push(`<rect data-container="${escapeXml(c.id)}" data-iso-object="${escapeXml(c.id)}" x="${n(r.x)}" y="${n(r.y)}" width="${n(r.width)}" height="${n(r.height)}" ${fill} stroke="${stroke}" stroke-width="1.5" vector-effect="non-scaling-stroke"${c.style.dashed ? ' stroke-dasharray="6 4"' : ''}/>`);
+    floor.push(`<rect data-container="${escapeXml(c.id)}" data-iso-object="${escapeXml(c.id)}" x="${n(r.x)}" y="${n(r.y)}" width="${n(r.width)}" height="${n(r.height)}" ${fill} stroke="${stroke}" stroke-width="1.5" vector-effect="non-scaling-stroke"${c.style.dashed ? ' stroke-dasharray="6 4"' : ''}/>`);
   }
   for (const e of scene.edges) {
     const marker = e.style.arrow === 'end' || e.style.arrow === 'both' ? ' marker-end="url(#sl-arrow-end)"' : '';
     const start = e.style.arrow === 'start' || e.style.arrow === 'both' ? ' marker-start="url(#sl-arrow-start)"' : '';
-    out.push(`<path data-edge="${escapeXml(e.id)}" d="${pathData(e.points)}" fill="none" stroke="${theme.edge}" stroke-width="1.6" vector-effect="non-scaling-stroke"${e.style.dashed ? ' stroke-dasharray="6 4"' : ''}${marker}${start}/>`);
+    floor.push(`<path data-edge="${escapeXml(e.id)}" d="${pathData(e.points)}" fill="none" stroke="${theme.edge}" stroke-width="1.6" vector-effect="non-scaling-stroke"${e.style.dashed ? ' stroke-dasharray="6 4"' : ''}${marker}${start}/>`);
   }
-  out.push('</g>');
+  floor.push('</g>');
+  const blocks: string[] = [];
   const nodes = scene.nodes.map((node) => ({ node, rect: rotateIsoRect(node.rect, rotation) }));
   const depth = (r: Rect) => r.x + r.y + r.width + r.height;
   nodes.sort((a, b) => depth(a.rect) - depth(b.rect));
@@ -68,22 +74,23 @@ export function renderIsometricBody(scene: Scene, theme: DiagramTheme = LIGHT_TH
     const b = iso({ x: r.x + r.width, y: r.y });
     const c = iso({ x: r.x + r.width, y: r.y + r.height });
     const d = iso({ x: r.x, y: r.y + r.height });
-    out.push(`<g data-node="${escapeXml(node.id)}" data-iso-object="${escapeXml(node.id)}">`);
-    out.push(polygon([up(d), up(c), c, d], shade(node.color, 0.35)));
-    out.push(polygon([up(b), up(c), c, b], shade(node.color, 0.2)));
-    out.push(polygon([up(a), up(b), up(c), up(d)], node.color));
+    blocks.push(`<g data-node="${escapeXml(node.id)}" data-iso-object="${escapeXml(node.id)}">`);
+    blocks.push(polygon([up(d), up(c), c, d], shade(node.color, 0.35)));
+    blocks.push(polygon([up(b), up(c), c, b], shade(node.color, 0.2)));
+    blocks.push(polygon([up(a), up(b), up(c), up(d)], node.color));
     const size = Math.min(r.width, r.height) * 0.6;
     const x = r.x + (r.width - size) / 2;
     const y = r.y + (r.height - size) / 2;
     const face = node.image ? images.use(node.image, x, y, size) : glyphMarkup(node.glyph, x, y, size, '#ffffff', 1.8);
-    out.push(`<g transform="translate(0 ${-h}) ${ISOMETRIC_PLANE}">${face}</g></g>`);
+    blocks.push(`<g transform="translate(0 ${-h}) ${ISOMETRIC_PLANE}">${face}</g></g>`);
   }
+  blocks.push(images.defs());
+  const labels: string[] = [];
   for (const { leader, box } of layout.labels) {
-    if (leader) out.push(labelLeader(leader, { x: box.x + box.width / 2, y: box.y + box.height / 2 }, theme));
+    if (leader) labels.push(labelLeader(leader, { x: box.x + box.width / 2, y: box.y + box.height / 2 }, theme));
   }
-  for (const label of layout.labels) out.push(renderLabel(label, theme));
-  out.push(images.defs());
-  return out.join('');
+  for (const label of layout.labels) labels.push(renderLabel(label, theme));
+  return { floor: floor.join(''), blocks: blocks.join(''), labels: labels.join('') };
 }
 
 export function renderIsometricSvg(scene: Scene, options: IsometricOptions & { theme?: DiagramTheme; title?: string } = {}): { svg: string; box: Rect } {

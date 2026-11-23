@@ -42,11 +42,12 @@ interface Props extends ContextActions {
   dismiss(restoreFocus: boolean): void;
   readOnly?: boolean;
   rotate?(step: -1 | 1): void;
+  flow?: { canStart(id: Id): boolean; start(id: Id): void };
 }
 
 const ALIGNMENTS: readonly AlignMode[] = ['left', 'center', 'right', 'top', 'middle', 'bottom'];
 
-function groups({ t, doc, scene, editor, diagram, actions, paste, request, fit, edit, toggle, readOnly, rotate }: Props): Group[] {
+function groups({ t, doc, scene, editor, diagram, actions, paste, request, fit, edit, toggle, readOnly, rotate, flow }: Props): Group[] {
   const index = indexDocument(doc);
   const ids = request.ids;
   const id = ids.length === 1 ? ids[0]! : null;
@@ -58,6 +59,7 @@ function groups({ t, doc, scene, editor, diagram, actions, paste, request, fit, 
   });
   const result: Group[] = [];
   const add = (...items: Item[]) => result.push({ items });
+  if (id && flow?.canStart(id)) add({ label: t('flow.start'), run: () => flow.start(id) });
   if (area && index.children.get(area.id)?.length) {
     const label = t(folded ? 'summary.expandArea' : 'summary.foldArea', { name: area.label || t(`area.${area.kind}`) });
     add({ label, run: () => toggle(area.id) });

@@ -147,7 +147,7 @@ The panels can be hidden. Two toggles — **[left panel] [right panel]** — alw
 <details>
 <summary><b>View, themes and keyboard</b></summary>
 
-- **View** — scroll to pan, ⌘ / Ctrl+scroll to zoom, Space+drag or middle button to pan, ⌘0 to fit. The zoom bar at the bottom right (click the percentage for 100%) and a minimap. On touch, one finger pans and two fingers zoom. The **isometric** view is read-only; exporting SVG / PNG from it produces an isometric drawing. Theme (system / light / dark) and language are in **Settings (⚙)** (exports are always light).
+- **View** — scroll to pan, ⌘ / Ctrl+scroll to zoom, Space+drag or middle button to pan, ⌘0 to fit. The zoom bar at the bottom right (click the percentage for 100%) and a minimap. On touch, one finger pans and two fingers zoom. The **isometric** view is read-only; exporting SVG / PNG from it produces an isometric drawing. Select **Play flow** at the bottom right, then click a service to follow its connections. Theme (system / light / dark) and language are in **Settings (⚙)** (exports are always light).
 - **Keyboard** — on the canvas, Tab / Shift+Tab moves between objects, and screen readers announce the selection. Menus open with Enter, move with arrow keys and close with Esc. Open **Help (?) → Keyboard shortcuts** to see the list.
 
 </details>
@@ -222,7 +222,7 @@ The layer rules are enforced in three places, all part of `npm run check` and CI
 ## Tests
 
 <details>
-<summary><b>145 unit tests</b> (<code>tests/unit</code>)</summary>
+<summary><b>150 unit tests</b> (<code>tests/unit</code>)</summary>
 
 - **domain** — hierarchy, local coordinates, children moving with parents, reparenting and cycle rejection, patch undo (including adjacent-delete order), fragment copy / paste, document diff
 - **domain** — three-way merge (fields, grouped positions, delete conflicts, hierarchy repair, cycles)
@@ -231,6 +231,7 @@ The layer rules are enforced in three places, all part of `npm run check` and CI
   - Routing: basic shapes, obstacle avoidance, reproducing manual paths and keeping them after moves, avoiding around manual segments, avoiding crowded sides, port spreading, label overlap avoidance
   - Layout: layer order, crossing reduction, keeping pins in selection layout
   - Rendering: box nodes, legend swatches, dark theme, isometric
+  - Flow playback: branches, cycles, arrow directions, folded groups, and route interpolation
   - Performance: 400 nodes, 300 lines
 - **adapters**
   - File: round trip, rejecting 12 kinds of invalid input
@@ -245,7 +246,7 @@ The layer rules are enforced in three places, all part of `npm run check` and CI
 </details>
 
 <details>
-<summary><b>48 E2E tests</b> (<code>tests/e2e</code>, production builds)</summary>
+<summary><b>52 E2E tests</b> (<code>tests/e2e</code>, production builds)</summary>
 
 - **Basic flow** — two nodes → connect → save → open → reload → SVG (same paths as the screen), PNG, rejecting an invalid file
 - **Areas** — dragging a VPC then a single undo, dragging into another area, wrapping
@@ -253,7 +254,7 @@ The layer rules are enforced in three places, all part of `npm run check` and CI
 - **Editing** — editing long Korean names, auto-layout undo, copy / paste
 - **Import** — partial draft updates and error rejection, compose
 - **Icon packs** — AWS zip pack (canvas, areas, palette, export, kept after reload, turning off), Kubernetes icon folder + manifest import
-- **View** — isometric view and export; dark theme, box nodes, legend, checks, minimap, Tab navigation; touch pan and zoom
+- **View** — isometric rotation, folding, flow playback, and export; dark theme, box nodes, legend, checks, minimap, Tab navigation; touch pan and zoom
 - **Deployment** — single HTML opened from `file://` (import, export, autosave, Drive disabled); no CSP violations in the production build
 - **Drive** (mocked Google) — connect, folder save, autosave, ⌘S; reconnect after reload (never writes an empty document); remote change merge and conflict choice; open, stop syncing, disconnect
 - **Usage statistics** — nothing sent before consent; events and URL cleanup after allowing; turning off; refusing

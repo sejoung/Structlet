@@ -59,6 +59,8 @@ export interface SceneNode {
 export interface SceneEdge {
   readonly id: Id;
   readonly points: readonly Point[];
+  readonly sourceId: Id | null;
+  readonly targetId: Id | null;
   readonly label: readonly string[];
   readonly fullLabel?: string;
   readonly labelBox: Rect | null;
@@ -239,7 +241,7 @@ export function computeScene(doc: Document, appearance: Appearance, summaries?: 
       taken.push(labelBox);
     }
     const labelTints = labelBox ? tintsAt(containers, { x: labelBox.x + labelBox.width / 2, y: labelBox.y + labelBox.height / 2 }) : [];
-    edges.push({ id: e.id, points, label, fullLabel: e.label, labelBox, labelAnchor, labelTints, style: e.style, manual, sourceSide: pair.source.side, targetSide: pair.target.side });
+    edges.push({ id: e.id, points, sourceId: pair.source.objectId, targetId: pair.target.objectId, label, fullLabel: e.label, labelBox, labelAnchor, labelTints, style: e.style, manual, sourceSide: pair.source.side, targetSide: pair.target.side });
   }
 
   const all: Rect[] = [
