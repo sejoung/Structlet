@@ -1,0 +1,242 @@
+{
+  "format": "structlet",
+  "formatVersion": 1,
+  "id": "sample-mig-inference",
+  "title": "NVIDIA · MIG inference on Kubernetes",
+  "containers": [
+    {
+      "id": "inference-cluster",
+      "kind": "cluster",
+      "label": "Kubernetes inference cluster",
+      "parentId": null,
+      "x": 40,
+      "y": 40,
+      "width": 1095,
+      "height": 528,
+      "style": {
+        "color": "gray",
+        "dashed": true,
+        "filled": true
+      },
+      "locked": false
+    },
+    {
+      "id": "gpu",
+      "kind": "custom",
+      "label": "Physical A100 40 GB · MIG enabled",
+      "parentId": "inference-cluster",
+      "x": 710,
+      "y": 54,
+      "width": 340,
+      "height": 270,
+      "style": {
+        "color": "orange",
+        "dashed": true,
+        "filled": true
+      },
+      "locked": false
+    }
+  ],
+  "nodes": [
+    {
+      "id": "model-a",
+      "serviceId": "nvidia.triton",
+      "label": "Triton · model A",
+      "parentId": "inference-cluster",
+      "x": 60,
+      "y": 109,
+      "width": 170,
+      "height": 52,
+      "locked": false,
+      "variant": "box"
+    },
+    {
+      "id": "model-b",
+      "serviceId": "nvidia.triton",
+      "label": "Triton · model B",
+      "parentId": "inference-cluster",
+      "x": 60,
+      "y": 223,
+      "width": 170,
+      "height": 52,
+      "locked": false,
+      "variant": "box"
+    },
+    {
+      "id": "instance-a",
+      "serviceId": "nvidia.mig",
+      "label": "MIG instance A\n1g.5gb",
+      "parentId": "gpu",
+      "x": 65,
+      "y": 55,
+      "width": 178,
+      "height": 52,
+      "locked": false,
+      "variant": "box"
+    },
+    {
+      "id": "instance-b",
+      "serviceId": "nvidia.mig",
+      "label": "MIG instance B\n1g.5gb",
+      "parentId": "gpu",
+      "x": 65,
+      "y": 169,
+      "width": 178,
+      "height": 52,
+      "locked": false,
+      "variant": "box"
+    },
+    {
+      "id": "operator",
+      "serviceId": "nvidia.gpu-operator",
+      "label": "GPU Operator",
+      "parentId": "inference-cluster",
+      "x": 58,
+      "y": 398,
+      "width": 153,
+      "height": 52,
+      "locked": false,
+      "variant": "box"
+    },
+    {
+      "id": "manager",
+      "serviceId": "nvidia.mig-manager",
+      "label": "MIG Manager",
+      "parentId": "inference-cluster",
+      "x": 325,
+      "y": 398,
+      "width": 142,
+      "height": 52,
+      "locked": false,
+      "variant": "box"
+    },
+    {
+      "id": "plugin",
+      "serviceId": "nvidia.device-plugin",
+      "label": "GPU Device Plugin",
+      "parentId": "inference-cluster",
+      "x": 561,
+      "y": 398,
+      "width": 157,
+      "height": 52,
+      "locked": false,
+      "variant": "box"
+    },
+    {
+      "id": "metrics",
+      "serviceId": "nvidia.dcgm-exporter",
+      "label": "DCGM Exporter",
+      "parentId": "inference-cluster",
+      "x": 844,
+      "y": 398,
+      "width": 156,
+      "height": 52,
+      "locked": false,
+      "variant": "box"
+    }
+  ],
+  "edges": [
+    {
+      "id": "model-a-to-instance-a",
+      "source": {
+        "kind": "attached",
+        "objectId": "model-a",
+        "side": "right",
+        "offset": null
+      },
+      "target": {
+        "kind": "attached",
+        "objectId": "instance-a",
+        "side": "left",
+        "offset": null
+      },
+      "label": "GPU allocation",
+      "style": {
+        "dashed": false,
+        "arrow": "end",
+        "shape": "orthogonal"
+      },
+      "routingMode": "auto",
+      "waypoints": []
+    },
+    {
+      "id": "model-b-to-instance-b",
+      "source": {
+        "kind": "attached",
+        "objectId": "model-b",
+        "side": "right",
+        "offset": null
+      },
+      "target": {
+        "kind": "attached",
+        "objectId": "instance-b",
+        "side": "left",
+        "offset": null
+      },
+      "label": "GPU allocation",
+      "style": {
+        "dashed": false,
+        "arrow": "end",
+        "shape": "orthogonal"
+      },
+      "routingMode": "auto",
+      "waypoints": []
+    },
+    {
+      "id": "operator-to-manager",
+      "source": {
+        "kind": "attached",
+        "objectId": "operator",
+        "side": "right",
+        "offset": null
+      },
+      "target": {
+        "kind": "attached",
+        "objectId": "manager",
+        "side": "left",
+        "offset": null
+      },
+      "label": "Deploys",
+      "style": {
+        "dashed": true,
+        "arrow": "end",
+        "shape": "orthogonal"
+      },
+      "routingMode": "auto",
+      "waypoints": []
+    },
+    {
+      "id": "manager-to-gpu",
+      "source": {
+        "kind": "attached",
+        "objectId": "manager",
+        "side": "top",
+        "offset": null
+      },
+      "target": {
+        "kind": "attached",
+        "objectId": "gpu",
+        "side": "bottom",
+        "offset": null
+      },
+      "label": "Configures MIG",
+      "style": {
+        "dashed": true,
+        "arrow": "end",
+        "shape": "orthogonal"
+      },
+      "routingMode": "auto",
+      "waypoints": []
+    }
+  ],
+  "annotations": [
+    {
+      "id": "mig-notes",
+      "kind": "text",
+      "text": "Each model is assigned a separate MIG instance on the same physical GPU.\nBoth instances use the 1g.5gb profile. Available profiles depend on the GPU.\nThe device plugin advertises GPU resources to Kubernetes; DCGM Exporter provides telemetry.",
+      "x": 68,
+      "y": 598,
+      "targetId": null
+    }
+  ]
+}

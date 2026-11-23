@@ -21,7 +21,7 @@ export interface ExtraService {
 export interface IconPack {
   readonly id: string;
   readonly name: string;
-  readonly provider: Exclude<Provider, 'general'>;
+  readonly provider: Exclude<Provider, 'general' | 'nvidia'>;
   readonly createdAt: string;
   readonly enabled: boolean;
   /** Service id → icon, for catalog services and extras. */

@@ -18,13 +18,12 @@ export interface ToolbarActions {
   onExportPng(): void;
   onUndo(): void;
   onRedo(): void;
-  onSample(): void;
   onTitle(title: string): void;
   onLanguage(language: Language): void;
   onView(view: ViewMode): void;
   onTheme(theme: ThemeChoice): void;
   onIconPacks(): void;
-  onShortcuts(): void;
+  onManual(): void;
   onLeftPanel(open: boolean): void;
   onRightPanel(open: boolean): void;
   /** Hides both side panels, or shows both when they are hidden. */
@@ -103,7 +102,6 @@ export function Toolbar(props: ToolbarProps) {
             { id: 'tb-import', label: t('toolbar.import'), icon: 'import', onSelect: props.onImport },
             { id: 'tb-save', label: t('toolbar.save'), icon: 'save', shortcut: `${mod}S`, separated: true, onSelect: props.onSave },
             { id: 'tb-save-as', label: t('toolbar.saveAs'), shortcut: `⇧${mod}S`, onSelect: props.onSaveAs },
-            { id: 'tb-sample', label: t('toolbar.sample'), separated: true, onSelect: props.onSample },
             ...driveItems(t, props.drive),
           ]}
         />
@@ -160,7 +158,7 @@ export function Toolbar(props: ToolbarProps) {
         </div>
         <span className="topbar-divider" aria-hidden="true" />
         <IconButton icon="present" label={`${props.presenting ? t('view.exit') : t('view.present')} (${mod}.)`} pressed={props.presenting} onClick={() => props.onPresent(!props.presenting)} testId="tb-present" />
-        <IconButton icon="keyboard" label={t('menu.shortcuts')} onClick={props.onShortcuts} testId="tb-shortcuts" />
+        <IconButton icon="help" label={t('menu.help')} onClick={props.onManual} testId="tb-help" />
         <Menu
           testId="menu-settings"
           align="end"

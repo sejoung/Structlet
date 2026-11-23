@@ -15,7 +15,17 @@ test('single structlet.html works from file://', async ({ page }) => {
   await page.goto(pathToFileURL(file).href);
   await page.evaluate(() => localStorage.setItem('structlet:language', 'en'));
   await page.reload();
-  await act(page, 'tb-sample');
+  await expect(page.locator('.empty-state').getByRole('button')).toHaveCount(0);
+  await page.getByTestId('tb-help').click();
+  const manual = page.getByRole('dialog', { name: 'User guide' });
+  const preview = manual.getByRole('img');
+  await expect(preview).toHaveAttribute('src', /^data:image\/webp/);
+  await expect.poll(() => preview.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(1240);
+  const [sample] = await Promise.all([page.waitForEvent('download'), manual.getByRole('button', { name: 'Download sample (.structlet)' }).click()]);
+  expect(sample.suggestedFilename()).toBe('three-tier.structlet');
+  await page.keyboard.press('Escape');
+  const [sampleChooser] = await Promise.all([page.waitForEvent('filechooser'), act(page, 'tb-open')]);
+  await sampleChooser.setFiles((await sample.path())!);
   await expect(page.locator('[data-testid^="node-"]')).toHaveCount(11);
 
   // Import (lazy compose parser is inlined) and export without a server.

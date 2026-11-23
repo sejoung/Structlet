@@ -21,7 +21,7 @@
 | GA 이벤트 | 언제 | 함께 보내는 값 |
 | --- | --- | --- |
 | `page_view` | 허용한 뒤 페이지를 열 때 | origin과 경로 |
-| `diagram_created`, `sample_opened`, `file_opened` | 새로 만들기, 샘플, `.structlet` 열기 | |
+| `diagram_created`, `sample_downloaded`, `file_opened` | 새로 만들기, 샘플 다운로드, `.structlet` 열기 | |
 | `file_saved` | 저장 | `target` (`drive`·`file`·`download`) |
 | `image_exported` | SVG·PNG 내보내기 | `format`, `view` (`2d`·`isometric`) |
 | `diagram_imported` | 가져오기 | `source` (`draft`·`compose`·`kubernetes`·`terraform`) |

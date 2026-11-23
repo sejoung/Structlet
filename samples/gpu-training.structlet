@@ -1,0 +1,316 @@
+{
+  "format": "structlet",
+  "formatVersion": 1,
+  "id": "sample-gpu-training",
+  "title": "NVIDIA · Distributed GPU training",
+  "containers": [
+    {
+      "id": "training-cluster",
+      "kind": "cluster",
+      "label": "Distributed training cluster",
+      "parentId": null,
+      "x": 40,
+      "y": 40,
+      "width": 1140,
+      "height": 500,
+      "style": {
+        "color": "gray",
+        "dashed": true,
+        "filled": true
+      },
+      "locked": false
+    },
+    {
+      "id": "host-1",
+      "kind": "custom",
+      "label": "Training server 1 · subset shown",
+      "parentId": "training-cluster",
+      "x": 28,
+      "y": 55,
+      "width": 710,
+      "height": 182,
+      "style": {
+        "color": "blue",
+        "dashed": true,
+        "filled": true
+      },
+      "locked": false
+    },
+    {
+      "id": "host-2",
+      "kind": "custom",
+      "label": "Training server 2 · subset shown",
+      "parentId": "training-cluster",
+      "x": 28,
+      "y": 273,
+      "width": 710,
+      "height": 182,
+      "style": {
+        "color": "blue",
+        "dashed": true,
+        "filled": true
+      },
+      "locked": false
+    }
+  ],
+  "nodes": [
+    {
+      "id": "fabric-switch",
+      "serviceId": "nvidia.quantum",
+      "label": "Quantum InfiniBand\nSwitch",
+      "parentId": "training-cluster",
+      "x": 880,
+      "y": 222,
+      "width": 188,
+      "height": 52,
+      "locked": false,
+      "variant": "box"
+    },
+    {
+      "id": "host-1-gpu-a",
+      "serviceId": "nvidia.gpu",
+      "label": "H100 · GPU 0",
+      "parentId": "host-1",
+      "x": 28,
+      "y": 38,
+      "width": 142,
+      "height": 52,
+      "locked": false,
+      "variant": "box"
+    },
+    {
+      "id": "host-1-gpu-b",
+      "serviceId": "nvidia.gpu",
+      "label": "H100 · GPU 1",
+      "parentId": "host-1",
+      "x": 28,
+      "y": 112,
+      "width": 142,
+      "height": 52,
+      "locked": false,
+      "variant": "box"
+    },
+    {
+      "id": "host-1-nvlink",
+      "serviceId": "nvidia.nvlink-switch",
+      "label": "NVLink Switch",
+      "parentId": "host-1",
+      "x": 278,
+      "y": 75,
+      "width": 142,
+      "height": 52,
+      "locked": false,
+      "variant": "box"
+    },
+    {
+      "id": "host-1-nic",
+      "serviceId": "nvidia.connectx",
+      "label": "ConnectX NIC",
+      "parentId": "host-1",
+      "x": 533,
+      "y": 75,
+      "width": 142,
+      "height": 52,
+      "locked": false,
+      "variant": "box"
+    },
+    {
+      "id": "host-2-gpu-a",
+      "serviceId": "nvidia.gpu",
+      "label": "H100 · GPU 0",
+      "parentId": "host-2",
+      "x": 28,
+      "y": 38,
+      "width": 142,
+      "height": 52,
+      "locked": false,
+      "variant": "box"
+    },
+    {
+      "id": "host-2-gpu-b",
+      "serviceId": "nvidia.gpu",
+      "label": "H100 · GPU 1",
+      "parentId": "host-2",
+      "x": 28,
+      "y": 112,
+      "width": 142,
+      "height": 52,
+      "locked": false,
+      "variant": "box"
+    },
+    {
+      "id": "host-2-nvlink",
+      "serviceId": "nvidia.nvlink-switch",
+      "label": "NVLink Switch",
+      "parentId": "host-2",
+      "x": 278,
+      "y": 75,
+      "width": 142,
+      "height": 52,
+      "locked": false,
+      "variant": "box"
+    },
+    {
+      "id": "host-2-nic",
+      "serviceId": "nvidia.connectx",
+      "label": "ConnectX NIC",
+      "parentId": "host-2",
+      "x": 533,
+      "y": 75,
+      "width": 142,
+      "height": 52,
+      "locked": false,
+      "variant": "box"
+    }
+  ],
+  "edges": [
+    {
+      "id": "host-1-gpu-a-to-host-1-nvlink",
+      "source": {
+        "kind": "attached",
+        "objectId": "host-1-gpu-a",
+        "side": "right",
+        "offset": null
+      },
+      "target": {
+        "kind": "attached",
+        "objectId": "host-1-nvlink",
+        "side": "left",
+        "offset": null
+      },
+      "label": "NVLink",
+      "style": {
+        "dashed": false,
+        "arrow": "none",
+        "shape": "orthogonal"
+      },
+      "routingMode": "auto",
+      "waypoints": []
+    },
+    {
+      "id": "host-1-gpu-b-to-host-1-nvlink",
+      "source": {
+        "kind": "attached",
+        "objectId": "host-1-gpu-b",
+        "side": "right",
+        "offset": null
+      },
+      "target": {
+        "kind": "attached",
+        "objectId": "host-1-nvlink",
+        "side": "left",
+        "offset": null
+      },
+      "label": "NVLink",
+      "style": {
+        "dashed": false,
+        "arrow": "none",
+        "shape": "orthogonal"
+      },
+      "routingMode": "auto",
+      "waypoints": []
+    },
+    {
+      "id": "host-1-nic-to-fabric-switch",
+      "source": {
+        "kind": "attached",
+        "objectId": "host-1-nic",
+        "side": "right",
+        "offset": null
+      },
+      "target": {
+        "kind": "attached",
+        "objectId": "fabric-switch",
+        "side": "left",
+        "offset": null
+      },
+      "label": "InfiniBand",
+      "style": {
+        "dashed": false,
+        "arrow": "none",
+        "shape": "orthogonal"
+      },
+      "routingMode": "auto",
+      "waypoints": []
+    },
+    {
+      "id": "host-2-gpu-a-to-host-2-nvlink",
+      "source": {
+        "kind": "attached",
+        "objectId": "host-2-gpu-a",
+        "side": "right",
+        "offset": null
+      },
+      "target": {
+        "kind": "attached",
+        "objectId": "host-2-nvlink",
+        "side": "left",
+        "offset": null
+      },
+      "label": "NVLink",
+      "style": {
+        "dashed": false,
+        "arrow": "none",
+        "shape": "orthogonal"
+      },
+      "routingMode": "auto",
+      "waypoints": []
+    },
+    {
+      "id": "host-2-gpu-b-to-host-2-nvlink",
+      "source": {
+        "kind": "attached",
+        "objectId": "host-2-gpu-b",
+        "side": "right",
+        "offset": null
+      },
+      "target": {
+        "kind": "attached",
+        "objectId": "host-2-nvlink",
+        "side": "left",
+        "offset": null
+      },
+      "label": "NVLink",
+      "style": {
+        "dashed": false,
+        "arrow": "none",
+        "shape": "orthogonal"
+      },
+      "routingMode": "auto",
+      "waypoints": []
+    },
+    {
+      "id": "host-2-nic-to-fabric-switch",
+      "source": {
+        "kind": "attached",
+        "objectId": "host-2-nic",
+        "side": "right",
+        "offset": null
+      },
+      "target": {
+        "kind": "attached",
+        "objectId": "fabric-switch",
+        "side": "left",
+        "offset": null
+      },
+      "label": "InfiniBand",
+      "style": {
+        "dashed": false,
+        "arrow": "none",
+        "shape": "orthogonal"
+      },
+      "routingMode": "auto",
+      "waypoints": []
+    }
+  ],
+  "annotations": [
+    {
+      "id": "training-notes",
+      "kind": "text",
+      "text": "Within a server: NVLink joins GPUs through NVLink Switch.\nBetween servers: ConnectX NICs join an InfiniBand fabric.\nTraining software: CUDA and NCCL. GPUDirect RDMA can be used on supported paths.\nSimplified topology. Only selected components and links are shown.",
+      "x": 68,
+      "y": 568,
+      "targetId": null
+    }
+  ]
+}

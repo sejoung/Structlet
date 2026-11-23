@@ -8,18 +8,23 @@ import { FILE_EXTENSION, fileNameFor, MIME_TYPE, parseStructlet, serializeStruct
 import { emptyDocument, type Document } from '../domain';
 import type { Appearance } from '../engine';
 import type { Translate } from '../i18n/messages';
-import sampleText from '../../samples/three-tier.structlet?raw';
+import threeTier from '../../samples/three-tier.structlet?raw';
+import gpuTraining from '../../samples/gpu-training.structlet?raw';
+import migInference from '../../samples/mig-inference.structlet?raw';
+
+const SAMPLES = { 'three-tier': threeTier, 'gpu-training': gpuTraining, 'mig-inference': migInference };
 
 export interface DocumentActions {
   newDocument(): Promise<void>;
   open(): Promise<void>;
+  openDroppedFiles(dropped: FileList): Promise<void>;
   importFile(): Promise<void>;
   importText(text: string, name?: string): Promise<void>;
   save(): Promise<void>;
   saveAs(): Promise<void>;
   exportSvg(): void;
   exportPng(): Promise<void>;
-  openSample(): Promise<void>;
+  downloadSample(sample: keyof typeof SAMPLES): void;
 }
 
 interface Deps {
@@ -48,6 +53,15 @@ export function createDocumentActions({ editor, files, newId, appearance, t, not
     session.replaceDocument(doc, { dirty: true });
     onOpened(doc);
     return true;
+  };
+  const openText = async (text: string, keepFile: boolean) => {
+    const result = parseStructlet(text);
+    if (!result.ok) {
+      if (keepFile) files.forget();
+      notify(`${t('error.open')}: ${result.errors.slice(0, 3).join(' · ')}`);
+      return;
+    }
+    if (await replace(result.document, keepFile)) log.info('files.opened');
   };
   const importText = async (text: string, name?: string) => {
     const result = await importInto(session.committedDocument, text, undefined, name?.replace(/\.[^.]+$/, ''));
@@ -81,14 +95,20 @@ export function createDocumentActions({ editor, files, newId, appearance, t, not
     },
     async open() {
       const file = await files.open(`${FILE_EXTENSION},application/json,.json`);
-      if (!file) return;
-      const result = parseStructlet(file.text);
-      if (!result.ok) {
-        files.forget();
-        notify(`${t('error.open')}: ${result.errors.slice(0, 3).join(' · ')}`);
+      if (file) await openText(file.text, true);
+    },
+    async openDroppedFiles(dropped) {
+      const file = dropped[0];
+      if (dropped.length !== 1 || !file?.name.toLowerCase().endsWith(FILE_EXTENSION)) {
+        notify(t('error.dropFile'));
         return;
       }
-      if (await replace(result.document, true)) log.info('files.opened');
+      const contents = await file.text().catch(() => null);
+      if (contents === null) {
+        notify(t('error.open'));
+        return;
+      }
+      await openText(contents, false);
     },
     async importFile() {
       const file = await files.read('.json,.yml,.yaml,application/json,text/yaml');
@@ -128,9 +148,9 @@ export function createDocumentActions({ editor, files, newId, appearance, t, not
         notify(t('error.png'));
       }
     },
-    async openSample() {
-      const result = parseStructlet(sampleText);
-      if (result.ok && (await replace({ ...result.document, id: newId('document') }))) log.info('files.sample');
+    downloadSample(sample) {
+      downloadText(SAMPLES[sample], `${sample}${FILE_EXTENSION}`, MIME_TYPE);
+      log.info('files.sample-downloaded');
     },
   };
 }

@@ -18,14 +18,14 @@ interface ShortcutDeps {
   setPresenting(on: boolean): void;
 }
 
-/** Keyboard shortcuts. Ignored while typing in a field. */
+/** Editor keyboard shortcuts. Ignored in dialogs and while typing in a field. */
 export function useShortcuts(deps: ShortcutDeps): void {
   const latest = useRef(deps);
   latest.current = deps;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
-      if (target?.closest?.('input, textarea, select, [contenteditable="true"]')) return;
+      if (target?.closest?.('dialog, input, textarea, select, [contenteditable="true"]')) return;
       const { editor, actions, fit, zoom, edit, setTool, tool, togglePanels, toggleInspector, presenting, setPresenting } = latest.current;
       const session = editor.session;
       const mod = e.metaKey || e.ctrlKey;

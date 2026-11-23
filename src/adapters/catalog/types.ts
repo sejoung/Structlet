@@ -2,7 +2,7 @@ import type { Glyph } from '../../engine';
 
 /** Service definitions, separate from the nodes that use them and from icon packs. */
 
-export const PROVIDERS = ['general', 'aws', 'gcp', 'azure', 'k8s'] as const;
+export const PROVIDERS = ['general', 'aws', 'gcp', 'azure', 'k8s', 'nvidia'] as const;
 export type Provider = (typeof PROVIDERS)[number];
 
 export interface ServiceDefinition {

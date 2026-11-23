@@ -54,6 +54,21 @@ test('loading an AWS icon pack from a zip changes icons everywhere and survives 
   await expect(page.locator('.diagram [data-node="queue"] use')).toHaveCount(0);
 });
 
+test('the empty icon pack message fits on a line in Korean', async ({ page }) => {
+  await freshApp(page, 'ko');
+  await act(page, 'tb-icon-packs');
+  const dialog = page.getByRole('dialog', { name: '아이콘 팩' });
+  const empty = dialog.getByText('불러온 아이콘 팩이 없습니다.');
+  await expect(empty).toBeVisible();
+  const lines = await empty.evaluate((element) => {
+    const range = document.createRange();
+    range.selectNodeContents(element);
+    return range.getClientRects().length;
+  });
+  expect(lines).toBe(1);
+  await expect(dialog.getByRole('link', { name: 'Kubernetes Community Icons' })).toHaveAttribute('href', 'https://github.com/kubernetes/community/tree/main/icons');
+});
+
 test('loading a Kubernetes icon folder', async ({ page }, info) => {
   const dir = info.outputPath('k8s-icons');
   mkdirSync(join(dir, 'svg/resources/unlabeled'), { recursive: true });

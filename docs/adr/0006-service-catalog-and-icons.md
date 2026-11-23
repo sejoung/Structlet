@@ -19,6 +19,7 @@
   | `gcp.ts` | Google Cloud | 35 | `gcp.cloud-run` |
   | `azure.ts` | Azure | 34 | `azure.aks` |
   | `k8s.ts` | Kubernetes | 14 | `k8s.deployment` |
+  | `nvidia.ts` | NVIDIA | 12 | `nvidia.gpu` |
 - **일반 기호**는 Lucide(ISC) 아이콘 데이터다(`THIRD_PARTY_NOTICES.md`). 제공자 서비스도 일반 기호로 그리고 서비스 이름은 글자로만 쓴다. 공식 아이콘은 사용자가 불러온 아이콘 팩에서만 온다.
 - **타일 색**은 역할별(클라이언트, 컴퓨팅, 데이터, 스토리지, 네트워크, 통합, 보안, 운영, 분석, 외부)이다.
 - **검색**은 두 언어의 이름, ID, 검색어를 찾고, 다음 순서로 정렬한다: ID·검색어 일치 → 이름 시작 → 단어 시작 → 포함. 팔레트는 제공자별로 접히는 묶음이다.

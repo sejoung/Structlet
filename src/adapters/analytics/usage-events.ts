@@ -15,7 +15,7 @@ export interface UsageEvent {
  */
 const USAGE: Readonly<Record<string, { name: string; params?: readonly string[] }>> = {
   'files.new': { name: 'diagram_created' },
-  'files.sample': { name: 'sample_opened' },
+  'files.sample-downloaded': { name: 'sample_downloaded' },
   'files.opened': { name: 'file_opened' },
   'files.saved': { name: 'file_saved', params: ['target'] },
   'files.exported': { name: 'image_exported', params: ['format', 'view'] },

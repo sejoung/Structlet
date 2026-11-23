@@ -142,6 +142,8 @@ function sideValue(end: Endpoint): Side | 'auto' | 'free' {
   return end.kind === 'free' ? 'free' : end.side;
 }
 
+const FABRIC_LINKS = ['NVLink', 'InfiniBand', 'Ethernet / RoCE'] as const;
+
 export function EdgeSection({ edge, ...p }: SectionProps & { edge: Edge }) {
   const { t, editor } = p;
   const sideOptions = (end: Endpoint) => [
@@ -158,6 +160,15 @@ export function EdgeSection({ edge, ...p }: SectionProps & { edge: Edge }) {
     <>
       <Section title={t('section.basics')}>
         <TextArea label={t('props.label')} value={edge.label} onChange={(v) => editor.rename(edge.id, v)} testId="prop-label" />
+        <Select
+          label={t('props.linkPreset')}
+          value=""
+          options={[{ value: '', label: t('props.chooseLinkPreset') }, ...FABRIC_LINKS.map((label) => ({ value: label, label }))]}
+          onChange={(label) => {
+            if (label) editor.update('edges', edge.id, { label, style: { ...edge.style, dashed: false, arrow: 'none' } });
+          }}
+          testId="prop-link-preset"
+        />
       </Section>
       <Section title={t('section.appearance')}>
         <Row label={t('props.arrow')}>

@@ -31,7 +31,7 @@
 
 ## 특징
 
-- 🧩 **서비스와 중첩 영역** — 일반·AWS·Google Cloud·Azure·Kubernetes 카탈로그, Cloud ▸ Region ▸ VPC ▸ Subnet 계층
+- 🧩 **서비스와 중첩 영역** — 일반·AWS·Google Cloud·Azure·Kubernetes·NVIDIA 카탈로그, Cloud ▸ Region ▸ VPC ▸ Subnet 계층
 - 🔀 **직교 연결선** — 장애물을 피하는 A* 자동 경로, 고친 선만 수동 꺾임점으로 저장
 - 📥 **가져오기와 자동 배치** — 좌표 없는 JSON 초안, `docker-compose.yml`, Kubernetes 매니페스트, `terraform show -json`(AWS·Google Cloud·Azure)
 - 🎨 **공식 아이콘 팩** — 사용자가 직접 받은 제공자 아이콘(zip 또는 폴더)을 불러와 사용
@@ -50,14 +50,14 @@ npm install
 npm run dev          # http://127.0.0.1:5183
 ```
 
-처음 열면 빈 캔버스다. **파일 → 샘플**(또는 가운데의 **샘플 열기**)을 누르면 검증용 구성도(사용자 → DNS → 로드밸런서 → API → DB/캐시/큐 → 워커 → 결제·메일, VPC 안 두 서브넷, 노드 11개·영역 5개·연결 10개)가 열린다. 원본은 [`samples/three-tier.structlet`](samples/three-tier.structlet)이다.
+처음 열면 빈 캔버스다. 위 막대의 **도움말(?)**에서 빠른 사용법, 편집기 화면 캡처, 공식 아이콘 팩 링크를 볼 수 있다. **샘플 다운로드 (.structlet)**로 받은 파일을 캔버스에 끌어다 놓거나 **파일 → 열기**에서 선택하면 3계층 샘플 구성도가 열린다. 원본은 [`samples/three-tier.structlet`](samples/three-tier.structlet)이다. 매뉴얼에서 [분산 GPU 학습](samples/gpu-training.structlet)과 [MIG 추론](samples/mig-inference.structlet) 샘플도 받을 수 있다. 선 선택 후 **연결선 프리셋**에서 NVLink, InfiniBand, Ethernet / RoCE를 고른다.
 
 | 명령 | 내용 |
 | --- | --- |
 | `npm run dev` | 개발 서버 (`127.0.0.1:5183`). Drive는 동작하고, 사용 통계는 보내지 않는다 |
 | `npm run typecheck` | 타입 검사만 (`tsc --noEmit`) |
 | `npm run build` | 타입 검사 + 정적 빌드(`dist/`). 상대 경로라 도메인 루트든 하위 경로든 아무 정적 호스팅에 올리면 된다 |
-| `npm run build:single` | HTML 한 파일(`dist-single/structlet.html`, 약 0.5MB). 더블클릭(`file://`)으로 열린다 |
+| `npm run build:single` | HTML 한 파일(`dist-single/structlet.html`, 약 0.9MB). 더블클릭(`file://`)으로 열린다 |
 | `npm run preview` | 빌드 결과 미리보기 (`127.0.0.1:5184`, CSP 포함) |
 | `npm test` | 단위 테스트 (Vitest, `tests/unit`). `npm run test:watch`는 바뀔 때마다 다시 돌린다 |
 | `npm run e2e` | 단일 파일 빌드 후 E2E (Playwright, `tests/e2e`). 프로덕션 빌드 두 벌(기본, 테스트 측정 ID)을 `vite preview`로 띄워 검사하고 Google은 흉내 낸다. 처음 한 번 `npx playwright install chromium` |
@@ -74,7 +74,7 @@ npm run dev          # http://127.0.0.1:5183
 
 화면은 네 부분이다.
 
-- **위 막대** — 왼쪽에 파일 메뉴, 제목, 제목 바로 뒤에 저장 위치(이 브라우저, 연결하면 Google Drive)가 있다. 가운데에 실행 취소와 2D/아이소메트릭, 오른쪽에 패널 토글·보기 모드·단축키·설정(⚙)·**내보내기**가 있다.
+- **위 막대** — 왼쪽에 파일 메뉴, 제목, 제목 바로 뒤에 저장 위치(이 브라우저, 연결하면 Google Drive)가 있다. 가운데에 실행 취소와 2D/아이소메트릭, 오른쪽에 패널 토글·보기 모드·도움말·설정(⚙)·**내보내기**가 있다.
 - **왼쪽** — 아이콘 레일로 **서비스 / 영역 / 주석 / 레이어** 패널을 바꾼다.
 - **오른쪽 인스펙터** — 선택한 객체의 속성이 나온다. 처음에는 접혀 있고, 필요할 때 위 막대 토글이나 `I`로 연다.
 - **캔버스** — 왼쪽 위에 도구 막대, 오른쪽 아래에 확대 막대와 미니맵이 떠 있다.
@@ -106,7 +106,7 @@ npm run dev          # http://127.0.0.1:5183
 <details>
 <summary><b>편집</b></summary>
 
-- **서비스 추가** — **서비스** 패널에서 검색(한국어·영어)하거나, 제공자(일반·AWS·GCP·Azure·Kubernetes)를 골라 역할별 격자에서 찾는다. 클릭하거나 캔버스로 끌어 놓는다. 영역 안에 놓으면 그 영역의 자식이 된다. 최근 사용한 서비스가 맨 위에 나온다.
+- **서비스 추가** — **서비스** 패널에서 검색(한국어·영어)하거나, 제공자(일반·AWS·GCP·Azure·Kubernetes·NVIDIA)를 골라 역할별 격자에서 찾는다. 클릭하거나 캔버스로 끌어 놓는다. 영역 안에 놓으면 그 영역의 자식이 된다. 최근 사용한 서비스가 맨 위에 나온다.
 - **레이어** — **레이어** 패널은 Cloud ▸ Region ▸ VPC ▸ Subnet ▸ 서비스 계층을 트리로 보여준다. 들여쓰기 선은 각 영역의 색이다.
   - 행을 누르면 캔버스에서도 선택된다.
   - 더블클릭이나 Enter로 이름을 바꾼다.
@@ -141,7 +141,7 @@ npm run dev          # http://127.0.0.1:5183
 <summary><b>보기·테마·키보드</b></summary>
 
 - **보기** — 스크롤로 이동, ⌘/Ctrl+스크롤로 확대, Space+끌기 또는 가운데 버튼으로 이동, ⌘0 화면 맞춤. 오른쪽 아래 확대 막대(퍼센트를 누르면 100%)와 미니맵이 있다. 터치는 한 손가락 이동·두 손가락 확대. **아이소메트릭** 보기는 읽기 전용이고, 이 보기에서 SVG·PNG를 내보내면 아이소메트릭 그림이 된다. 테마(시스템/라이트/다크)와 언어는 **설정(⚙)**에서 바꾼다(내보내기는 항상 라이트).
-- **키보드** — 캔버스에서 Tab/Shift+Tab으로 객체 사이를 옮기고, 선택한 객체는 화면 낭독기가 읽는다. 메뉴는 Enter로 열고 화살표로 고르며 Esc로 닫는다. 위 막대의 ⌨ 단추가 단축키 목록을 보여준다.
+- **키보드** — 캔버스에서 Tab/Shift+Tab으로 객체 사이를 옮기고, 선택한 객체는 화면 낭독기가 읽는다. 메뉴는 Enter로 열고 화살표로 고르며 Esc로 닫는다. 위 막대의 **도움말(?) → 단축키**에서 목록을 볼 수 있다.
 
 </details>
 
@@ -236,7 +236,7 @@ docs/adr/       설계 기록. stormlet-reference/ 에 참고한 Stormlet ADR �
 </details>
 
 <details>
-<summary><b>E2E 37개</b> (<code>tests/e2e</code>, 프로덕션 빌드)</summary>
+<summary><b>E2E 39개</b> (<code>tests/e2e</code>, 프로덕션 빌드)</summary>
 
 - **기본 흐름** — 노드 두 개 → 연결 → 저장 → 열기 → 새로 고침 → SVG(화면과 같은 경로), PNG, 잘못된 파일 거부
 - **영역** — VPC 끌기 후 한 번의 undo, 다른 영역으로 끌어 넣기, 감싸기
@@ -249,7 +249,7 @@ docs/adr/       설계 기록. stormlet-reference/ 에 참고한 Stormlet ADR �
 - **Drive**(흉내 낸 Google) — 연결·폴더 저장·자동 저장·⌘S, 새로 고침 후 재연결(빈 문서를 쓰지 않음), 원격 변경 병합과 충돌 선택, 열기·동기화 중지·연결 해제
 - **사용 통계** — 동의 전 무전송, 허용 후 이벤트·주소 정리, 끄기, 거부
 - **패널·도구** — 패널 접기와 기억, 양쪽을 접는 `⌘\`, 처음에 접힌 인스펙터와 `I`·점검 배지, 위 막대 버튼 위치 고정, 제목 바로 뒤 저장 상태(캔버스가 창 끝까지, 중심 유지); 손 도구(화면만 이동, 문서 불변, 편집 없음); 연결 도구(연속 연결, 빈 곳 이동, Esc); 보기 모드
-- **화면 구성** — 레이어 트리(계층 표시, 캔버스와 선택 연동, 키보드, 이름 바꾸기, 끌어서 부모 바꾸기와 undo, 접기), 최근 사용, 단축키 창, 메뉴 키보드 조작
+- **화면 구성** — 레이어 트리(계층 표시, 캔버스와 선택 연동, 키보드, 이름 바꾸기, 끌어서 부모 바꾸기와 undo, 접기), 최근 사용, 메뉴 키보드 조작, 매뉴얼의 화면 캡처·단축키·샘플 다운로드 후 열기
 
 </details>
 
@@ -258,7 +258,7 @@ docs/adr/       설계 기록. stormlet-reference/ 에 참고한 Stormlet ADR �
 시작 요구사항의 첫 버전 1–7과 구현 순서 1–5를 모두 구현했다. 후속 검토 항목 중 로컬에서 가능한 것도 넣었다: 아이소메트릭 보기, Terraform/Compose/Kubernetes 가져오기, 보안 성격의 구성 점검. 추가로 다음을 넣었다: 아이콘 팩, 클립보드, 같은 파일에 저장, 미니맵, 다크 모드, 터치, 키보드 탐색, 상자형 노드, 범례 자동 생성, 단일 HTML 배포, Google Drive 동기화, 사용 통계.
 
 > [!IMPORTANT]
-> **직접 확인할 것** — Drive의 실제 OAuth 동의·Picker·권한 철회와 GA 실시간 보고서는 자동 테스트로 확인할 수 없다. Google Cloud에 Structlet origin을 등록한 뒤 [확인 목록](docs/google-drive.md#확인할-것-실제-계정)대로 확인한다.
+> **Drive 실계정 확인** — Google Cloud에 Structlet origin을 등록한 뒤 OAuth 동의·Picker·권한 철회를 실제 계정으로 확인한다. GA4 이벤트 수집은 확인됐으며, 배포 후 재확인 방법은 [확인 목록](docs/google-drive.md#확인할-것-실제-계정)에 있다.
 
 <details>
 <summary><b>하지 않은 것과 이유</b></summary>

@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
-import { act, center, drag, freshApp, nodeIds } from './helpers';
+import { act, center, drag, freshApp, nodeIds, openSample } from './helpers';
 
 test('two nodes → connect → save → reopen → SVG export', async ({ page }) => {
   await freshApp(page);
@@ -73,7 +73,7 @@ test('two nodes → connect → save → reopen → SVG export', async ({ page }
 
 test('PNG export produces an image', async ({ page }) => {
   await freshApp(page);
-  await act(page, 'tb-sample');
+  await openSample(page);
   const [png] = await Promise.all([page.waitForEvent('download'), act(page, 'tb-png')]);
   const bytes = readFileSync((await png.path())!);
   expect(bytes.subarray(1, 4).toString()).toBe('PNG');
@@ -82,7 +82,7 @@ test('PNG export produces an image', async ({ page }) => {
 
 test('rejects an invalid file without touching the open document', async ({ page }, info) => {
   await freshApp(page);
-  await act(page, 'tb-sample');
+  await openSample(page);
   const bad = info.outputPath('bad.structlet');
   const { writeFileSync } = await import('node:fs');
   writeFileSync(bad, JSON.stringify({ format: 'structlet', formatVersion: 1, id: 'x', containers: [{ id: 'a', kind: 'vpc', parentId: 'b', x: 0, y: 0, width: 10, height: 10 }, { id: 'b', kind: 'vpc', parentId: 'a', x: 0, y: 0, width: 10, height: 10 }] }));

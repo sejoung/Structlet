@@ -31,7 +31,7 @@ and export to SVG or PNG — no server, no account, no external AI calls.
 
 ## Features
 
-- 🧩 **Services and nested areas** — General, AWS, Google Cloud, Azure and Kubernetes catalogs; areas nest as Cloud ▸ Region ▸ VPC ▸ Subnet.
+- 🧩 **Services and nested areas** — General, AWS, Google Cloud, Azure, Kubernetes and NVIDIA catalogs; areas nest as Cloud ▸ Region ▸ VPC ▸ Subnet.
 - 🔀 **Orthogonal connectors** — obstacle-avoiding A* routing, with manual waypoints only where you edit a path.
 - 📥 **Import and auto-layout** — coordinate-free JSON drafts, `docker-compose.yml`, Kubernetes manifests and `terraform show -json` (AWS · Google Cloud · Azure).
 - 🎨 **Official icon packs** — load the provider icon packs you downloaded yourself (zip or folder).
@@ -50,14 +50,14 @@ npm install
 npm run dev          # http://127.0.0.1:5183
 ```
 
-The editor opens on an empty canvas. Choose **File → Sample** (or **Open sample** in the middle) to load the reference diagram: User → DNS → load balancer → API → DB / cache / queue → worker → payments and mail, two subnets inside a VPC — 11 nodes, 5 areas, 10 connections. The source is [`samples/three-tier.structlet`](samples/three-tier.structlet).
+The editor opens on an empty canvas. Open **Help (?)** in the top bar for a quick guide, a screenshot of the editor, and links to official icon packs. Choose **Download sample (.structlet)**, then drop the downloaded file onto the canvas or use **File → Open**. The source is [`samples/three-tier.structlet`](samples/three-tier.structlet). Help also offers [distributed GPU training](samples/gpu-training.structlet) and [MIG inference](samples/mig-inference.structlet) samples. On a selected connection, choose **Link preset** for NVLink, InfiniBand or Ethernet / RoCE.
 
 | Command | What it does |
 | --- | --- |
 | `npm run dev` | Dev server (`127.0.0.1:5183`). Drive works; usage statistics are not sent |
 | `npm run typecheck` | Type check only (`tsc --noEmit`) |
 | `npm run build` | Type check + static build (`dist/`). Uses relative paths, so any static host works, at the domain root or a sub-path |
-| `npm run build:single` | One HTML file (`dist-single/structlet.html`, about 0.5 MB) that opens by double-click (`file://`) |
+| `npm run build:single` | One HTML file (`dist-single/structlet.html`, about 0.9 MB) that opens by double-click (`file://`) |
 | `npm run preview` | Preview the build (`127.0.0.1:5184`, with CSP) |
 | `npm test` | Unit tests (Vitest, `tests/unit`); `npm run test:watch` reruns them on change |
 | `npm run e2e` | Builds the single file, then runs E2E (Playwright, `tests/e2e`) against two production builds served by `vite preview`, with Google mocked. Run `npx playwright install chromium` once first |
@@ -77,7 +77,7 @@ The editor opens on an empty canvas. Choose **File → Sample** (or **Open sampl
 
 The screen has four parts:
 
-- **Top bar** — on the left, the file menu, the title and, right after it, where the diagram is saved (this browser, or Google Drive once linked); undo and 2D / isometric in the middle; on the right, panel toggles, view mode, shortcuts, settings (⚙) and **Export**.
+- **Top bar** — on the left, the file menu, the title and, right after it, where the diagram is saved (this browser, or Google Drive once linked); undo and 2D / isometric in the middle; on the right, panel toggles, view mode, help, settings (⚙) and **Export**.
 - **Left** — an icon rail switches between the **Services / Areas / Notes / Layers** panels.
 - **Right inspector** — properties of the selected object. Folded on the first visit; open it with its top-bar toggle or `I` when you need it.
 - **Canvas** — a toolbar floats at the top left; the zoom bar and minimap at the bottom right.
@@ -144,7 +144,7 @@ The panels can be hidden. Two toggles — **[left panel] [right panel]** — alw
 <summary><b>View, themes and keyboard</b></summary>
 
 - **View** — scroll to pan, ⌘ / Ctrl+scroll to zoom, Space+drag or middle button to pan, ⌘0 to fit. The zoom bar at the bottom right (click the percentage for 100%) and a minimap. On touch, one finger pans and two fingers zoom. The **isometric** view is read-only; exporting SVG / PNG from it produces an isometric drawing. Theme (system / light / dark) and language are in **Settings (⚙)** (exports are always light).
-- **Keyboard** — on the canvas, Tab / Shift+Tab moves between objects, and screen readers announce the selection. Menus open with Enter, move with arrow keys and close with Esc. The ⌨ button in the top bar lists the shortcuts.
+- **Keyboard** — on the canvas, Tab / Shift+Tab moves between objects, and screen readers announce the selection. Menus open with Enter, move with arrow keys and close with Esc. Open **Help (?) → Keyboard shortcuts** to see the list.
 
 </details>
 
@@ -240,7 +240,7 @@ The layer rules are enforced in three places, all part of `npm run check` and CI
 </details>
 
 <details>
-<summary><b>37 E2E tests</b> (<code>tests/e2e</code>, production builds)</summary>
+<summary><b>39 E2E tests</b> (<code>tests/e2e</code>, production builds)</summary>
 
 - **Basic flow** — two nodes → connect → save → open → reload → SVG (same paths as the screen), PNG, rejecting an invalid file
 - **Areas** — dragging a VPC then a single undo, dragging into another area, wrapping
@@ -253,7 +253,7 @@ The layer rules are enforced in three places, all part of `npm run check` and CI
 - **Drive** (mocked Google) — connect, folder save, autosave, ⌘S; reconnect after reload (never writes an empty document); remote change merge and conflict choice; open, stop syncing, disconnect
 - **Usage statistics** — nothing sent before consent; events and URL cleanup after allowing; turning off; refusing
 - **Panels and tools** — panel collapse and memory, `⌘\` for both panels, inspector folded on the first visit with `I` and a findings badge, top-bar buttons that keep their place, save status right after the title (fixed position, canvas to the window edge, center kept); hand tool (pans only, document unchanged, no edits); connect tool (consecutive connections, panning empty space, Esc); view mode
-- **Layout** — layer tree (hierarchy, selection sync with the canvas, keyboard, rename, drag to reparent and undo, collapse), recently used, shortcuts dialog, keyboard menu navigation
+- **Layout** — layer tree (hierarchy, selection sync with the canvas, keyboard, rename, drag to reparent and undo, collapse), recently used, keyboard menu navigation, user guide with screenshot, shortcuts, and sample download and reopening
 
 </details>
 
@@ -262,7 +262,7 @@ The layer rules are enforced in three places, all part of `npm run check` and CI
 Items 1–7 of the initial requirements' first version and implementation steps 1–5 are all done. The follow-up items that are possible locally are in too: isometric view, Terraform / Compose / Kubernetes import, and security-oriented configuration checks. On top of that: icon packs, clipboard, saving to the same file, minimap, dark mode, touch, keyboard navigation, box-style nodes, automatic legends, single-HTML deployment, Google Drive sync and usage statistics.
 
 > [!IMPORTANT]
-> **Check by hand** — Drive's real OAuth consent, Picker and permission revocation, and GA real-time reports cannot be covered by automated tests. After registering the Structlet origin in Google Cloud, go through the [checklist](docs/google-drive.md#확인할-것-실제-계정).
+> **Drive verification** — Verify OAuth consent, Picker and permission revocation with a real account after registering the Structlet origin in Google Cloud. GA4 event collection has been confirmed. The [checklist](docs/google-drive.md#확인할-것-실제-계정) also covers how to recheck Analytics after a deployment.
 
 <details>
 <summary><b>Not included, and why</b></summary>

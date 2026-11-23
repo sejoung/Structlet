@@ -1,12 +1,13 @@
 import type { ContainerKind } from '../../domain';
-import type { Provider, ServiceDefinition } from '../catalog/types';
+import type { ServiceDefinition } from '../catalog/types';
+import type { IconPack } from './pack';
 
 /**
  * Matching official icon file names to catalog services. The rules and alias
  * tables are Structlet's own data; the icons themselves come from the user.
  */
 
-type PackProvider = Exclude<Provider, 'general'>;
+type PackProvider = IconPack['provider'];
 
 const STOP = new Set(['and', 'for', 'of', 'the', 'service', 'services', 'icon']);
 const VENDOR = /^(amazon|aws|azure|microsoft|google|gcp)-/;

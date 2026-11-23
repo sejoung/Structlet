@@ -11,7 +11,7 @@ import { AREA_STROKE, computeScene, containerAt, fitView, onSurface, screenToWor
 import { createTranslator, type Language } from '../i18n/messages';
 import { Canvas } from '../components/canvas/Canvas';
 import { IconPacksDialog } from '../components/IconPacksDialog';
-import { ShortcutsDialog, Toast } from '../components/Overlays';
+import { ManualDialog, Toast } from '../components/Overlays';
 import { Sidebar, type SidebarTab } from '../components/sidebar/Sidebar';
 import type { CanvasTool } from '../components/canvas/use-gestures';
 import type { PaletteService } from '../components/sidebar/types';
@@ -61,7 +61,7 @@ export function App({ editor, store, files, packStore, drive: driveServices, dri
   const [notice, setNotice] = useState<string | null>(null);
   const [view, setView] = useState<ViewMode>('2d');
   const [tab, setTab] = useState<SidebarTab>('services');
-  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [manualOpen, setManualOpen] = useState(false);
   const [recent, setRecent] = useState<string[]>(storedRecent);
   const [panels, setPanelsState] = useState<Panels>(storedPanels);
   const [tool, setTool] = useState<CanvasTool>('select');
@@ -268,7 +268,6 @@ export function App({ editor, store, files, packStore, drive: driveServices, dri
         onExportPng={() => void actions.exportPng()}
         onUndo={() => editor.undo()}
         onRedo={() => editor.redo()}
-        onSample={() => void actions.openSample()}
         onTitle={(title) => editor.setTitle(title)}
         onView={(v) => {
           setView(v);
@@ -278,7 +277,7 @@ export function App({ editor, store, files, packStore, drive: driveServices, dri
         {...(usage ? { stats: { granted: usage.granted, toggle: usage.toggle } } : {})}
         onTheme={theme.setChoice}
         onIconPacks={() => setPacksOpen(true)}
-        onShortcuts={() => setShortcutsOpen(true)}
+        onManual={() => setManualOpen(true)}
         leftOpen={panels.left}
         rightOpen={panels.right}
         findingCount={findings.length}
@@ -312,7 +311,20 @@ export function App({ editor, store, files, packStore, drive: driveServices, dri
           onAddArea={addArea}
           onAddNote={addNote}
         />
-        <main className="stage">
+        <main
+          className="stage"
+          onDragOver={(e) => {
+            if (!e.dataTransfer.types.includes('Files')) return;
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'copy';
+          }}
+          onDrop={(e) => {
+            const dropped = e.dataTransfer.files;
+            if (!e.dataTransfer.types.includes('Files')) return;
+            e.preventDefault();
+            void actions.openDroppedFiles(dropped);
+          }}
+        >
           <Canvas
             t={t}
             editor={editor}
@@ -322,7 +334,6 @@ export function App({ editor, store, files, packStore, drive: driveServices, dri
             setViewport={setViewport}
             onResize={onCanvasResize}
             onDropService={(id, world) => addService(id, world)}
-            onOpenSample={() => void actions.openSample()}
             editing={editing}
             setEditing={setEditing}
             theme={canvasTheme}
@@ -360,7 +371,7 @@ export function App({ editor, store, files, packStore, drive: driveServices, dri
           onClose={() => setPacksOpen(false)}
         />
       )}
-      {shortcutsOpen && <ShortcutsDialog t={t} onClose={() => setShortcutsOpen(false)} />}
+      {manualOpen && <ManualDialog t={t} language={language} onDownloadSample={actions.downloadSample} onClose={() => setManualOpen(false)} />}
       {driveUi.dialogs}
       {usage?.undecided && <ConsentBanner t={t} onChoose={(granted) => usage.choose(granted ? 'granted' : 'denied')} />}
     </div>

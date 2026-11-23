@@ -133,7 +133,7 @@ test('⌘\\ hides both panels; the canvas takes all of the space and the diagram
 test('panel toggles keep their place in every state', async ({ page }) => {
   await freshApp(page);
   await openSample(page);
-  const ids = ['toggle-left', 'toggle-right', 'tb-present', 'tb-shortcuts', 'menu-settings', 'menu-export'];
+  const ids = ['toggle-left', 'toggle-right', 'tb-present', 'tb-help', 'menu-settings', 'menu-export'];
   const where = async () => Promise.all(ids.map(async (id) => Math.round((await page.getByTestId(id).boundingBox())!.x)));
   const start = await where();
   const steps = [

@@ -20,7 +20,7 @@ export function useClipboard(deps: ClipboardDeps): void {
   latest.current = deps;
   const memory = useRef<{ fragment: Fragment; pastes: number } | null>(null);
   useEffect(() => {
-    const typing = (e: Event) => (e.target as HTMLElement | null)?.closest?.('input, textarea, select, [contenteditable="true"]');
+    const typing = (e: Event) => (e.target as HTMLElement | null)?.closest?.('dialog, input, textarea, select, [contenteditable="true"]');
     const copy = (e: ClipboardEvent, cut: boolean) => {
       if (typing(e)) return;
       const { editor } = latest.current;

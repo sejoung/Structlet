@@ -38,12 +38,7 @@ export function IconPacksDialog({ t, packs, persistent, busy, onImport, onToggle
     <dialog ref={ref} className="dialog" aria-labelledby="packs-title" onCancel={onClose} data-testid="icon-packs">
       <h2 id="packs-title">{t('packs.title')}</h2>
       <p className="hint">{t('packs.intro')}</p>
-      <ul className="pack-sources">
-        <li>{t('packs.source.aws')}</li>
-        <li>{t('packs.source.gcp')}</li>
-        <li>{t('packs.source.azure')}</li>
-        <li>{t('packs.source.k8s')}</li>
-      </ul>
+      <IconPackSources t={t} />
       <div className="button-row">
         <select aria-label={t('packs.provider')} value={provider} onChange={(e) => setProvider(e.target.value as PackProviderChoice)} data-testid="pack-provider">
           {PROVIDERS.map((p) => (
@@ -55,33 +50,51 @@ export function IconPacksDialog({ t, packs, persistent, busy, onImport, onToggle
       </div>
       {busy && <p className="hint" role="status">{t('packs.loading')}</p>}
       {!persistent && <p className="hint strong">{t('packs.notPersistent')}</p>}
-      <table className="pack-table">
-        <tbody>
-          {packs.length === 0 && (
-            <tr>
-              <td className="hint">{t('packs.none')}</td>
-            </tr>
-          )}
-          {packs.map((p) => (
-            <tr key={p.id} data-testid={`pack-${p.id}`}>
-              <td>
-                <label className="check">
-                  <input type="checkbox" checked={p.enabled} onChange={(e) => onToggle(p.id, e.target.checked)} aria-label={p.name} />
-                  <strong>{p.name}</strong>
-                </label>
-                <span className="hint">{t(`packs.provider.${p.provider}`)} · {t('packs.counts', { matched: p.matched, extras: p.extras, areas: p.areas })}</span>
-              </td>
-              <td>
-                <button type="button" className="danger" onClick={() => onRemove(p.id)}>{t('props.delete')}</button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {packs.length === 0 ? (
+        <p className="hint">{t('packs.none')}</p>
+      ) : (
+        <table className="pack-table">
+          <tbody>
+            {packs.map((p) => (
+              <tr key={p.id} data-testid={`pack-${p.id}`}>
+                <td>
+                  <label className="check">
+                    <input type="checkbox" checked={p.enabled} onChange={(e) => onToggle(p.id, e.target.checked)} aria-label={p.name} />
+                    <strong>{p.name}</strong>
+                  </label>
+                  <span className="hint">{t(`packs.provider.${p.provider}`)} · {t('packs.counts', { matched: p.matched, extras: p.extras, areas: p.areas })}</span>
+                </td>
+                <td>
+                  <button type="button" className="danger" onClick={() => onRemove(p.id)}>{t('props.delete')}</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
       <p className="hint small">{t('packs.trademarks')}</p>
       <div className="button-row end">
         <button type="button" onClick={onClose} data-testid="packs-close">{t('packs.close')}</button>
       </div>
     </dialog>
+  );
+}
+
+const ICON_PACK_SOURCES = [
+  ['aws', 'https://aws.amazon.com/architecture/icons/'],
+  ['gcp', 'https://cloud.google.com/icons'],
+  ['azure', 'https://learn.microsoft.com/azure/architecture/icons/'],
+  ['k8s', 'https://github.com/kubernetes/community/tree/main/icons'],
+] as const;
+
+export function IconPackSources({ t }: { t: Translate }) {
+  return (
+    <ul className="pack-sources">
+      {ICON_PACK_SOURCES.map(([provider, url]) => (
+        <li key={provider}>
+          <a href={url} target="_blank" rel="noopener noreferrer">{t(`packs.source.${provider}`)}</a>
+        </li>
+      ))}
+    </ul>
   );
 }

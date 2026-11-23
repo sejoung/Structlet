@@ -21,7 +21,6 @@ interface CanvasProps {
   setViewport(v: Viewport): void;
   onResize(size: { width: number; height: number }): void;
   onDropService(serviceId: string, world: Point): void;
-  onOpenSample(): void;
   editing: Id | null;
   setEditing(id: Id | null): void;
   theme: DiagramTheme;
@@ -244,7 +243,6 @@ export function Canvas(props: CanvasProps) {
         <div className="empty-state">
           <h2>{t('empty.title')}</h2>
           <p>{t('empty.body')}</p>
-          <button type="button" onClick={props.onOpenSample}>{t('empty.sample')}</button>
         </div>
       )}
     </div>

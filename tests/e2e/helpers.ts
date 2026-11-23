@@ -34,7 +34,7 @@ export async function nodeIds(page: Page): Promise<string[]> {
 
 /** Menu that holds each toolbar action in the redesigned top bar. */
 const MENU: Record<string, string> = {
-  'tb-new': 'menu-file', 'tb-open': 'menu-file', 'tb-import': 'menu-file', 'tb-save': 'menu-file', 'tb-save-as': 'menu-file', 'tb-sample': 'menu-file',
+  'tb-new': 'menu-file', 'tb-open': 'menu-file', 'tb-import': 'menu-file', 'tb-save': 'menu-file', 'tb-save-as': 'menu-file',
   'tb-svg': 'menu-export', 'tb-png': 'menu-export',
   'tb-icon-packs': 'menu-settings', 'tb-theme-dark': 'menu-settings', 'tb-theme-light': 'menu-settings', 'tb-theme-system': 'menu-settings', 'tb-lang-ko': 'menu-settings', 'tb-lang-en': 'menu-settings', 'tb-usage-stats': 'menu-settings',
 };
@@ -48,6 +48,7 @@ export async function act(page: Page, id: string) {
 }
 
 export async function openSample(page: Page) {
-  await act(page, 'tb-sample');
+  const [chooser] = await Promise.all([page.waitForEvent('filechooser'), act(page, 'tb-open')]);
+  await chooser.setFiles('samples/three-tier.structlet');
   await expect(page.locator('[data-testid^="node-"]')).toHaveCount(11);
 }

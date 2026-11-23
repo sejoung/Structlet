@@ -28,6 +28,12 @@ test.describe('usage statistics (build with a measurement id)', () => {
     await expect(page.getByTestId('consent')).toHaveCount(0);
     await expect.poll(() => loads.length).toBe(1);
     expect(loads[0]).toContain('id=G-E2ETEST01');
+    await page.getByTestId('tb-help').click();
+    const manual = page.getByRole('dialog', { name: 'User guide' });
+    const [sample] = await Promise.all([page.waitForEvent('download'), manual.getByRole('button', { name: 'Download sample (.structlet)' }).click()]);
+    expect(sample.suggestedFilename()).toBe('three-tier.structlet');
+    await expect.poll(() => sentEvents(page)).toContain('sample_downloaded');
+    await page.keyboard.press('Escape');
     const [download] = await Promise.all([page.waitForEvent('download'), act(page, 'tb-svg')]);
     void download;
     await expect.poll(() => sentEvents(page)).toContain('image_exported');

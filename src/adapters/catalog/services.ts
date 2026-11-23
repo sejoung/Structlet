@@ -7,18 +7,19 @@ import { AZURE_SERVICES } from './azure';
 import { GCP_SERVICES } from './gcp';
 import { GENERAL_SERVICES } from './general';
 import { K8S_SERVICES } from './k8s';
+import { NVIDIA_SERVICES } from './nvidia';
 import { ROLE_COLORS, type ServiceDefinition } from './types';
 
 /**
  * The service catalog: general services plus AWS, Google Cloud, Azure and
- * Kubernetes. Glyphs are Lucide symbols (ISC, see THIRD_PARTY_NOTICES.md);
+ * Kubernetes and NVIDIA. Glyphs are Lucide symbols (ISC, see THIRD_PARTY_NOTICES.md);
  * provider names are written as text only. Official provider icons come from
  * icon packs the user loads (see icon-packs/).
  */
 
 export { ROLE_COLORS, PROVIDERS, type Provider, type ServiceDefinition } from './types';
 
-export const SERVICES: readonly ServiceDefinition[] = [...GENERAL_SERVICES, ...AWS_SERVICES, ...GCP_SERVICES, ...AZURE_SERVICES, ...K8S_SERVICES];
+export const SERVICES: readonly ServiceDefinition[] = [...GENERAL_SERVICES, ...AWS_SERVICES, ...GCP_SERVICES, ...AZURE_SERVICES, ...K8S_SERVICES, ...NVIDIA_SERVICES];
 const BY_ID = new Map(SERVICES.map((s) => [s.id, s]));
 
 export function findService(id: string): ServiceDefinition | undefined {
