@@ -8,7 +8,7 @@ import { Icon } from './ui/Icon';
 export function LayoutGuide({ t, language, onDownload }: { t: Translate; language: Language; onDownload(): void }) {
   return (
     <section className="manual-packs" aria-labelledby="manual-layout-title">
-      <h3 id="manual-layout-title">{t('manual.layoutTitle')}</h3>
+      <h2 id="manual-layout-title">{t('manual.layoutTitle')}</h2>
       <p className="hint">{t('manual.complexHint')}</p>
       <button type="button" className="chip-button" onClick={onDownload}>
         <Icon name="download" size={14} />

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { act, freshApp, openSample } from './helpers';
+import { act, freshApp, openManual, openSample } from './helpers';
 
 /** Google's tag library, stubbed: it records that it loaded and leaves `dataLayer` to the page. */
 async function mockTag(page: Page) {
@@ -28,12 +28,12 @@ test.describe('usage statistics (build with a measurement id)', () => {
     await expect(page.getByTestId('consent')).toHaveCount(0);
     await expect.poll(() => loads.length).toBe(1);
     expect(loads[0]).toContain('id=G-E2ETEST01');
-    await page.getByTestId('tb-help').click();
-    const manual = page.getByRole('dialog', { name: 'User guide' });
-    const [sample] = await Promise.all([page.waitForEvent('download'), manual.getByRole('button', { name: 'Download sample (.structlet)' }).click()]);
+    const guide = await openManual(page);
+    const manual = guide.getByRole('main', { name: 'User guide' });
+    const [sample] = await Promise.all([guide.waitForEvent('download'), manual.getByRole('button', { name: 'Download sample (.structlet)' }).click()]);
     expect(sample.suggestedFilename()).toBe('three-tier.structlet');
-    await expect.poll(() => sentEvents(page)).toContain('sample_downloaded');
-    await page.keyboard.press('Escape');
+    await expect.poll(() => sentEvents(guide)).toContain('sample_downloaded');
+    await guide.close();
     const [download] = await Promise.all([page.waitForEvent('download'), act(page, 'tb-svg')]);
     void download;
     await expect.poll(() => sentEvents(page)).toContain('image_exported');

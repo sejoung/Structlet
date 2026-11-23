@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
-import { act, freshApp, openSample } from './helpers';
+import { act, freshApp, openManual, openSample } from './helpers';
 
 const row = (page: import('@playwright/test').Page, id: string) => page.locator(`[data-layer-id="${id}"]`);
 
@@ -49,20 +49,21 @@ test('recently used services, manual and menus', async ({ page }) => {
   await page.reload();
   await expect(page.getByTestId('recent-services').locator('[data-service="cache"]')).toHaveCount(1);
 
-  await page.getByRole('button', { name: 'Help', exact: true }).click();
-  const manual = page.getByRole('dialog', { name: 'User guide' });
+  const guide = await openManual(page);
+  const manual = guide.getByRole('main', { name: 'User guide' });
+  await expect(guide).toHaveURL(/#manual$/);
+  await expect(guide.getByTestId('canvas')).toHaveCount(0);
   await expect(manual).toBeVisible();
   await expect.poll(() => manual.getByRole('img').evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(1240);
   await expect(manual.getByRole('link', { name: 'AWS Architecture Icons' })).toHaveAttribute('href', 'https://aws.amazon.com/architecture/icons/');
   await expect(manual.getByRole('link')).toHaveCount(4);
-  const [sample] = await Promise.all([page.waitForEvent('download'), manual.getByRole('button', { name: 'Download sample (.structlet)' }).click()]);
+  const [sample] = await Promise.all([guide.waitForEvent('download'), manual.getByRole('button', { name: 'Download sample (.structlet)' }).click()]);
   expect(sample.suggestedFilename()).toBe('three-tier.structlet');
   await expect(page.locator('[data-testid^="node-"]')).toHaveCount(1);
 
   await manual.getByText('Keyboard shortcuts', { exact: true }).click();
   await expect(manual.getByText('Undo', { exact: true })).toBeVisible();
-  await page.keyboard.press('Escape');
-  await expect(manual).toHaveCount(0);
+  await guide.close();
 
   const canvas = page.getByTestId('canvas');
   const dropFile = async (name: string, text: string) => {
@@ -93,8 +94,8 @@ test('recently used services, manual and menus', async ({ page }) => {
   await expect(page.getByRole('menu')).toHaveCount(0);
   await act(page, 'tb-lang-ko');
   await expect(page.getByTestId('rail-services')).toContainText('서비스');
-  await page.getByRole('button', { name: '도움말', exact: true }).click();
-  const koreanManual = page.getByRole('dialog', { name: '사용 매뉴얼' });
+  const korean = await openManual(page);
+  const koreanManual = korean.getByRole('main', { name: '사용 매뉴얼' });
   await expect(koreanManual.getByRole('img')).toHaveAttribute('src', /manual-ko/);
   await expect(koreanManual.getByRole('button', { name: '샘플 다운로드 (.structlet)' })).toBeVisible();
 });
@@ -111,13 +112,13 @@ test('NVIDIA palette, architecture samples and link presets work together', asyn
     ['Distributed GPU training (.structlet)', 'gpu-training.structlet', 'host-1-nvlink'],
     ['MIG inference (.structlet)', 'mig-inference.structlet', 'instance-a'],
   ] as const) {
-    await page.getByTestId('tb-help').click();
-    const manual = page.getByRole('dialog', { name: 'User guide' });
+    const guide = await openManual(page);
+    const manual = guide.getByRole('main', { name: 'User guide' });
     await manual.getByRole('radio', { name: 'NVIDIA examples' }).click();
     await expect(manual.getByRole('img')).toHaveCount(2);
-    const [sample] = await Promise.all([page.waitForEvent('download'), manual.getByRole('button', { name, exact: true }).click()]);
+    const [sample] = await Promise.all([guide.waitForEvent('download'), manual.getByRole('button', { name, exact: true }).click()]);
     expect(sample.suggestedFilename()).toBe(filename);
-    await page.keyboard.press('Escape');
+    await guide.close();
     const [chooser] = await Promise.all([page.waitForEvent('filechooser'), act(page, 'tb-open')]);
     await chooser.setFiles((await sample.path())!);
     await expect(page.getByTestId(`node-${node}`)).toBeVisible();

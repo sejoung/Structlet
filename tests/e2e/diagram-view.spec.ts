@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
-import { act, freshApp } from './helpers';
+import { act, freshApp, openManual } from './helpers';
 
 const samplePath = 'samples/commerce-and-ml.structlet';
 
@@ -11,8 +11,8 @@ async function diagram(page: Page, action: string) {
 
 test('the bilingual manual shows separate example tabs and downloads the complex diagram', async ({ page }) => {
   await freshApp(page);
-  await page.getByTestId('tb-help').click();
-  const manual = page.getByRole('dialog', { name: 'User guide' });
+  const guide = await openManual(page);
+  const manual = guide.getByRole('main', { name: 'User guide' });
   const basic = manual.getByRole('radio', { name: 'Basic example' });
   const complex = manual.getByRole('radio', { name: 'Complex example' });
   await expect(basic).toHaveAttribute('aria-checked', 'true');
@@ -22,17 +22,17 @@ test('the bilingual manual shows separate example tabs and downloads the complex
   await expect(manual.getByRole('img')).toHaveCount(2);
   await expect(manual.getByRole('img').first()).toHaveAttribute('src', /manual-summary-en/);
   const [download] = await Promise.all([
-    page.waitForEvent('download'), manual.getByRole('button', { name: 'Download Commerce & ML platform (.structlet)' }).click(),
+    guide.waitForEvent('download'), manual.getByRole('button', { name: 'Download Commerce & ML platform (.structlet)' }).click(),
   ]);
   expect(download.suggestedFilename()).toBe('commerce-and-ml.structlet');
-  await page.keyboard.press('Escape');
+  await guide.close();
   const [picker] = await Promise.all([page.waitForEvent('filechooser'), act(page, 'tb-open')]);
   await picker.setFiles((await download.path())!);
   await expect(page.locator('[data-testid^="node-"]')).toHaveCount(16);
 
   await act(page, 'tb-lang-ko');
-  await page.getByTestId('tb-help').click();
-  const korean = page.getByRole('dialog', { name: '사용 매뉴얼' });
+  const koreanGuide = await openManual(page);
+  const korean = koreanGuide.getByRole('main', { name: '사용 매뉴얼' });
   await expect(korean.getByRole('radio', { name: '기본 예제' })).toBeVisible();
   await korean.getByRole('radio', { name: '복잡한 예제' }).click();
   const preview = korean.getByRole('img').last();

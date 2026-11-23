@@ -52,3 +52,10 @@ export async function openSample(page: Page) {
   await chooser.setFiles('samples/three-tier.structlet');
   await expect(page.locator('[data-testid^="node-"]')).toHaveCount(11);
 }
+
+/** Open Help in a fresh tab, leaving the editor page available. */
+export async function openManual(page: Page) {
+  const [guide] = await Promise.all([page.waitForEvent('popup'), page.getByTestId('tb-help').click()]);
+  await expect(guide.getByRole('main')).toBeVisible();
+  return guide;
+}

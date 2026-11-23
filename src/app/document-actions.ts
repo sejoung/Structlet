@@ -8,12 +8,6 @@ import { FILE_EXTENSION, fileNameFor, MIME_TYPE, parseStructlet, serializeStruct
 import { emptyDocument, type Document } from '../domain';
 import type { Appearance, DiagramView } from '../engine';
 import type { Translate } from '../i18n/messages';
-import threeTier from '../../samples/three-tier.structlet?raw';
-import gpuTraining from '../../samples/gpu-training.structlet?raw';
-import migInference from '../../samples/mig-inference.structlet?raw';
-import commerceAndMl from '../../samples/commerce-and-ml.structlet?raw';
-
-const SAMPLES = { 'three-tier': threeTier, 'gpu-training': gpuTraining, 'mig-inference': migInference, 'commerce-and-ml': commerceAndMl };
 
 export interface DocumentActions {
   newDocument(): Promise<void>;
@@ -25,7 +19,6 @@ export interface DocumentActions {
   saveAs(): Promise<void>;
   exportSvg(): void;
   exportPng(): Promise<void>;
-  downloadSample(sample: keyof typeof SAMPLES): void;
 }
 
 interface Deps {
@@ -149,10 +142,6 @@ export function createDocumentActions({ editor, files, newId, appearance, t, not
         log.error('files.png-failed');
         notify(t('error.png'));
       }
-    },
-    downloadSample(sample) {
-      downloadText(SAMPLES[sample], `${sample}${FILE_EXTENSION}`, MIME_TYPE);
-      log.info('files.sample-downloaded');
     },
   };
 }

@@ -50,7 +50,7 @@ npm install
 npm run dev          # http://127.0.0.1:5183
 ```
 
-The editor opens on an empty canvas. Open **Help (?)** in the top bar for a quick guide, a screenshot of the editor, and links to official icon packs. Choose **Download sample (.structlet)**, then drop the downloaded file onto the canvas or use **File → Open**. The source is [`samples/three-tier.structlet`](samples/three-tier.structlet). Help also offers [distributed GPU training](samples/gpu-training.structlet) and [MIG inference](samples/mig-inference.structlet) samples. On a selected connection, choose **Link preset** for NVLink, InfiniBand or Ethernet / RoCE.
+The editor opens on an empty canvas. Open **Help (?)** in the top bar to open the full user guide in a new tab, with a quick guide, a screenshot of the editor, and links to official icon packs. Choose **Download sample (.structlet)**, then drop the downloaded file onto the canvas or use **File → Open**. The source is [`samples/three-tier.structlet`](samples/three-tier.structlet). Help also offers [distributed GPU training](samples/gpu-training.structlet) and [MIG inference](samples/mig-inference.structlet) samples. On a selected connection, choose **Link preset** for NVLink, InfiniBand or Ethernet / RoCE.
 
 | Command | What it does |
 | --- | --- |

@@ -50,7 +50,7 @@ npm install
 npm run dev          # http://127.0.0.1:5183
 ```
 
-처음 열면 빈 캔버스다. 위 막대의 **도움말(?)**에서 빠른 사용법, 편집기 화면 캡처, 공식 아이콘 팩 링크를 볼 수 있다. **샘플 다운로드 (.structlet)**로 받은 파일을 캔버스에 끌어다 놓거나 **파일 → 열기**에서 선택하면 3계층 샘플 구성도가 열린다. 원본은 [`samples/three-tier.structlet`](samples/three-tier.structlet)이다. 매뉴얼에서 [분산 GPU 학습](samples/gpu-training.structlet)과 [MIG 추론](samples/mig-inference.structlet) 샘플도 받을 수 있다. 선 선택 후 **연결선 프리셋**에서 NVLink, InfiniBand, Ethernet / RoCE를 고른다.
+처음 열면 빈 캔버스다. 위 막대의 **도움말(?)**을 누르면 새 탭에서 매뉴얼이 열린다. 빠른 사용법, 편집기 화면 캡처, 공식 아이콘 팩 링크를 볼 수 있다. **샘플 다운로드 (.structlet)**로 받은 파일을 캔버스에 끌어다 놓거나 **파일 → 열기**에서 선택하면 3계층 샘플 구성도가 열린다. 원본은 [`samples/three-tier.structlet`](samples/three-tier.structlet)이다. 매뉴얼에서 [분산 GPU 학습](samples/gpu-training.structlet)과 [MIG 추론](samples/mig-inference.structlet) 샘플도 받을 수 있다. 선 선택 후 **연결선 프리셋**에서 NVLink, InfiniBand, Ethernet / RoCE를 고른다.
 
 | 명령 | 내용 |
 | --- | --- |

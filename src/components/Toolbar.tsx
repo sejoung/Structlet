@@ -24,7 +24,6 @@ export interface ToolbarActions {
   onView(view: ViewMode): void;
   onTheme(theme: ThemeChoice): void;
   onIconPacks(): void;
-  onManual(): void;
   onLeftPanel(open: boolean): void;
   onRightPanel(open: boolean): void;
   /** Hides both side panels, or shows both when they are hidden. */
@@ -161,7 +160,7 @@ export function Toolbar(props: ToolbarProps) {
         </div>
         <span className="topbar-divider" aria-hidden="true" />
         <IconButton icon="present" label={`${props.presenting ? t('view.exit') : t('view.present')} (${mod}.)`} pressed={props.presenting} onClick={() => props.onPresent(!props.presenting)} testId="tb-present" />
-        <IconButton icon="help" label={t('menu.help')} onClick={props.onManual} testId="tb-help" />
+        <a className="icon-button" href="#manual" target="_blank" rel="noopener" aria-label={t('menu.help')} title={t('menu.help')} data-testid="tb-help"><Icon name="help" /></a>
         <Menu
           testId="menu-settings"
           align="end"

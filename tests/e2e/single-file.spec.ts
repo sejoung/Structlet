@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { expect, test } from '@playwright/test';
-import { act } from './helpers';
+import { act, openManual } from './helpers';
 
 /** The one-file build opened by double-click (file://), with no server. */
 const file = resolve('dist-single/structlet.html');
@@ -16,14 +16,15 @@ test('single structlet.html works from file://', async ({ page }) => {
   await page.evaluate(() => localStorage.setItem('structlet:language', 'en'));
   await page.reload();
   await expect(page.locator('.empty-state').getByRole('button')).toHaveCount(0);
-  await page.getByTestId('tb-help').click();
-  const manual = page.getByRole('dialog', { name: 'User guide' });
+  const guide = await openManual(page);
+  const manual = guide.getByRole('main', { name: 'User guide' });
+  await expect(guide).toHaveURL(pathToFileURL(file).href + '#manual');
   const preview = manual.getByRole('img');
   await expect(preview).toHaveAttribute('src', /^data:image\/webp/);
   await expect.poll(() => preview.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(1240);
-  const [sample] = await Promise.all([page.waitForEvent('download'), manual.getByRole('button', { name: 'Download sample (.structlet)' }).click()]);
+  const [sample] = await Promise.all([guide.waitForEvent('download'), manual.getByRole('button', { name: 'Download sample (.structlet)' }).click()]);
   expect(sample.suggestedFilename()).toBe('three-tier.structlet');
-  await page.keyboard.press('Escape');
+  await guide.close();
   const [sampleChooser] = await Promise.all([page.waitForEvent('filechooser'), act(page, 'tb-open')]);
   await sampleChooser.setFiles((await sample.path())!);
   await expect(page.locator('[data-testid^="node-"]')).toHaveCount(11);
@@ -48,16 +49,17 @@ test('single structlet.html works from file://', async ({ page }) => {
   await page.waitForTimeout(600);
   await page.reload();
   await expect(page.locator('[data-testid="node-svc-api"]')).toHaveCount(1);
-  await page.getByTestId('tb-help').click();
-  await manual.getByRole('radio', { name: 'Complex example' }).click();
-  const summaryPreview = manual.getByRole('img').first();
+  const secondGuide = await openManual(page);
+  const complexManual = secondGuide.getByRole('main', { name: 'User guide' });
+  await complexManual.getByRole('radio', { name: 'Complex example' }).click();
+  const summaryPreview = complexManual.getByRole('img').first();
   await summaryPreview.scrollIntoViewIfNeeded();
   await expect(summaryPreview).toHaveAttribute('src', /^data:image\/webp/);
   await expect.poll(() => summaryPreview.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(1080);
   const [complex] = await Promise.all([
-    page.waitForEvent('download'), manual.getByRole('button', { name: 'Download Commerce & ML platform (.structlet)' }).click(),
+    secondGuide.waitForEvent('download'), complexManual.getByRole('button', { name: 'Download Commerce & ML platform (.structlet)' }).click(),
   ]);
-  await page.keyboard.press('Escape');
+  await secondGuide.close();
   const [complexChooser] = await Promise.all([page.waitForEvent('filechooser'), act(page, 'tb-open')]);
   await complexChooser.setFiles((await complex.path())!);
   await expect(page.locator('[data-testid^="node-"]')).toHaveCount(16);

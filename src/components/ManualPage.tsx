@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import manualEn from './assets/manual-en.webp';
 import manualKo from './assets/manual-ko.webp';
 import trainingEn from './assets/manual-training-en.webp';
@@ -9,23 +9,7 @@ import type { Language, MessageKey, Translate } from '../i18n/messages';
 import { IconPackSources } from './IconPacksDialog';
 import { LayoutGuide } from './LayoutGuide';
 import { Icon } from './ui/Icon';
-import { IconButton, Segmented } from './ui/controls';
-
-/** Short message at the bottom of the canvas; errors stay until dismissed. */
-export function Toast({ t, message, onDismiss }: { t: Translate; message: string | null; onDismiss(): void }) {
-  useEffect(() => {
-    if (!message) return;
-    const timer = setTimeout(onDismiss, 6000);
-    return () => clearTimeout(timer);
-  }, [message, onDismiss]);
-  if (!message) return null;
-  return (
-    <div className="toast" role="alert">
-      <span>{message}</span>
-      <IconButton icon="close" label={t('toast.dismiss')} onClick={onDismiss} />
-    </div>
-  );
-}
+import { Segmented } from './ui/controls';
 
 const SHORTCUTS: [string, MessageKey][] = [
   ['⌘Z', 'sc.undo'],
@@ -57,21 +41,15 @@ const GPU_EXAMPLES = [
   { sample: 'mig-inference', label: 'manual.migInference', description: 'manual.migPreview', en: migEn, ko: migKo },
 ] as const;
 
-export function ManualDialog({ t, language, onDownloadSample, onClose }: { t: Translate; language: Language; onDownloadSample(sample: 'three-tier' | 'gpu-training' | 'mig-inference' | 'commerce-and-ml'): void; onClose(): void }) {
-  const ref = useRef<HTMLDialogElement>(null);
+export function ManualPage({ t, language, onDownloadSample }: { t: Translate; language: Language; onDownloadSample(sample: 'three-tier' | 'gpu-training' | 'mig-inference' | 'commerce-and-ml'): void }) {
   const [example, setExample] = useState<(typeof EXAMPLE_TABS)[number]>('basic');
-  useEffect(() => {
-    const d = ref.current;
-    if (d && !d.open) d.showModal?.();
-  }, []);
   const mac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
   return (
-    <dialog ref={ref} className="dialog manual-dialog" aria-labelledby="manual-title" onCancel={onClose} onClick={(e) => e.target === ref.current && onClose()}>
-      <div className="dialog-head">
-        <h2 id="manual-title">{t('manual.title')}</h2>
-        <IconButton icon="close" label={t('packs.close')} onClick={onClose} />
-      </div>
-      <Segmented<(typeof EXAMPLE_TABS)[number]> label={t('manual.examples')} value={example} onChange={setExample} options={EXAMPLE_TABS.map((value) => ({ value, label: t(`manual.example.${value}`) }))} />
+    <main className="manual-page" aria-labelledby="manual-title">
+      <header className="manual-header">
+        <h1 id="manual-title">{t('manual.title')}</h1>
+        <Segmented<(typeof EXAMPLE_TABS)[number]> label={t('manual.examples')} value={example} onChange={setExample} options={EXAMPLE_TABS.map((value) => ({ value, label: t(`manual.example.${value}`) }))} />
+      </header>
       {example === 'basic' && (
         <>
           <ol className="manual-steps">
@@ -80,7 +58,7 @@ export function ManualDialog({ t, language, onDownloadSample, onClose }: { t: Tr
             <li>{t('manual.save')}</li>
           </ol>
           <section className="manual-sample" aria-labelledby="sample-title">
-            <h3 id="sample-title">{t('manual.sample')}</h3>
+            <h2 id="sample-title">{t('manual.sample')}</h2>
             <p className="hint">{t('manual.sampleHint')}</p>
             <button type="button" className="chip-button" onClick={() => onDownloadSample('three-tier')}>
               <Icon name="download" size={14} />
@@ -93,7 +71,7 @@ export function ManualDialog({ t, language, onDownloadSample, onClose }: { t: Tr
       {example === 'complex' && <LayoutGuide t={t} language={language} onDownload={() => onDownloadSample('commerce-and-ml')} />}
       {example === 'nvidia' && (
         <section className="manual-packs" aria-labelledby="manual-gpu-title">
-          <h3 id="manual-gpu-title">{t('manual.gpuSamples')}</h3>
+          <h2 id="manual-gpu-title">{t('manual.gpuSamples')}</h2>
           <p className="hint">{t('manual.gpuLinks')}</p>
           {GPU_EXAMPLES.map(({ sample, label, description, ...previews }) => (
             <article key={sample} className="manual-sample">
@@ -117,7 +95,7 @@ export function ManualDialog({ t, language, onDownloadSample, onClose }: { t: Tr
         </ul>
       </details>
       <section className="manual-packs" aria-labelledby="manual-packs-title">
-        <h3 id="manual-packs-title">{t('packs.title')}</h3>
+        <h2 id="manual-packs-title">{t('packs.title')}</h2>
         <p className="hint">{t('manual.packsHint')}</p>
         <IconPackSources t={t} />
       </section>
@@ -132,6 +110,6 @@ export function ManualDialog({ t, language, onDownloadSample, onClose }: { t: Tr
           ))}
         </dl>
       </details>
-    </dialog>
+    </main>
   );
 }

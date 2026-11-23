@@ -308,20 +308,24 @@ button.twisty:hover { background: var(--surface-3); color: var(--ink); }
 .pack-table td { border-top: 1px solid var(--line); padding: 8px 4px; vertical-align: middle; }
 .pack-table td:last-child { text-align: right; width: 1%; }
 .pack-table .hint { display: block; margin: 2px 0 0 22px; }
-.manual-dialog { width: min(820px, 94vw); }
-.manual-walkthrough { margin-top: 12px; }
-.manual-walkthrough summary { cursor: pointer; font-weight: 600; padding: 6px 0; }
-.manual-walkthrough li p { margin: 4px 0 8px; }
-.manual-steps { margin: 4px 0 16px; padding-left: 20px; color: var(--ink-2); }
-.manual-steps li + li { margin-top: 6px; }
-.manual-sample { padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); }
-.manual-dialog .segmented { margin-bottom: 12px; }
-.manual-sample + .manual-sample { margin-top: 12px; }
-.manual-sample h3, .manual-packs h3 { font-size: 13px; }
-.manual-preview { display: block; width: 100%; height: auto; margin: 8px 0; border: 1px solid var(--line); border-radius: 6px; }
-.manual-packs { margin-top: 16px; }
-.manual-shortcuts { margin-top: 16px; }
-.manual-shortcuts summary { cursor: pointer; font-weight: 600; }
+.manual-page { width: min(100%, 1180px); margin: 0 auto; padding: 24px clamp(16px, 4vw, 48px) 64px; font-size: 15px; line-height: 1.65; }
+.manual-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--line); }
+.manual-header h1 { margin: 0; font-size: clamp(24px, 4vw, 36px); line-height: 1.2; }
+.manual-header .segmented { flex-wrap: wrap; }
+.manual-header .segmented button { height: auto; min-height: 36px; }
+.manual-page h2 { font-size: 21px; }
+.manual-page .hint { margin: 8px 0 14px; color: var(--ink-2); }
+.manual-page .chip-button { height: auto; min-height: 36px; }
+.manual-walkthrough, .manual-shortcuts { margin-top: 20px; border-top: 1px solid var(--line); }
+.manual-walkthrough summary, .manual-shortcuts summary { cursor: pointer; font-weight: 600; padding: 12px 0; }
+.manual-walkthrough li p { margin: 4px 0 12px; }
+.manual-steps { margin: 4px 0 20px; padding-left: 24px; color: var(--ink-2); }
+.manual-steps li + li { margin-top: 10px; }
+.manual-sample { padding: clamp(14px, 3vw, 24px); border: 1px solid var(--line); border-radius: 12px; background: var(--surface-2); }
+.manual-sample + .manual-sample { margin-top: 20px; }
+.manual-preview { display: block; width: 100%; height: auto; margin: 14px 0 0; border: 1px solid var(--line); border-radius: 8px; }
+.manual-packs { margin-top: 24px; }
+.manual-page .pack-sources { font-size: inherit; }
 .shortcut-list { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 20px; margin: 8px 0 12px; }
 .shortcut-list div { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 5px 0; border-bottom: 1px solid var(--line); }
 .shortcut-list dt { color: var(--ink-2); }
