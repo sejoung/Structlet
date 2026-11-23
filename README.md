@@ -84,7 +84,7 @@ The screen has four parts:
 - **Top bar** — on the left, the file menu, the title and, right after it, where the diagram is saved (this browser, or Google Drive once linked); undo and 2D / isometric in the middle; on the right, panel toggles, view mode, help, settings (⚙) and **Export**.
 - **Left** — an icon rail switches between the **Services / Areas / Notes / Layers** panels.
 - **Right inspector** — properties of the selected object. Folded on the first visit; open it with its top-bar toggle or `I` when you need it.
-- **Canvas** — a toolbar floats at the top left; the zoom bar and minimap at the bottom right.
+- **Canvas** — the canvas tools sit at the top left in both views. The zoom bar sits at the bottom right, with the minimap in 2D.
 
 <details>
 <summary><b>Panels</b></summary>
@@ -147,7 +147,7 @@ The panels can be hidden. Two toggles — **[left panel] [right panel]** — alw
 <details>
 <summary><b>View, themes and keyboard</b></summary>
 
-- **View** — scroll to pan, ⌘ / Ctrl+scroll to zoom, Space+drag or middle button to pan, ⌘0 to fit. The zoom bar at the bottom right (click the percentage for 100%) and a minimap. On touch, one finger pans and two fingers zoom. The **isometric** view is read-only; exporting SVG / PNG from it produces an isometric drawing. Select **Play flow** at the bottom right to loop from the highest entry point until you stop it. Enable **Orbit view** and drag horizontally for 360° rotation. The rotation buttons move between 0°, 90°, 180°, and 270°. Select **Default view (0°)** to return to the starting angle. Theme (system / light / dark) and language are in **Settings (⚙)** (exports are always light).
+- **View** — scroll to pan, ⌘ / Ctrl+scroll to zoom, Space+drag or middle button to pan, ⌘0 to fit. The zoom bar at the bottom right (click the percentage for 100%) and a minimap. On touch, one finger pans and two fingers zoom. The **isometric** view is read-only; exporting SVG / PNG from it produces an isometric drawing. The view starts in **Compact** mode. Use **All labels** to see connection labels, notes, and legends. Select **Play flow** in the top-left canvas tools to loop from the highest entry point until you stop it. Enable **Orbit view** and drag horizontally for 360° rotation. The rotation buttons move between 0°, 90°, 180°, and 270°. Select **Default view (0°)** to return to the starting angle. Theme (system / light / dark) and language are in **Settings (⚙)** (exports are always light).
 - **Keyboard** — on the canvas, Tab / Shift+Tab moves between objects, and screen readers announce the selection. Menus open with Enter, move with arrow keys and close with Esc. Open **Help (?) → Keyboard shortcuts** to see the list.
 
 </details>
@@ -246,7 +246,7 @@ The layer rules are enforced in three places, all part of `npm run check` and CI
 </details>
 
 <details>
-<summary><b>54 E2E tests</b> (<code>tests/e2e</code>, production builds)</summary>
+<summary><b>55 E2E tests</b> (<code>tests/e2e</code>, production builds)</summary>
 
 - **Basic flow** — two nodes → connect → save → open → reload → SVG (same paths as the screen), PNG, rejecting an invalid file
 - **Areas** — dragging a VPC then a single undo, dragging into another area, wrapping

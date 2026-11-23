@@ -71,7 +71,6 @@ export function FlowControls({ t, flow, rotation }: { t: Translate; flow: Flow; 
   const playbackLabel = !flow.active ? 'flow.launch' : flow.playing ? 'flow.pause' : 'flow.play';
   return (
     <div className="flow-player" role="group" aria-label={t('flow.title')}>
-      {flow.active && <span className="flow-progress" role="status">{t('flow.step', { current: flow.step + 1, total: flow.count })}</span>}
       <button type="button" ref={play} className="chip-button iso-flow-launch" disabled={!flow.available}
         title={flow.available ? undefined : t('flow.noSource')} onClick={() => flow.active ? flow.toggle() : flow.startFromTop(rotation)}>
         <Icon name={flow.playing ? 'pause' : 'play'} size={14} />{t(playbackLabel)}
@@ -81,6 +80,7 @@ export function FlowControls({ t, flow, rotation }: { t: Translate; flow: Flow; 
         <button type="button" className="chip-button" onClick={() => { flow.stop(); play.current?.focus(); }}>
           <Icon name="stop" size={14} />{t('flow.stop')}
         </button>
+        <span className="flow-progress" role="status">{t('flow.step', { current: flow.step + 1, total: flow.count })}</span>
       </>}
     </div>
   );

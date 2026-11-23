@@ -247,31 +247,35 @@ export function IsometricView({ t, scene, theme, options, onOptions, doc, editor
         <ContextMenu {...context} t={t} doc={doc} scene={scene} editor={editor} request={menu} fit={fit}
           toggle={toggle} dismiss={dismiss} readOnly rotate={rotate} flow={flow} />
       )}
-      <div className="readonly-note" role="status">{t('canvas.readonly')}</div>
-      {orbiting && <div className="tool-hint" role="status">{t('iso.orbitHint')}</div>}
-      {view && (
-        <div className="canvas-corner">
-          <FlowControls t={t} flow={flow} rotation={angle} />
-          <div className="iso-controls">
-            <button type="button" ref={orbitButton} className="chip-button iso-orbit-toggle" aria-pressed={orbiting} onClick={() => {
-              setOrbiting(!orbiting);
-              if (!orbiting) ref.current?.focus({ preventScroll: true });
-            }}>
-              <Icon name="rotateRight" size={14} />{t('iso.orbit')}
-            </button>
+      <div className="iso-toolbar">
+        {view && (
+          <div className="iso-controls" role="toolbar" aria-label={t('tool.label')}>
+            <div className="zoombar iso-rotation" role="group" aria-label={t('iso.orbit')}>
+              <button type="button" ref={orbitButton} className="chip-button iso-orbit-toggle" aria-pressed={orbiting} onClick={() => {
+                setOrbiting(!orbiting);
+                if (!orbiting) ref.current?.focus({ preventScroll: true });
+              }}>
+                <Icon name="rotateRight" size={14} />{t('iso.orbit')}
+              </button>
+              <IconButton icon="rotateLeft" label={t('iso.rotateLeft')} onClick={() => rotate(-1)} />
+              <span className="iso-angle" aria-label={t('iso.angle', { degrees: angleDisplay })}>{angleDisplay}°</span>
+              <IconButton icon="rotateRight" label={t('iso.rotateRight')} onClick={() => rotate(1)} />
+              <button type="button" className="chip-button" onClick={resetRotation}>{t('iso.home')}</button>
+            </div>
             <Segmented label={t('iso.labels')} value={options.labels} onChange={(labels) => {
               cancelTurn();
               setPreview(null);
               onOptions({ labels, rotation: angle, labelOffsets: null });
             }}
               options={(['compact', 'full'] as const).map((value) => ({ value, label: t(`iso.${value}`) }))} />
-            <div className="zoombar">
-              <IconButton icon="rotateLeft" label={t('iso.rotateLeft')} onClick={() => rotate(-1)} />
-              <span className="iso-angle" aria-label={t('iso.angle', { degrees: angleDisplay })}>{angleDisplay}°</span>
-              <IconButton icon="rotateRight" label={t('iso.rotateRight')} onClick={() => rotate(1)} />
-            </div>
-            <button type="button" className="chip-button" onClick={resetRotation}>{t('iso.home')}</button>
+            <FlowControls t={t} flow={flow} rotation={angle} />
           </div>
+        )}
+        <div className="iso-view-note" role="status">{t('canvas.readonly')}</div>
+        {orbiting && <div className="iso-view-note" role="status">{t('iso.orbitHint')}</div>}
+      </div>
+      {view && (
+        <div className="canvas-corner">
           <ZoomBar t={t} viewport={view} size={size} setViewport={setView} onFit={fit} />
         </div>
       )}
