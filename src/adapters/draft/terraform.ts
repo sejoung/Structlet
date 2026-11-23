@@ -1,14 +1,15 @@
+import { terraformInfrastructure, type TerraformResource as Resource } from './terraform-infrastructure';
 import type { Draft, DraftContainer, DraftEdge, DraftNode } from './draft-format';
 import { ec2InstanceType, terraformNodeSpecs } from './terraform-specs';
 
 
 const AWS: Record<string, string> = {
   instance: 'aws.ec2', launch_template: 'aws.ec2', autoscaling_group: 'aws.ec2', ecs_service: 'aws.ecs', ecs_cluster: 'aws.ecs',
-  eks_cluster: 'aws.eks', lambda_function: 'aws.lambda', s3_bucket: 'aws.s3', ebs_volume: 'aws.ebs', efs_file_system: 'aws.efs',
+  eks_cluster: 'aws.eks', eks_node_group: 'aws.eks-nodegroup', lambda_function: 'aws.lambda', s3_bucket: 'aws.s3', ebs_volume: 'aws.ebs', efs_file_system: 'aws.efs',
   db_instance: 'aws.rds', rds_cluster: 'aws.aurora', dynamodb_table: 'aws.dynamodb', elasticache_cluster: 'aws.elasticache',
   elasticache_replication_group: 'aws.elasticache', sqs_queue: 'aws.sqs', sns_topic: 'aws.sns', cloudwatch_event_bus: 'aws.eventbridge',
   cloudwatch_event_rule: 'aws.eventbridge', kinesis_stream: 'aws.kinesis', sfn_state_machine: 'aws.stepfunctions',
-  api_gateway_rest_api: 'aws.apigateway', apigatewayv2_api: 'aws.apigateway', cloudfront_distribution: 'aws.cloudfront',
+  api_gateway_rest_api: 'aws.apigateway', apigatewayv2_api: 'aws.apigateway', cloudfront_distribution: 'aws.cloudfront', cloudfront_function: 'aws.cloudfront-function',
   route53_zone: 'aws.route53', lb: 'aws.elb', alb: 'aws.elb', elb: 'aws.elb', nat_gateway: 'aws.natgateway', internet_gateway: 'aws.igw',
   cognito_user_pool: 'aws.cognito', secretsmanager_secret: 'aws.secretsmanager', kms_key: 'aws.kms', wafv2_web_acl: 'aws.waf',
   cloudwatch_log_group: 'aws.cloudwatch', opensearch_domain: 'aws.opensearch', elasticsearch_domain: 'aws.opensearch',
@@ -53,15 +54,6 @@ const NETWORKS: Record<string, 'vpc' | 'subnet'> = {
 
 const PROVIDERS: Record<string, string> = { aws: 'AWS', google: 'Google Cloud', azurerm: 'Azure' };
 
-interface Resource {
-  address: string;
-  type: string;
-  name: string;
-  mode?: string;
-  values: Record<string, unknown>;
-  depends_on?: string[];
-}
-
 const safe = (s: string) => s.replace(/[^A-Za-z0-9_.:-]+/g, '-').slice(0, 120);
 
 function collect(module: unknown, out: Resource[]): void {
@@ -80,23 +72,31 @@ function serviceFor(type: string): string | null {
   return null;
 }
 
-function references(config: unknown): Map<string, string[]> {
-  const refs = new Map<string, string[]>();
+function references(config: unknown) {
+  const refs = new Map<string, { targets: string[]; expressions: string[] }>();
   const walk = (module: unknown, prefix: string) => {
     const m = module as { resources?: { address: string; expressions?: unknown }[]; module_calls?: Record<string, { module?: unknown }> } | undefined;
     for (const r of m?.resources ?? []) {
       const found = new Set<string>();
+      const expressions = new Set<string>();
       const scan = (v: unknown) => {
         if (Array.isArray(v)) v.forEach(scan);
         else if (v && typeof v === 'object') {
           for (const [k, x] of Object.entries(v)) {
-            if (k === 'references' && Array.isArray(x)) for (const ref of x) found.add(prefix + String(ref).split('.').slice(0, 2).join('.'));
-            else scan(x);
+            if (k !== 'references' || !Array.isArray(x)) {
+              scan(x);
+              continue;
+            }
+            for (const ref of x) {
+              if (typeof ref !== 'string') continue;
+              expressions.add(ref);
+              found.add(prefix + ref.split('.').slice(0, 2).join('.'));
+            }
           }
         }
       };
       scan(r.expressions);
-      refs.set(prefix + r.address, [...found]);
+      refs.set(prefix + r.address, { targets: [...found], expressions: [...expressions] });
     }
     for (const [name, call] of Object.entries(m?.module_calls ?? {})) walk(call.module, `${prefix}module.${name}.`);
   };
@@ -116,6 +116,8 @@ export function terraformToDraft(text: string, title = 'Terraform'): Draft {
     return specs ? [[specs.instanceType, specs] as const] : [];
   }));
   const refs = references(json.configuration);
+  const detailsFor = terraformInfrastructure(resources, all);
+  const refsFor = (r: Resource) => refs.get(r.address.replace(/\[(?:\d+|"(?:[^"\\]|\\.)*")\]/g, ''));
   const byId = new Map<string, string>();
   const drawn = new Map<string, string>();
   const containers: DraftContainer[] = [];
@@ -135,17 +137,21 @@ export function terraformToDraft(text: string, title = 'Terraform'): Draft {
     providers.add(provider);
     const label = `${String(r.values?.tags && (r.values.tags as Record<string, unknown>).Name ? (r.values.tags as Record<string, unknown>).Name : r.name)}\n${r.type}`;
     if (kind) containers.push({ id: key, kind, label: `${kind === 'vpc' ? 'VPC' : 'Subnet'} · ${label.split('\n')[0]}`, layout: 'flow' });
-    else nodes.push({ id: key, service: service!, label, specs: terraformNodeSpecs(r.type, r.values ?? {}, ec2Types) });
+    else {
+      const ref = refsFor(r);
+      const infrastructure = detailsFor(r, [...(ref?.targets ?? []), ...(r.depends_on ?? [])], ref?.expressions ?? []);
+      nodes.push({ id: key, service: service!, label, specs: terraformNodeSpecs(r.type, r.values ?? {}, ec2Types), infrastructure });
+    }
   }
   const providerArea = (p: string) => `tf-cloud-${p}`;
   const strings = (v: unknown, depth = 0): string[] =>
     depth > 6 ? [] : typeof v === 'string' ? [v] : Array.isArray(v) ? v.flatMap((x) => strings(x, depth + 1)) : v && typeof v === 'object' ? Object.values(v).flatMap((x) => strings(x, depth + 1)) : [];
   const resourceOf = new Map(resources.map((r) => [r.address, r]));
   const anyById = new Map<string, string>();
-  for (const r of resources) for (const attr of ['id', 'arn', 'self_link']) if (typeof r.values?.[attr] === 'string') anyById.set(r.values[attr] as string, r.address);
+  for (const r of resources) for (const attr of ['id', 'arn', 'self_link']) if (typeof r.values?.[attr] === 'string') anyById.set(r.values?.[attr] as string, r.address);
   for (const p of providers) containers.unshift({ id: providerArea(p), kind: 'cloud', label: PROVIDERS[p] ?? p, layout: 'flow' });
   const networkKind = (address: string) => NETWORKS[resourceOf.get(address)?.type ?? ''];
-  const vnetByName = new Map(resources.filter((r) => NETWORKS[r.type] === 'vpc' && typeof r.values?.name === 'string').map((r) => [String(r.values.name), r.address]));
+  const vnetByName = new Map(resources.filter((r) => NETWORKS[r.type] === 'vpc' && typeof r.values?.name === 'string').map((r) => [String(r.values?.name), r.address]));
   const parentOf = (r: Resource): string => {
     const v = r.values ?? {};
     const direct = [...strings(v.subnet_id), ...strings(v.subnet_ids), ...strings(v.subnets), ...strings(v.vpc_config), ...strings(v.subnetwork), ...strings(v.network_interface), ...strings(v.ip_configuration), ...strings(v.network_profile), ...strings(v.default_node_pool), ...strings(v.vpc_id), ...strings(v.network), ...strings(v.virtual_network_id)];
@@ -169,11 +175,13 @@ export function terraformToDraft(text: string, title = 'Terraform'): Draft {
   }
   const containment = new Set(['vpc_id', 'subnet_id', 'subnet_ids', 'subnets', 'vpc_config', 'subnetwork', 'network', 'virtual_network_name', 'virtual_network_id', 'network_interface', 'network_interface_ids', 'ip_configuration', 'network_profile', 'default_node_pool']);
   const edges: DraftEdge[] = [];
-  const add = (from: string, to: string) => {
+  const add = (from: string, to: string, label?: string) => {
     const a = drawn.get(from);
     const b = drawn.get(to);
     if (!a || !b || a === b || NETWORKS[resourceOf.get(to)!.type] || NETWORKS[resourceOf.get(from)!.type]) return;
-    if (!edges.some((e) => e.from === a && e.to === b)) edges.push({ from: a, to: b });
+    const edge = edges.find((e) => e.from === a && e.to === b);
+    if (!edge) edges.push({ from: a, to: b, label });
+    else if (label && !edge.label?.split(', ').includes(label)) edge.label = edge.label ? `${edge.label}, ${label}` : label;
   };
   for (const r of resources) {
     const named = (k: string) => strings(r.values?.[k]).map((x) => byId.get(x)).find(Boolean);
@@ -183,7 +191,17 @@ export function terraformToDraft(text: string, title = 'Terraform'): Draft {
       if (from && to) add(from, to);
       continue;
     }
-    for (const to of [...(refs.get(r.address) ?? []), ...(r.depends_on ?? [])]) add(r.address, to);
+    if (r.type === 'aws_cloudfront_distribution') {
+      const behaviors = [r.values?.default_cache_behavior, r.values?.ordered_cache_behavior].flat(2);
+      for (const behavior of behaviors) {
+        const associations = (behavior as { function_association?: { function_arn: string; event_type?: string }[] } | undefined)?.function_association;
+        for (const association of associations ?? []) {
+          const target = byId.get(association.function_arn);
+          if (target) add(r.address, target, association.event_type);
+        }
+      }
+    }
+    for (const to of [...(refsFor(r)?.targets ?? []), ...(r.depends_on ?? [])]) add(r.address, to);
     for (const [k, v] of Object.entries(r.values ?? {})) {
       if (containment.has(k) || k === 'id' || k === 'arn') continue;
       for (const s of strings(v)) {

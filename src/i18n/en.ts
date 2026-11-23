@@ -1,10 +1,12 @@
 import { checksEn } from './checks';
 import { manual } from './manual-en';
+import { infrastructureEn } from './infrastructure';
 import { specsEn } from './specs';
 export const en = {
   ...manual,
   ...checksEn,
   ...specsEn,
+  ...infrastructureEn,
   'app.untitled': 'Untitled diagram',
   'toolbar.new': 'New',
   'toolbar.open': 'Open',

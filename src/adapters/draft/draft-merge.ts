@@ -91,6 +91,7 @@ export function mergeDraft(base: Document, draft: Draft): MergeResult {
     if (old) {
       if (d.service !== undefined) old.serviceId = d.service;
       if (d.label !== undefined) old.label = d.label;
+      if (d.infrastructure !== undefined) old.infrastructure = d.infrastructure ?? undefined;
       if (d.specs === null) old.specs = undefined;
       else if (d.specs !== undefined) {
         const changedType = old.specs?.instanceType !== undefined && d.specs.instanceType !== undefined && d.specs.instanceType !== old.specs.instanceType;
@@ -115,6 +116,7 @@ export function mergeDraft(base: Document, draft: Draft): MergeResult {
       ...NODE_SIZES[variant][d.size ?? 'm'],
       locked: d.locked ?? false,
       variant,
+      ...(d.infrastructure ? { infrastructure: d.infrastructure } : {}),
       ...(d.specs ? { specs: d.specs } : {}),
     });
     if (!hasXY) place.add(d.id);
@@ -122,7 +124,9 @@ export function mergeDraft(base: Document, draft: Draft): MergeResult {
   }
 
   for (const d of draft.edges) {
-    const existing = d.id ? edges.get(d.id) : [...edges.values()].find((e) => e.source.kind === 'attached' && e.target.kind === 'attached' && e.source.objectId === d.from && e.target.objectId === d.to);
+    const existing = d.id ? edges.get(d.id) : [...edges.values()].find((e) =>
+      e.source.kind === 'attached' && e.target.kind === 'attached' && e.source.objectId === d.from && e.target.objectId === d.to
+        && (e.relationship === true) === (d.relationship === true));
     const style = (e?: Edge) => ({ dashed: d.dashed ?? e?.style.dashed ?? false, arrow: d.arrow ?? e?.style.arrow ?? 'end', shape: d.shape ?? e?.style.shape ?? DEFAULT_EDGE_STYLE.shape });
     if (existing) {
       const ends = existing.source.kind === 'attached' && existing.target.kind === 'attached' && existing.source.objectId === d.from && existing.target.objectId === d.to;
@@ -133,17 +137,23 @@ export function mergeDraft(base: Document, draft: Draft): MergeResult {
         existing.waypoints = [];
       }
       if (d.label !== undefined) existing.label = d.label;
+      if (d.relationship !== undefined) existing.relationship = d.relationship;
       existing.style = style(existing);
       continue;
     }
-    let edgeId = d.id ?? `e-${d.from}-${d.to}`;
-    for (let n = 2; edges.has(edgeId) || nodes.has(edgeId) || containers.has(edgeId); n++) edgeId = `${d.id ?? `e-${d.from}-${d.to}`}-${n}`;
+    const stem = d.id ?? `e-${d.from}-${d.to}`;
+    let edgeId = stem.slice(0, 128);
+    for (let n = 2; edges.has(edgeId) || nodes.has(edgeId) || containers.has(edgeId); n++) {
+      const suffix = `-${n}`;
+      edgeId = stem.slice(0, 128 - suffix.length) + suffix;
+    }
     edges.set(edgeId, {
       id: edgeId,
       source: { kind: 'attached', objectId: d.from, side: 'auto', offset: null },
       target: { kind: 'attached', objectId: d.to, side: 'auto', offset: null },
       label: d.label ?? '',
       style: style(),
+      ...(d.relationship === undefined ? {} : { relationship: d.relationship }),
       routingMode: 'auto',
       waypoints: [],
     });

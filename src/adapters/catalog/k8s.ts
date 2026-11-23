@@ -1,4 +1,4 @@
-import { Boxes, Box, CalendarClock, Cog, FileCog, FileKey, HardDrive, Package, Repeat, Scaling, Server, Signpost, Split } from 'lucide';
+import { Boxes, Box, CalendarClock, Cog, FileCog, FileKey, GitBranch, GitFork, HardDrive, Layers, Package, Repeat, Scaling, Server, ServerCog, Signpost, Split } from 'lucide';
 import { define, type Row } from './types.ts';
 
 const ROWS: Row[] = [
@@ -14,6 +14,10 @@ const ROWS: Row[] = [
   ['k8s.secret', 'Secret', '시크릿', FileKey, 'security', 'secret'],
   ['k8s.pvc', 'PersistentVolumeClaim', '영구 볼륨 클레임', HardDrive, 'storage', 'pvc volume pv'],
   ['k8s.hpa', 'HorizontalPodAutoscaler', '수평 파드 오토스케일러', Scaling, 'operations', 'hpa autoscale'],
+  ['k8s.argocd-application', 'Argo CD Application', 'Argo CD 애플리케이션', GitBranch, 'operations', 'argocd gitops sync delivery'],
+  ['k8s.argocd-applicationset', 'Argo CD ApplicationSet', 'Argo CD 애플리케이션 세트', GitFork, 'operations', 'argocd gitops generator'],
+  ['k8s.karpenter-nodepool', 'Karpenter NodePool', 'Karpenter 노드 풀', Layers, 'compute', 'karpenter autoscale pool'],
+  ['k8s.karpenter-ec2nodeclass', 'Karpenter EC2NodeClass', 'Karpenter EC2 노드 클래스', ServerCog, 'compute', 'karpenter node class ami ec2'],
   ['k8s.helm', 'Helm release', 'Helm 릴리스', Package, 'operations', 'helm chart'],
   ['k8s.replicaset', 'ReplicaSet', '레플리카셋', Repeat, 'compute', 'rs'],
 ];

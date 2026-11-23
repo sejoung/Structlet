@@ -1,4 +1,5 @@
 import { parseAllDocuments } from 'yaml';
+import { workloadPlacement } from './kubernetes-placement';
 import type { Draft, DraftContainer, DraftEdge, DraftNode } from './draft-format';
 
 
@@ -9,6 +10,15 @@ const SERVICE: Record<string, string> = {
   Service: 'k8s.service', Ingress: 'k8s.ingress', Gateway: 'k8s.ingress', HTTPRoute: 'k8s.ingress', ConfigMap: 'k8s.configmap', Secret: 'k8s.secret',
   PersistentVolumeClaim: 'k8s.pvc', HorizontalPodAutoscaler: 'k8s.hpa',
 };
+const ADD_ONS: Record<string, string> = {
+  'argoproj.io/Application': 'k8s.argocd-application',
+  'argoproj.io/ApplicationSet': 'k8s.argocd-applicationset',
+  'karpenter.sh/NodePool': 'k8s.karpenter-nodepool',
+  'karpenter.k8s.aws/EC2NodeClass': 'k8s.karpenter-ec2nodeclass',
+};
+const CLUSTER_KINDS = new Set(['NodePool', 'EC2NodeClass']);
+const apiGroup = (o: Obj) => o.apiVersion?.split('/')[0];
+const serviceFor = (o: Obj) => ADD_ONS[`${apiGroup(o)}/${o.kind}`] ?? SERVICE[o.kind!];
 const WORKLOADS = new Set(['Deployment', 'StatefulSet', 'DaemonSet', 'Job', 'CronJob', 'Pod']);
 
 const safe = (s: string) => s.replace(/[^A-Za-z0-9_.:-]+/g, '-').slice(0, 90);
@@ -41,23 +51,36 @@ function second(o: Obj): string {
   if (o.kind === 'Service') return String(o.spec?.type ?? 'ClusterIP');
   if (o.kind === 'HorizontalPodAutoscaler') return `${o.spec?.minReplicas ?? 1}–${o.spec?.maxReplicas ?? '?'}`;
   if (o.kind === 'PersistentVolumeClaim') return String(o.spec?.resources?.requests?.storage ?? 'volume');
+  if (o.kind === 'Application' && typeof o.spec?.destination?.namespace === 'string') return `Application · ${o.spec.destination.namespace}`;
   return o.kind ?? '';
 }
 
 export function kubernetesToDraft(text: string, title = 'Kubernetes'): Draft {
-  const all = objects(text).filter((o) => SERVICE[o.kind!] && !(o.kind === 'Pod' && o.metadata?.ownerReferences?.length) && !(o.kind === 'Secret' && /service-account-token|helm\.sh\/release/.test(o.type ?? '')));
-  if (all.length === 0) throw new Error('No Kubernetes workloads, services or ingresses found');
-  const ns = (o: Obj) => o.metadata?.namespace ?? 'default';
+  const manifests = objects(text);
+  const all = manifests.filter((o) => serviceFor(o) && !(o.kind === 'Pod' && o.metadata?.ownerReferences?.length) && !(o.kind === 'Secret' && /service-account-token|helm\.sh\/release/.test(o.type ?? '')));
+  if (all.length === 0) throw new Error('No supported Kubernetes resources found');
+  const ns = (o: Obj) => CLUSTER_KINDS.has(o.kind!) ? 'cluster' : o.metadata?.namespace ?? 'default';
   const id = (kind: string, namespace: string, name: string) => safe(`k8s-${namespace}-${kind.toLowerCase()}-${name}`);
   const idOf = (o: Obj) => id(o.kind!, ns(o), o.metadata!.name!);
   const cluster = 'k8s-cluster';
-  const namespaces = [...new Set(all.map(ns))];
+  const namespaces = [...new Set([
+    ...all.filter((o) => !CLUSTER_KINDS.has(o.kind!)).map(ns),
+    ...manifests.filter((o) => o.kind === 'Namespace').map((o) => o.metadata!.name!),
+  ])];
   const containers: DraftContainer[] = [
     { id: cluster, kind: 'cluster', label: title, layout: namespaces.length > 2 ? 'grid' : 'flow' },
     ...namespaces.map((n): DraftContainer => ({ id: safe(`k8s-ns-${n}`), kind: 'namespace', label: n, parent: cluster, layout: 'flow' })),
   ];
-  const nodes: DraftNode[] = all.map((o) => ({ id: idOf(o), service: SERVICE[o.kind!]!, label: `${o.metadata!.name}\n${second(o)}`, parent: safe(`k8s-ns-${ns(o)}`) }));
-  const have = new Set(nodes.map((n) => n.id));
+  const nodes: DraftNode[] = all.map((o) => {
+    const placement = WORKLOADS.has(o.kind!) ? workloadPlacement(podOf(o)?.spec) : undefined;
+    return {
+      id: idOf(o), service: serviceFor(o)!, label: `${o.metadata!.name}\n${second(o)}`,
+      parent: CLUSTER_KINDS.has(o.kind!) ? cluster : safe(`k8s-ns-${ns(o)}`),
+      ...(placement ? { infrastructure: { placement } } : {}),
+    };
+  });
+  const byId = new Map(nodes.map((n) => [n.id, n]));
+  const have = new Set([...byId.keys(), ...containers.map((c) => c.id)]);
   const edges: DraftEdge[] = [];
   const link = (from: string, to: string, extra: Partial<DraftEdge> = {}) => {
     if (from !== to && have.has(from) && have.has(to) && !edges.some((e) => e.from === from && e.to === to)) edges.push({ from, to, ...extra });
@@ -66,6 +89,21 @@ export function kubernetesToDraft(text: string, title = 'Kubernetes'): Draft {
   for (const o of all) {
     const n = ns(o);
     const me = idOf(o);
+    if (o.kind === 'NodePool') {
+      const ref = o.spec?.template?.spec?.nodeClassRef;
+      if (ref?.kind === 'EC2NodeClass' && ref.group === 'karpenter.k8s.aws' && typeof ref.name === 'string') {
+        link(me, id(ref.kind, 'cluster', ref.name), { dashed: true, relationship: true, label: 'nodeClassRef' });
+      }
+    }
+    if (o.kind === 'Application') {
+      const target = o.spec?.destination;
+      if (typeof target?.namespace === 'string' && (target.server === 'https://kubernetes.default.svc' || (!target.server && target.name === 'in-cluster'))) {
+        link(me, safe(`k8s-ns-${target.namespace}`), { dashed: true, relationship: true, label: 'destination' });
+      }
+    }
+    for (const pool of byId.get(me)?.infrastructure?.placement?.nodePools ?? []) {
+      link(me, id('NodePool', 'cluster', pool), { dashed: true, relationship: true, label: 'node placement' });
+    }
     if (o.kind === 'Ingress') {
       entry.push(me);
       const backend = (b: any) => b?.service?.name ?? b?.serviceName;

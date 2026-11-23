@@ -26,6 +26,7 @@ import type { Translate } from '../../i18n/messages';
 import type { PaletteService } from '../sidebar/types';
 import { Row, Section, Segmented, Switch } from '../ui/controls';
 import { Pair, Select, TextArea } from './fields';
+import { NodeInfrastructureSection } from './InfrastructureDetails';
 import { NodeSpecsSection } from './NodeSpecsSection';
 
 export type LayoutChoice = 'flow' | 'flow-down' | 'grid';
@@ -89,6 +90,7 @@ export function NodeSection({ node, services, ...p }: SectionProps & { node: Nod
         <Select label={t('props.service')} value={node.serviceId} options={options} onChange={(v) => editor.update('nodes', node.id, { serviceId: v })} testId="prop-service" />
       </Section>
       <NodeSpecsSection t={t} editor={editor} node={node} />
+      <NodeInfrastructureSection t={t} editor={editor} node={node} />
       <Section title={t('section.appearance')}>
         <Row label={t('props.variant')}>
           <Segmented label={t('props.variant')} testId="prop-variant" value={node.variant} onChange={(v: NodeVariant) => editor.setNodeStyle(node.id, v)} options={(['icon', 'box'] as const).map((v) => ({ value: v, label: t(`props.variant.${v}`) }))} />
@@ -177,6 +179,9 @@ export function EdgeSection({ edge, ...p }: SectionProps & { edge: Edge }) {
         </Row>
         <Row label={t('props.shape')}>
           <Segmented label={t('props.shape')} value={edge.style.shape} onChange={(shape: EdgeShape) => editor.update('edges', edge.id, { style: { ...edge.style, shape }, routingMode: 'auto', waypoints: [] })} options={(['orthogonal', 'straight'] as const).map((s) => ({ value: s, label: t(`props.shape.${s}`) }))} />
+        </Row>
+        <Row label="">
+          <Switch label={t('infra.relationship')} checked={edge.relationship === true} onChange={(relationship) => editor.update('edges', edge.id, { relationship: relationship || undefined })} />
         </Row>
         <Row label="">
           <Switch label={t('props.dashed')} checked={edge.style.dashed} onChange={(dashed) => editor.update('edges', edge.id, { style: { ...edge.style, dashed } })} testId="prop-dashed" />

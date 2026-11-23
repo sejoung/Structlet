@@ -46,7 +46,7 @@ export function computeDiagramView(doc: Document, appearance: Appearance, view: 
       continue;
     }
     if (source.kind === 'attached' && target.kind === 'attached' && source.objectId === target.objectId) continue;
-    const key = JSON.stringify([endpointKey(source), endpointKey(target), edge.label, edge.style.shape, edge.style.dashed, edge.style.arrow]);
+    const key = JSON.stringify([endpointKey(source), endpointKey(target), edge.label, edge.relationship === true, edge.style.shape, edge.style.dashed, edge.style.arrow]);
     const bundle = bundles.get(key);
     if (bundle) {
       bundle.count++;

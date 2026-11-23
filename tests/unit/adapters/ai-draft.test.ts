@@ -24,6 +24,7 @@ it.each(['en', 'ko'])('compiles the %s prompt example into a grouped .structlet 
   const { document } = result;
   const api = document.nodes.find(({ id }) => id === 'api')!;
   expect(api.specs).toMatchObject({ vcpus: 2, memoryGiB: 2, showDetails: true });
+  expect(api.infrastructure?.securityGroupRules?.[0]).toMatchObject({ direction: 'ingress', fromPort: 443, peers: ['192.0.2.0/24'] });
   expect(document.nodes.every(({ serviceId }) => !!findService(serviceId))).toBe(true);
   expect(containsRect(worldRect(document, document.containers[0]!), worldRect(document, api))).toBe(true);
 });
@@ -42,6 +43,9 @@ it('runs the standalone skill compiler in another directory and keeps the origin
   const catalog = strFromU8(files['structlet/references/services.tsv']!);
   expect(catalog).toContain('aws.ec2\tAmazon EC2');
   expect(catalog).toContain('aws.vpc-endpoint\tVPC endpoint');
+  for (const service of ['aws.cloudfront-function', 'aws.eks-nodegroup', 'k8s.argocd-application', 'k8s.karpenter-nodepool', 'k8s.karpenter-ec2nodeclass']) {
+    expect(catalog).toContain(`${service}\t`);
+  }
   expect(files['structlet/references/prompt-ko.md']).toBeDefined();
   const dir = mkdtempSync(join(tmpdir(), 'structlet-compile-'));
   try {
@@ -50,6 +54,8 @@ it('runs the standalone skill compiler in another directory and keeps the origin
     const run = (...params: string[]) => spawnSync(process.execPath, [script, ...params], { cwd: dir, encoding: 'utf8' });
     const input = join(dir, 'architecture.draft.json');
     const draft = JSON.parse(readFileSync(new URL('../../../samples/draft-example.json', import.meta.url), 'utf8'));
+    const details = { remoteStates: [{ address: 'data.terraform_remote_state.network', outputs: ['vpc_id'] }] };
+    draft.nodes.find(({ id }: { id: string }) => id === 'api').infrastructure = details;
     const text = '연결이 지연되면 관측 자료는 보관 영역에서 다시 읽습니다.\n'.repeat(8);
     draft.annotations.push(
       { id: 'detail', kind: 'text', text, target: 'api' },
@@ -68,6 +74,7 @@ it('runs the standalone skill compiler in another directory and keeps the origin
     expect(original.ok).toBe(true);
     if (!original.ok) return;
     expect(original.document.annotations.find(({ id }) => id === 'fixed')).toMatchObject({ x: -120, y: -80 });
+    expect(original.document.nodes.find(({ id }) => id === 'api')?.infrastructure).toEqual(details);
     const scene = computeScene(original.document, createAppearance('en'));
     const nodeBounds = scene.nodes.flatMap(({ rect, labelBox, specCaption }) => [rect, ...(labelBox ? [labelBox] : []), ...(specCaption ? [specCaption.box] : [])]);
     for (const note of scene.annotations.filter(({ kind }) => kind !== 'step')) {

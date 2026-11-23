@@ -5,6 +5,8 @@ import {
   CONTAINER_PRESETS,
   FORMAT_VERSION,
   LIMITS,
+  InfrastructureError,
+  readInfrastructure,
   NODE_VARIANTS,
   SIDES,
   validateDocument,
@@ -52,6 +54,7 @@ function node(v: unknown, path: string): Node {
     height: num(o, 'height', path),
     locked: bool(o, 'locked', path, false),
     variant: oneOf(o, 'variant', path, NODE_VARIANTS, 'icon'),
+    ...(o.infrastructure === undefined ? {} : { infrastructure: readInfrastructure(o.infrastructure, `${path}.infrastructure`) }),
     ...(o.specs === undefined ? {} : { specs: readNodeSpecs(o.specs, `${path}.specs`) }),
   };
 }
@@ -94,6 +97,7 @@ function edge(v: unknown, path: string): Edge {
       arrow: oneOf(style, 'arrow', `${path}.style`, ['end', 'start', 'both', 'none'] as const, 'end'),
       shape: oneOf(style, 'shape', `${path}.style`, ['orthogonal', 'straight'] as const, 'orthogonal'),
     },
+    ...(o.relationship === undefined ? {} : { relationship: bool(o, 'relationship', path, false) }),
     routingMode,
     waypoints: routingMode === 'manual' ? waypoints : [],
   };
@@ -139,7 +143,7 @@ export function parseStructlet(text: string): ParseResult {
     if (issues.length > 0) return { ok: false, errors: issues.map((i) => i.message) };
     return { ok: true, document };
   } catch (error) {
-    if (error instanceof FormatError) return { ok: false, errors: [error.message] };
+    if (error instanceof FormatError || error instanceof InfrastructureError) return { ok: false, errors: [error.message] };
     throw error;
   }
 }
@@ -177,6 +181,7 @@ export function serializeStructlet(doc: Document): string {
       height: n.height,
       locked: n.locked,
       variant: n.variant,
+      infrastructure: n.infrastructure,
       specs: n.specs && {
         instanceType: n.specs.instanceType,
         vcpus: n.specs.vcpus,
@@ -192,6 +197,7 @@ export function serializeStructlet(doc: Document): string {
       target: endpointJson(e.target),
       label: e.label,
       style: { dashed: e.style.dashed, arrow: e.style.arrow, shape: e.style.shape },
+      relationship: e.relationship,
       routingMode: e.routingMode,
       waypoints: e.routingMode === 'manual' ? e.waypoints.map((p) => ({ x: p.x, y: p.y })) : [],
     })),

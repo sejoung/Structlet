@@ -1,0 +1,12 @@
+.infra-details { display: grid; gap: 10px; font-size: 12px; line-height: 1.45; overflow-wrap: anywhere; }
+.infra-details h3 { font-size: 12px; font-weight: 650; margin: 2px 0 4px; }
+.infra-details ul { margin: 0; padding-inline-start: 16px; }
+.infra-details li + li { margin-top: 5px; }
+.infra-details span { display: block; }
+.infra-details section section { margin-top: 6px; }
+.infra-edit { display: grid; gap: 6px; }
+.infra-edit textarea { width: 100%; font-family: ui-monospace, monospace; }
+.infra-edit [role="alert"] { color: var(--danger); overflow-wrap: anywhere; }
+.infra-dialog { box-sizing: border-box; width: min(640px, calc(100% - 32px)); max-height: calc(100% - 32px); overflow: auto; }
+.infra-dialog p { margin: 0 0 12px; overflow-wrap: anywhere; }
+.infra-dialog .infra-details, .infra-dialog .infra-details h3 { font-size: 14px; }

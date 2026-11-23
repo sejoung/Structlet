@@ -1,4 +1,5 @@
 export * from './model';
+export * from './infrastructure';
 export * from './lookup';
 export * from './hierarchy';
 export * from './patch';

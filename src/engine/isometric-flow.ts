@@ -28,6 +28,7 @@ export function indexIsometricFlow(scene: Scene): FlowGraph {
     bySource.set(from, links);
   };
   for (const edge of scene.edges) {
+    if (edge.relationship) continue;
     const arrow = edge.style.arrow;
     if (arrow === 'end' || arrow === 'both') add(edge, edge.sourceId, edge.targetId, 'forward');
     if (arrow === 'start' || arrow === 'both') add(edge, edge.targetId, edge.sourceId, 'reverse');

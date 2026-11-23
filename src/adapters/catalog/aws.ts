@@ -1,4 +1,4 @@
-import { Activity, Archive, ArrowLeftRight, Boxes, Brain, BrickWall, Container, Database, Earth, FolderOpen, Globe, HardDrive, Inbox, Key, KeyRound, Lambda, Layers, Lock, Mail, MemoryStick, Package, Radio, Router, ScrollText, Search, Server, ShieldCheck, Signpost, SlidersHorizontal, Sparkles, Split, Table2, UserCheck, Warehouse, Waves, Waypoints, Webhook, Workflow } from 'lucide';
+import { Activity, Archive, ArrowLeftRight, Boxes, Brain, BrickWall, Container, Database, Earth, FolderOpen, Globe, HardDrive, Inbox, Key, KeyRound, Lambda, Layers, Lock, Mail, MemoryStick, Package, Radio, Router, ScrollText, Search, Server, ShieldCheck, Signpost, SlidersHorizontal, Sparkles, Split, SquareFunction, Table2, UserCheck, Warehouse, Waves, Waypoints, Webhook, Workflow } from 'lucide';
 import { define, type Row } from './types.ts';
 
 const ROWS: Row[] = [
@@ -6,6 +6,7 @@ const ROWS: Row[] = [
   ['aws.ecs', 'Amazon ECS', 'Amazon ECS', Container, 'compute', 'container docker'],
   ['aws.ecr', 'Amazon ECR', 'Amazon ECR', Package, 'storage', 'elastic container registry docker image 이미지 레지스트리'],
   ['aws.eks', 'Amazon EKS', 'Amazon EKS', Boxes, 'compute', 'kubernetes k8s'],
+  ['aws.eks-nodegroup', 'EKS managed node group', 'EKS 관리형 노드 그룹', Layers, 'compute', 'eks nodegroup nodepool'],
   ['aws.fargate', 'AWS Fargate', 'AWS Fargate', Layers, 'compute', 'container serverless'],
   ['aws.lambda', 'AWS Lambda', 'AWS Lambda', Lambda, 'compute', 'function serverless 함수'],
   ['aws.s3', 'Amazon S3', 'Amazon S3', Archive, 'storage', 'bucket object 버킷'],
@@ -24,6 +25,7 @@ const ROWS: Row[] = [
   ['aws.stepfunctions', 'AWS Step Functions', 'AWS Step Functions', Workflow, 'integration', 'workflow state machine'],
   ['aws.apigateway', 'Amazon API Gateway', 'Amazon API Gateway', Webhook, 'network', 'api rest'],
   ['aws.cloudfront', 'Amazon CloudFront', 'Amazon CloudFront', Globe, 'network', 'cdn'],
+  ['aws.cloudfront-function', 'CloudFront Functions', 'CloudFront Functions', SquareFunction, 'compute', 'cdn edge viewer request response 함수'],
   ['aws.route53', 'Amazon Route 53', 'Amazon Route 53', Signpost, 'network', 'dns'],
   ['aws.elb', 'Elastic Load Balancing', 'Elastic Load Balancing', Split, 'network', 'alb nlb load balancer 로드밸런서'],
   ['aws.natgateway', 'NAT gateway', 'NAT 게이트웨이', ArrowLeftRight, 'network', 'nat'],

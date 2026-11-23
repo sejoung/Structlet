@@ -96,6 +96,7 @@ export function ManualPage({ t, language, ai, onDownloadSample }: { t: Translate
           <li>{t('manual.isometricGuide')}</li>
           <li>{t('manual.flowGuide')}</li>
           <li>{t('manual.importGuide')}</li>
+          <li>{t('manual.infrastructureGuide')}</li>
           <li>{t('manual.storageGuide')}</li>
         </ul>
       </details>

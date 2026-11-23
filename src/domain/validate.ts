@@ -1,3 +1,4 @@
+import { InfrastructureError, readInfrastructure } from './infrastructure';
 import { findParentCycles } from './hierarchy';
 import { indexDocument } from './lookup';
 import { FORMAT_VERSION, isSpecQuantity, NODE_SPEC_TEXT_LIMIT, type Document, type Endpoint, type Id } from './model';
@@ -12,6 +13,7 @@ export interface ValidationIssue {
     | 'not-finite'
     | 'bad-size'
     | 'bad-specs'
+    | 'bad-infrastructure'
     | 'bad-offset'
     | 'too-many-objects'
     | 'unsupported-version';
@@ -62,7 +64,15 @@ export function validateDocument(doc: Document): ValidationIssue[] {
   for (const id of findParentCycles(doc)) {
     issues.push({ code: 'parent-cycle', id, message: `${id} is part of a container cycle` });
   }
-  for (const { id, specs } of doc.nodes) {
+  for (const { id, specs, infrastructure } of doc.nodes) {
+    if (infrastructure !== undefined) {
+      try {
+        readInfrastructure(infrastructure, `${id}.infrastructure`);
+      } catch (error) {
+        if (!(error instanceof InfrastructureError)) throw error;
+        issues.push({ code: 'bad-infrastructure', id, message: error.message });
+      }
+    }
     if (!specs) continue;
     const textValid = [specs.instanceType, specs.gpu].every((v) => v === undefined || (typeof v === 'string' && v.length <= NODE_SPEC_TEXT_LIMIT));
     const numbersValid = [specs.vcpus, specs.memoryGiB, specs.diskGiB].every((v) => v === undefined || isSpecQuantity(v));

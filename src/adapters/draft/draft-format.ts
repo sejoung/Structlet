@@ -1,4 +1,4 @@
-import { ANNOTATION_KINDS, AREA_COLORS, CONTAINER_KINDS, LIMITS, NODE_VARIANTS, type AnnotationKind, type AreaColor, type ArrowHeads, type ContainerKind, type EdgeShape, type NodeSpecs, type NodeVariant } from '../../domain';
+import { ANNOTATION_KINDS, AREA_COLORS, CONTAINER_KINDS, InfrastructureError, readInfrastructure, LIMITS, NODE_VARIANTS, type AnnotationKind, type AreaColor, type ArrowHeads, type ContainerKind, type EdgeShape, type InfrastructureDetails, type NodeSpecs, type NodeVariant } from '../../domain';
 import { LAYOUT_MODES, type LayoutMode } from '../../engine';
 import { arr, bool, FormatError, id, num, obj, oneOf, str, type Json } from '../format/reader';
 import { readNodeSpecs } from '../format/node-specs';
@@ -31,6 +31,7 @@ export interface DraftNode {
   size?: 's' | 'm' | 'l';
   locked?: boolean;
   specs?: NodeSpecs | null;
+  infrastructure?: InfrastructureDetails | null;
 }
 
 export interface DraftEdge {
@@ -41,6 +42,7 @@ export interface DraftEdge {
   dashed?: boolean;
   arrow?: ArrowHeads;
   shape?: EdgeShape;
+  relationship?: boolean;
 }
 
 export interface DraftAnnotation {
@@ -105,6 +107,7 @@ export function readDraft(raw: unknown): Draft {
         x: opt(o, 'x', () => num(o, 'x', p)),
         y: opt(o, 'y', () => num(o, 'y', p)),
         variant: opt(o, 'variant', () => oneOf(o, 'variant', p, NODE_VARIANTS)),
+        infrastructure: opt(o, 'infrastructure', () => o.infrastructure === null ? null : readInfrastructure(o.infrastructure, `${p}.infrastructure`)),
         specs: opt(o, 'specs', () => o.specs === null ? null : readNodeSpecs(o.specs, `${p}.specs`)),
         size: opt(o, 'size', () => oneOf(o, 'size', p, ['s', 'm', 'l'] as const)),
         locked: opt(o, 'locked', () => bool(o, 'locked', p, false)),
@@ -120,6 +123,7 @@ export function readDraft(raw: unknown): Draft {
         label: opt(o, 'label', () => str(o, 'label', p)),
         dashed: opt(o, 'dashed', () => bool(o, 'dashed', p, false)),
         arrow: opt(o, 'arrow', () => oneOf(o, 'arrow', p, ['end', 'start', 'both', 'none'] as const)),
+        relationship: opt(o, 'relationship', () => bool(o, 'relationship', p, false)),
         shape: opt(o, 'shape', () => oneOf(o, 'shape', p, ['orthogonal', 'straight'] as const)),
       };
     }),
@@ -153,7 +157,7 @@ export function parseDraft(text: string): DraftResult {
   try {
     return { ok: true, draft: readDraft(raw) };
   } catch (error) {
-    if (error instanceof FormatError) return { ok: false, errors: [error.message] };
+    if (error instanceof FormatError || error instanceof InfrastructureError) return { ok: false, errors: [error.message] };
     throw error;
   }
 }

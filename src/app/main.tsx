@@ -22,6 +22,7 @@ import { downloadSample } from './sample-downloads';
 import { useTheme } from './use-theme';
 import { App } from './App';
 import './styles.css';
+import './infrastructure.css';
 
 const LANGUAGE_KEY = 'structlet:language';
 

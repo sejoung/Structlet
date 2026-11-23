@@ -38,6 +38,7 @@ const ALIASES: Record<PackProvider, Record<string, string>> = {
     'elastic-load-balancing-application-load-balancer': 'aws.elb', 'opensearch-service': 'aws.opensearch',
     'elastic-container-registry': 'aws.ecr', docdb: 'aws.documentdb',
     'managed-streaming-for-apache-kafka': 'aws.msk', 'managed-streaming-for-kafka': 'aws.msk', ssm: 'aws.systems-manager',
+    'cloudfront-functions': 'aws.cloudfront-function', 'cloudfront-function': 'aws.cloudfront-function',
     'vpc-gateway-endpoint': 'aws.vpc-endpoint', 's3-gateway-endpoint': 'aws.vpc-endpoint',
   },
   gcp: { 'pub-sub': 'gcp.pubsub', pubsub: 'gcp.pubsub', gke: 'gcp.gke', 'kubernetes-engine': 'gcp.gke', gcs: 'gcp.cloud-storage', 'cloud-load-balancing': 'gcp.cloud-load-balancing', 'load-balancing': 'gcp.cloud-load-balancing', 'identity-and-access-management': 'gcp.iam', 'key-management-service': 'gcp.kms', 'vertexai': 'gcp.vertex-ai' },

@@ -4,6 +4,7 @@ import { indexDocument, type Id, type Point, type Rect } from '../../domain';
 import { fitView, groupBounds, MAX_ZOOM, objectBounds, polylineMidpoint, renderSceneBody, screenToWorld, worldToScreen, zoomAt, type DiagramTheme, type IsometricOptions, type Scene, type Viewport } from '../../engine';
 import type { Translate } from '../../i18n/messages';
 import { SERVICE_DRAG_TYPE } from '../sidebar/types';
+import { InfrastructureDialog } from '../properties/InfrastructureDetails';
 import type { ViewMode } from '../Toolbar';
 import { ContextMenu, type ContextActions, type ContextRequest } from './ContextMenu';
 import { FoldControls } from './FoldControls';
@@ -56,6 +57,15 @@ export function Canvas(props: CanvasProps) {
     if (props.view === 'isometric') isoFocus.current?.(ids);
     else showBounds(objectBounds(scene, ids));
   });
+  const [detail, setDetail] = useState<{ docId: Id; nodeId: Id } | null>(null);
+  const inspected = detail?.docId === snapshot.document.id ? snapshot.document.nodes.find((n) => n.id === detail.nodeId) : undefined;
+  const inspect = (id: Id) => {
+    if (scene.rects.has(id) && snapshot.document.nodes.some((n) => n.id === id && n.infrastructure)) {
+      setDetail({ docId: snapshot.document.id, nodeId: id });
+    }
+  };
+  const details = inspected?.infrastructure && <InfrastructureDialog node={inspected} t={t} onClose={() => setDetail(null)} />;
+  const readPointer = useRef<(Point & { id: Id }) | null>(null);
   const [menu, setMenu] = useState<ContextRequest | null>(null);
   const dismissMenu = useCallback((restoreFocus: boolean) => {
     setMenu(null);
@@ -188,6 +198,10 @@ export function Canvas(props: CanvasProps) {
       showMenu({ x: box.left + Math.max(0, Math.min(box.width, p.x)), y: box.top + Math.max(0, Math.min(box.height, p.y)) }, selected);
       return;
     }
+    if (e.key === 'Enter' && (props.presenting || props.summary) && snapshot.selection.length === 1) {
+      inspect(snapshot.selection[0]!);
+      return;
+    }
     if (e.key !== 'Tab') return;
     const order = tabOrder(scene);
     if (order.length === 0) return;
@@ -216,7 +230,8 @@ export function Canvas(props: CanvasProps) {
     return (
       <div ref={wrapRef} className="canvas">
         <IsometricView t={t} scene={scene} theme={props.theme} options={props.isoView} onOptions={props.onIsoView}
-          doc={snapshot.document} editor={editor} context={props.context} toggle={props.onToggleArea} presenting={props.presenting} focusObjects={isoFocus} />
+          doc={snapshot.document} editor={editor} context={props.context} toggle={props.onToggleArea} presenting={props.presenting} focusObjects={isoFocus} inspect={inspect} />
+        {details}
       </div>
     );
   }
@@ -250,12 +265,27 @@ export function Canvas(props: CanvasProps) {
         aria-label={t('canvas.label')}
         onKeyDown={onKeyDown}
         onPointerDown={(e) => {
+          const id = (e.target as Element).closest('[data-hit="box"]')?.getAttribute('data-id');
+          readPointer.current = (props.presenting || props.summary) && e.isPrimary && e.button === 0 && id
+            ? { x: e.clientX, y: e.clientY, id } : null;
           delete e.currentTarget.dataset.keyboard;
           gestures.onPointerDown(e);
         }}
-        onPointerMove={gestures.onPointerMove}
-        onPointerUp={gestures.onPointerUp}
-        onPointerCancel={gestures.onPointerCancel}
+        onPointerMove={(e) => {
+          const p = readPointer.current;
+          if (p && (!e.isPrimary || Math.hypot(e.clientX - p.x, e.clientY - p.y) > 5)) readPointer.current = null;
+          gestures.onPointerMove(e);
+        }}
+        onPointerUp={(e) => {
+          const p = readPointer.current;
+          readPointer.current = null;
+          gestures.onPointerUp(e);
+          if (p && e.isPrimary && Math.hypot(e.clientX - p.x, e.clientY - p.y) <= 5) inspect(p.id);
+        }}
+        onPointerCancel={(e) => {
+          readPointer.current = null;
+          gestures.onPointerCancel(e);
+        }}
         onDoubleClick={onDoubleClick}
       >
         <g transform={`translate(${viewport.panX} ${viewport.panY}) scale(${z})`}>
@@ -288,7 +318,8 @@ export function Canvas(props: CanvasProps) {
       {!props.presenting && !props.summary && <ToolBar t={t} tool={props.tool} onTool={props.onTool} />}
       {!props.presenting && !props.summary && props.tool === 'connect' && <div className="tool-hint" role="status">{t('tool.connectHint')}</div>}
       {presentHint && <div className="tool-hint present" role="status">{t('view.hint')}</div>}
-      {menu?.docId === snapshot.document.id && !props.presenting && <ContextMenu {...props.context} t={t} doc={snapshot.document} scene={scene} editor={editor} request={menu} fit={props.onFit} fitGroup={fitGroup} edit={props.setEditing} toggle={props.onToggleArea} dismiss={dismissMenu} />}
+      {menu?.docId === snapshot.document.id && !props.presenting && <ContextMenu {...props.context} t={t} doc={snapshot.document} scene={scene} editor={editor} request={menu} fit={props.onFit} fitGroup={fitGroup} edit={props.setEditing} inspect={inspect} toggle={props.onToggleArea} dismiss={dismissMenu} />}
+      {details}
       <div className="canvas-corner">
         <ZoomBar t={t} viewport={viewport} size={size} setViewport={setViewport} onFit={props.onFit} />
         <Minimap scene={scene} viewport={viewport} size={size} setViewport={setViewport} label={t('minimap')} />

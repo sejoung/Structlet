@@ -1,3 +1,5 @@
+import type { InfrastructureDetails } from './infrastructure';
+
 export type Id = string;
 
 export interface Point {
@@ -45,6 +47,7 @@ export interface Node {
   readonly locked: boolean;
   readonly variant: NodeVariant;
   readonly specs?: NodeSpecs;
+  readonly infrastructure?: InfrastructureDetails;
 }
 
 export const CONTAINER_KINDS = [
@@ -114,6 +117,7 @@ export interface Edge {
   readonly target: Endpoint;
   readonly label: string;
   readonly style: EdgeStyle;
+  readonly relationship?: boolean;
   readonly routingMode: RoutingMode;
   readonly waypoints: readonly Point[];
 }

@@ -22,9 +22,10 @@ interface Props {
   toggle(id: Id): void;
   focusObjects: Ref<(ids: readonly Id[]) => void>;
   presenting: boolean;
+  inspect(id: Id): void;
 }
 
-type Drag = { x: number; y: number; from: Viewport } & (
+type Drag = { x: number; y: number; from: Viewport; object?: Id } & (
   { kind: 'pan' } | { kind: 'orbit'; start: number; angle: number }
 );
 type Preview = Pick<Required<IsometricOptions>, 'rotation' | 'labelOffsets'>;
@@ -38,7 +39,7 @@ function orbitView(view: Viewport, pivot: Point, from: number, to: number): View
   return { ...view, panX: view.panX + (before.x - after.x) * view.zoom, panY: view.panY + (before.y - after.y) * view.zoom };
 }
 
-export function IsometricView({ t, scene, theme, options, onOptions, doc, editor, context, toggle, presenting, focusObjects }: Props) {
+export function IsometricView({ t, scene, theme, options, onOptions, doc, editor, context, toggle, presenting, focusObjects, inspect }: Props) {
   const ref = useRef<SVGSVGElement>(null);
   const orbitButton = useRef<HTMLButtonElement>(null);
   const [orbiting, setOrbiting] = useState(false);
@@ -161,11 +162,11 @@ export function IsometricView({ t, scene, theme, options, onOptions, doc, editor
     activeObject.current = id;
     setMenu({ screen, ids: id ? [id] : [], world: { x: 0, y: 0 }, docId: doc.id });
   };
+  const objectAt = (target: EventTarget) => (target as Element).closest('[data-iso-object]')?.getAttribute('data-iso-object') ?? null;
   const onContextMenu = (event: MouseEvent<SVGSVGElement>) => {
     event.preventDefault();
     if (presenting) return;
-    const object = (event.target as Element).closest('[data-iso-object]')?.getAttribute('data-iso-object') ?? null;
-    showMenu({ x: event.clientX, y: event.clientY }, object);
+    showMenu({ x: event.clientX, y: event.clientY }, objectAt(event.target));
   };
   const finishDrag = () => {
     const current = drag.current;
@@ -209,6 +210,10 @@ export function IsometricView({ t, scene, theme, options, onOptions, doc, editor
             const id = activeObject.current ?? editor.session.selected[0];
             showMenu({ x: box.left + box.width / 2, y: box.top + box.height / 2 }, id && scene.rects.has(id) ? id : null);
           }
+          if (e.key === 'Enter') {
+            const id = activeObject.current ?? editor.session.selected[0];
+            if (id) inspect(id);
+          }
           if ((e.ctrlKey || e.metaKey) && ['0', '+', '=', '-', '_'].includes(e.key)) {
             e.preventDefault();
             e.stopPropagation();
@@ -223,7 +228,8 @@ export function IsometricView({ t, scene, theme, options, onOptions, doc, editor
             commitRotation(angle);
           }
           e.currentTarget.setPointerCapture(e.pointerId);
-          const from = { x: e.clientX, y: e.clientY, from: view };
+          const object = e.button === 0 ? objectAt(e.target) ?? undefined : undefined;
+          const from = { x: e.clientX, y: e.clientY, from: view, object };
           drag.current = orbiting && e.button === 0 ? { ...from, kind: 'orbit', start: angle, angle } : { ...from, kind: 'pan' };
         }}
         onPointerMove={(e) => {
@@ -231,6 +237,7 @@ export function IsometricView({ t, scene, theme, options, onOptions, doc, editor
           if (!d || !e.isPrimary) return;
           const dx = e.clientX - d.x;
           const dy = e.clientY - d.y;
+          if (Math.hypot(dx, dy) > 5) d.object = undefined;
           if (d.kind === 'orbit') {
             const next = normalizeIsoAngle(d.start + Math.round(dx * ORBIT_DEGREES_PER_PIXEL));
             if (next === d.angle) return;
@@ -241,7 +248,15 @@ export function IsometricView({ t, scene, theme, options, onOptions, doc, editor
           }
           setView({ ...d.from, panX: d.from.panX + dx, panY: d.from.panY + dy });
         }}
-        onPointerUp={(e) => { if (e.isPrimary) finishDrag(); }}
+        onPointerUp={(e) => {
+          if (!e.isPrimary) return;
+          const d = drag.current;
+          finishDrag();
+          if (d?.kind === 'pan' && d.object && Math.hypot(e.clientX - d.x, e.clientY - d.y) <= 5) {
+            activeObject.current = d.object;
+            inspect(d.object);
+          }
+        }}
         onPointerCancel={(e) => { if (e.isPrimary) finishDrag(); }}
         onLostPointerCapture={(e) => { if (e.isPrimary) finishDrag(); }}
       >
@@ -257,7 +272,7 @@ export function IsometricView({ t, scene, theme, options, onOptions, doc, editor
       </svg>
       {menu?.docId === doc.id && !presenting && (
         <ContextMenu {...context} t={t} doc={doc} scene={scene} editor={editor} request={menu} fit={fit} fitGroup={fitGroup}
-          toggle={toggle} dismiss={dismiss} readOnly rotate={rotate} flow={flow} />
+          toggle={toggle} dismiss={dismiss} inspect={inspect} readOnly rotate={rotate} flow={flow} />
       )}
       <div className="iso-toolbar">
         {view && (

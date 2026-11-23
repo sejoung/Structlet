@@ -80,6 +80,7 @@ describe('building a pack', () => {
       'aws.msk': 'Arch_Amazon-Managed-Streaming-for-Apache-Kafka_48.svg',
       'aws.systems-manager': 'Arch_AWS-Systems-Manager_48.svg',
       'aws.acm': 'Arch_AWS-Certificate-Manager_48.svg',
+      'aws.cloudfront-function': 'Res_Amazon-CloudFront_Functions_48.svg',
       'aws.vpc-endpoint': 'Res_Amazon-VPC_Endpoints_48.svg',
     };
     const result = buildIconPack(Object.values(names).map(file), 'auto', 'AWS icons', 'pack-aws-services');
