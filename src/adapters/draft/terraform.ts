@@ -1,4 +1,5 @@
 import type { Draft, DraftContainer, DraftEdge, DraftNode } from './draft-format';
+import { ec2InstanceType, terraformNodeSpecs } from './terraform-specs';
 
 
 const AWS: Record<string, string> = {
@@ -53,6 +54,7 @@ interface Resource {
   address: string;
   type: string;
   name: string;
+  mode?: string;
   values: Record<string, unknown>;
   depends_on?: string[];
 }
@@ -62,7 +64,7 @@ const safe = (s: string) => s.replace(/[^A-Za-z0-9_.:-]+/g, '-').slice(0, 120);
 function collect(module: unknown, out: Resource[]): void {
   if (!module || typeof module !== 'object') return;
   const m = module as { resources?: Resource[]; child_modules?: unknown[] };
-  for (const r of m.resources ?? []) if ((r as { mode?: string }).mode !== 'data') out.push(r);
+  for (const r of m.resources ?? []) out.push(r);
   for (const child of m.child_modules ?? []) collect(child, out);
 }
 
@@ -101,10 +103,15 @@ function references(config: unknown): Map<string, string[]> {
 
 export function terraformToDraft(text: string, title = 'Terraform'): Draft {
   const json = JSON.parse(text) as Record<string, unknown>;
-  const resources: Resource[] = [];
-  collect((json.values as { root_module?: unknown } | undefined)?.root_module, resources);
-  collect((json.planned_values as { root_module?: unknown } | undefined)?.root_module, resources);
+  const all: Resource[] = [];
+  collect((json.values as { root_module?: unknown } | undefined)?.root_module, all);
+  collect((json.planned_values as { root_module?: unknown } | undefined)?.root_module, all);
+  const resources = all.filter((r) => r.mode !== 'data');
   if (resources.length === 0) throw new Error('No resources found. Use the output of `terraform show -json`.');
+  const ec2Types = new Map(all.flatMap((r) => {
+    const specs = r.mode === 'data' && r.type === 'aws_ec2_instance_type' ? ec2InstanceType(r.values ?? {}) : undefined;
+    return specs ? [[specs.instanceType, specs] as const] : [];
+  }));
   const refs = references(json.configuration);
   const byId = new Map<string, string>();
   const drawn = new Map<string, string>();
@@ -125,7 +132,7 @@ export function terraformToDraft(text: string, title = 'Terraform'): Draft {
     providers.add(provider);
     const label = `${String(r.values?.tags && (r.values.tags as Record<string, unknown>).Name ? (r.values.tags as Record<string, unknown>).Name : r.name)}\n${r.type}`;
     if (kind) containers.push({ id: key, kind, label: `${kind === 'vpc' ? 'VPC' : 'Subnet'} · ${label.split('\n')[0]}`, layout: 'flow' });
-    else nodes.push({ id: key, service: service!, label });
+    else nodes.push({ id: key, service: service!, label, specs: terraformNodeSpecs(r.type, r.values ?? {}, ec2Types) });
   }
   const providerArea = (p: string) => `tf-cloud-${p}`;
   const strings = (v: unknown, depth = 0): string[] =>

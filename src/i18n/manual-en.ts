@@ -28,7 +28,7 @@ export const manual = {
   'manual.editingGuide': 'Editing, importing, and saving',
   'manual.areaGuide': 'Use Areas to draw a boundary around related services. Select multiple objects and choose an area to wrap them, or move a service to a different group in Layers.',
   'manual.inspectorGuide': 'Open the right panel to edit the selected object. For connections, adjust the arrow, line shape, or link preset. Clear the selection to see architecture checks.',
-  'manual.importGuide': 'Use File → Import to merge a draft JSON, Compose file, Kubernetes manifest, or Terraform JSON into the current diagram. File → Open loads a saved .structlet file.',
+  'manual.importGuide': 'Use File → Import to merge a draft JSON, Compose file, Kubernetes manifest, or Terraform JSON into the current diagram. Select an imported VM to see and edit its equipment specifications. Enable Show detailed specs on the canvas in 2D, or All labels in isometric view. Auto-layout reserves space for the visible specs inside groups. File → Open loads a saved .structlet file.',
   'manual.storageGuide': 'The browser saves your working copy. Use File → Save for a portable file, or connect Drive to sync across devices.',
   'manual.examples': 'Example diagrams',
   'manual.example.basic': 'Basic example',

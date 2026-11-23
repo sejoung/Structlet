@@ -129,6 +129,7 @@ describe('draft import', () => {
     const parent = (id: string) => [...doc.nodes, ...doc.containers].find((b) => b.id === id)!.parentId;
     expect(parent('tf-aws_subnet.private')).toBe('tf-aws_vpc.main');
     expect(parent('tf-aws_instance.app')).toBe('tf-aws_subnet.private');
+    expect(doc.nodes.find((n) => n.id === 'tf-aws_instance.app')?.specs).toEqual({ instanceType: 't4g.small', vcpus: 2, memoryGiB: 2, diskGiB: 20 });
     expect(parent('tf-aws_lb.web')).toBe('tf-aws_subnet.public');
     expect(doc.nodes.some((n) => n.id.includes('iam_role'))).toBe(false);
     const linked = (a: string, b: string) => doc.edges.some((e) => e.source.kind === 'attached' && e.target.kind === 'attached' && e.source.objectId === a && e.target.objectId === b);
@@ -136,6 +137,34 @@ describe('draft import', () => {
     expect(linked('tf-aws_sqs_queue.orders', 'tf-aws_lambda_function.worker')).toBe(true);
     expect(doc.edges.some((e) => e.source.kind === 'attached' && e.source.objectId === 'tf-aws_instance.app')).toBe(true);
     noOverlaps(doc);
+  });
+
+  it('reads equipment values from Terraform plan data and refreshes the specs of an existing node', async () => {
+    const plan = (resources: unknown[]) => JSON.stringify({ format_version: '1.0', planned_values: { root_module: { resources } } });
+    const instance = (instanceType: string) => ({
+      address: 'aws_instance.app', name: 'app', type: 'aws_instance', mode: 'managed',
+      values: { instance_type: instanceType, cpu_options: [{ core_count: 2, threads_per_core: 2 }] },
+    });
+    const metadata = {
+      address: 'data.aws_ec2_instance_type.gpu', name: 'gpu', type: 'aws_ec2_instance_type', mode: 'data',
+      values: { instance_type: 'g5.2xlarge', default_vcpus: 8, default_cores: 4, default_threads_per_core: 2, memory_size: 32768, gpus: [{ name: 'A10G', count: 1 }] },
+    };
+    const initial = await importInto(emptyDocument('d', 'x'), plan([instance('g5.2xlarge'), metadata]));
+    expect(initial.ok).toBe(true);
+    if (!initial.ok) return;
+    expect(initial.document.nodes).toHaveLength(1);
+    const original = initial.document.nodes[0]!;
+    expect(original.specs).toEqual({ instanceType: 'g5.2xlarge', vcpus: 4, memoryGiB: 32, gpu: '1 × A10G' });
+    const partial = await importInto(initial.document, plan([{ ...instance('g5.2xlarge'), values: { instance_type: 'g5.2xlarge', cpu_options: [{ threads_per_core: 1 }] } }, metadata]));
+    expect(partial.ok && partial.document.nodes[0]?.specs?.vcpus).toBe(4);
+    const base = { ...initial.document, nodes: [{ ...original, specs: { ...original.specs, showDetails: true, diskGiB: 40 } }] };
+    const next = await importInto(base, plan([{ ...instance('future.large'), values: { instance_type: 'future.large' } }]));
+    expect(next.ok).toBe(true);
+    if (!next.ok) return;
+    expect(next.created).toEqual([]);
+    expect(next.document.nodes[0]).toMatchObject({ id: original.id, x: original.x, y: original.y, specs: { instanceType: 'future.large', showDetails: true, diskGiB: 40 } });
+    expect(next.document.nodes[0]?.specs?.memoryGiB).toBeUndefined();
+    expect(next.document.nodes[0]?.specs?.gpu).toBeUndefined();
   });
 });
 
@@ -163,6 +192,8 @@ describe('terraform for Azure and Google Cloud', () => {
     const parent = (id: string) => [...doc.nodes, ...doc.containers].find((b) => b.id === id)!.parentId;
     expect(node('tf-azurerm_kubernetes_cluster.aks').serviceId).toBe('azure.aks');
     expect(node('tf-google_compute_instance.web').serviceId).toBe('gcp.compute-engine');
+    expect(node('tf-google_compute_instance.web').specs).toEqual({ instanceType: 'n2-custom-4-8192', vcpus: 4, memoryGiB: 8, diskGiB: 40 });
+    expect(node('tf-azurerm_linux_virtual_machine.vm').specs).toEqual({ instanceType: 'Standard_D2s_v5', diskGiB: 64 });
     expect(node('tf-google_sql_database_instance.db').serviceId).toBe('gcp.cloud-sql');
     expect(parent('tf-azurerm_subnet.app')).toBe('tf-azurerm_virtual_network.main');
     expect(parent('tf-azurerm_kubernetes_cluster.aks')).toBe('tf-azurerm_subnet.app');

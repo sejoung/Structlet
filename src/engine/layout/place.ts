@@ -1,7 +1,7 @@
 import { ancestors, indexDocument, topmost, worldRect, type Container, type Document, type Id, type Node, type Point, type Rect } from '../../domain';
 import { containsPoint, inflate, intersects, union } from '../geometry';
-import { annotationRect, NODE_LABEL } from '../scene';
-import { measureText, wrapText } from '../text';
+import { layoutNodeLabels } from '../node-labels';
+import { annotationRect } from '../scene';
 import { arrange, LAYOUT_GAP, type LayoutItem, type LayoutLink, type LayoutMode } from './arrange';
 
 export const AREA_PADDING = { side: 32, top: 56, bottom: 32 } as const;
@@ -13,11 +13,12 @@ export interface Footprint {
 }
 
 export function footprint(box: Node | Container): Footprint {
-  if (!('serviceId' in box) || box.variant === 'box') return { width: box.width, height: box.height, offsetX: 0 };
-  const lines = box.label.trim() ? wrapText(box.label, NODE_LABEL.maxWidth, NODE_LABEL.fontSize, 4) : [];
-  const labelW = Math.max(0, ...lines.map((l) => measureText(l, NODE_LABEL.fontSize)));
-  const width = Math.ceil(Math.max(box.width, labelW) + 16);
-  const height = box.height + (lines.length ? NODE_LABEL.gap + lines.length * NODE_LABEL.lineHeight : 0);
+  if (!('serviceId' in box) || (box.variant === 'box' && !box.specs)) return { width: box.width, height: box.height, offsetX: 0 };
+  const { labelBox, specCaption } = layoutNodeLabels(box, { x: 0, y: 0, width: box.width, height: box.height });
+  if (box.variant === 'box' && !specCaption) return { width: box.width, height: box.height, offsetX: 0 };
+  const width = Math.ceil(Math.max(box.width, labelBox?.width ?? 0, specCaption?.box.width ?? 0) + 16);
+  const bottom = specCaption?.box ?? labelBox;
+  const height = bottom ? bottom.y + bottom.height : box.height;
   return { width, height, offsetX: (width - box.width) / 2 };
 }
 

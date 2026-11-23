@@ -1,6 +1,6 @@
 import { findParentCycles } from './hierarchy';
 import { indexDocument } from './lookup';
-import { FORMAT_VERSION, type Document, type Endpoint, type Id } from './model';
+import { FORMAT_VERSION, isSpecQuantity, NODE_SPEC_TEXT_LIMIT, type Document, type Endpoint, type Id } from './model';
 
 export interface ValidationIssue {
   readonly code:
@@ -11,6 +11,7 @@ export interface ValidationIssue {
     | 'unknown-target'
     | 'not-finite'
     | 'bad-size'
+    | 'bad-specs'
     | 'bad-offset'
     | 'too-many-objects'
     | 'unsupported-version';
@@ -60,6 +61,14 @@ export function validateDocument(doc: Document): ValidationIssue[] {
   }
   for (const id of findParentCycles(doc)) {
     issues.push({ code: 'parent-cycle', id, message: `${id} is part of a container cycle` });
+  }
+  for (const { id, specs } of doc.nodes) {
+    if (!specs) continue;
+    const textValid = [specs.instanceType, specs.gpu].every((v) => v === undefined || (typeof v === 'string' && v.length <= NODE_SPEC_TEXT_LIMIT));
+    const numbersValid = [specs.vcpus, specs.memoryGiB, specs.diskGiB].every((v) => v === undefined || isSpecQuantity(v));
+    if (!textValid || !numbersValid || (specs.showDetails !== undefined && typeof specs.showDetails !== 'boolean')) {
+      issues.push({ code: 'bad-specs', id, message: `${id} has invalid equipment specifications` });
+    }
   }
   const checkEnd = (edgeId: Id, end: Endpoint) => {
     if (end.kind === 'free') {

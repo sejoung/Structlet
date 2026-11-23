@@ -1,6 +1,7 @@
 import type { Point, Rect } from '../domain';
 import { AREA_STROKE, type Glyph } from './appearance';
 import { inflate } from './geometry';
+import { SPEC_CAPTION } from './node-labels';
 import {
   ANNOTATION_TEXT,
   BOX_NODE,
@@ -163,6 +164,7 @@ export class ImageSymbols {
 
 function nodeMarkup(node: SceneNode, t: DiagramTheme, images: ImageSymbols): string {
   const r = node.rect;
+  const caption = node.specCaption ? specCaptionMarkup(node.specCaption, t) : '';
   if (node.variant === 'box') {
     const icon = BOX_NODE.icon;
     const ix = r.x + BOX_NODE.pad;
@@ -174,6 +176,7 @@ function nodeMarkup(node: SceneNode, t: DiagramTheme, images: ImageSymbols): str
       `<rect x="${n(r.x)}" y="${n(r.y)}" width="${n(r.width)}" height="${n(r.height)}" rx="6" fill="${t.boxFill}" stroke="${node.color}" stroke-width="1.5"/>` +
       (node.image ? images.use(node.image, ix, iy, icon) : `<rect x="${n(ix)}" y="${n(iy)}" width="${icon}" height="${icon}" rx="5" fill="${node.color}"/>` + glyphMarkup(node.glyph, ix + 6, iy + 6, icon - 12, '#ffffff', 1.7)) +
       textLines(node.label, tx, ty, BOX_NODE.lineHeight, `font-size="${BOX_NODE.fontSize}" fill="${t.nodeLabel}"`) +
+      caption +
       '</g>'
     );
   }
@@ -186,8 +189,16 @@ function nodeMarkup(node: SceneNode, t: DiagramTheme, images: ImageSymbols): str
     `<g data-node="${escapeXml(node.id)}">` +
     icon +
     (node.labelBox ? textLines(node.label, r.x + r.width / 2, node.labelBox.y + NODE_LABEL.fontSize - 1, NODE_LABEL.lineHeight, `font-size="${NODE_LABEL.fontSize}" fill="${t.nodeLabel}" text-anchor="middle"`) : '') +
+    caption +
     '</g>'
   );
+}
+
+function specCaptionMarkup({ box, lines }: NonNullable<SceneNode['specCaption']>, theme: DiagramTheme): string {
+  const { x, y, width, height } = box;
+  const { fontSize, lineHeight, padY } = SPEC_CAPTION;
+  return `<g data-node-specs><rect x="${n(x)}" y="${n(y)}" width="${n(width)}" height="${n(height)}" rx="4" fill="${theme.legendFill}" stroke="${theme.legendBorder}" stroke-width="0.7"/>` +
+    textLines(lines, x + width / 2, y + padY + fontSize - 1, lineHeight, `font-size="${fontSize}" fill="${theme.edgeLabel}" text-anchor="middle"`) + '</g>';
 }
 
 function annotationMarkup(a: SceneAnnotation, t: DiagramTheme): string {

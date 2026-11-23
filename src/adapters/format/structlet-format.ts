@@ -17,6 +17,7 @@ import {
   type Point,
 } from '../../domain';
 import { arr, bool, FormatError, id, num, obj, oneOf, str, nullableId, type Json } from './reader';
+import { readNodeSpecs } from './node-specs';
 
 
 export const FILE_EXTENSION = '.structlet';
@@ -51,6 +52,7 @@ function node(v: unknown, path: string): Node {
     height: num(o, 'height', path),
     locked: bool(o, 'locked', path, false),
     variant: oneOf(o, 'variant', path, NODE_VARIANTS, 'icon'),
+    ...(o.specs === undefined ? {} : { specs: readNodeSpecs(o.specs, `${path}.specs`) }),
   };
 }
 
@@ -175,6 +177,14 @@ export function serializeStructlet(doc: Document): string {
       height: n.height,
       locked: n.locked,
       variant: n.variant,
+      specs: n.specs && {
+        instanceType: n.specs.instanceType,
+        vcpus: n.specs.vcpus,
+        memoryGiB: n.specs.memoryGiB,
+        gpu: n.specs.gpu,
+        diskGiB: n.specs.diskGiB,
+        showDetails: n.specs.showDetails,
+      },
     })),
     edges: doc.edges.map((e) => ({
       id: e.id,

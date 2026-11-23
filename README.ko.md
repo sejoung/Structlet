@@ -124,7 +124,7 @@ npm run dev          # http://127.0.0.1:5183
 - **정렬·간격·자동 배치** — 여러 개를 선택하면 속성 패널에 정렬 6종, 간격 맞춤, 자동 배치(왼→오, 위→아래, 격자)가 나온다. 영역을 선택하면 "안쪽 자동 배치". 고정한 상자와 수동 경로는 그대로 둔다. 끌 때는 다른 객체의 가장자리·가운데에 맞춰지고, 그 외에는 8px 격자에 붙는다(Alt를 누르면 끔).
 - **노드 모양** — 인스펙터의 **모양**에서 아이콘형/상자형, 크기 S·M·L을 고른다.
 - **주석** — **주석** 패널에서 텍스트, 흐름 번호, 범례를 넣는다. 범례는 구성도에서 쓰는 역할 색과 선 모양으로 자동으로 채워지고 "다시 만들기"로 갱신한다. 주석을 객체에 붙이면 함께 움직인다.
-- **가져오기** — **파일 → 가져오기**로 초안 JSON([형식](docs/draft-format.md), [예시](samples/draft-example.json)), `docker-compose.yml`, Kubernetes 매니페스트(`kubectl get -o yaml|json`, `helm template`), `terraform show -json` 결과를 현재 구성도에 합친다. 기존 객체의 ID·위치·고정은 유지되고 새 객체만 배치된다. 오류가 있으면 아무것도 바뀌지 않는다. 한 번의 실행 취소로 되돌린다. 같은 내용을 붙여넣어도 된다.
+- **가져오기** — **파일 → 가져오기**로 초안 JSON([형식](docs/draft-format.md), [예시](samples/draft-example.json)), `docker-compose.yml`, Kubernetes 매니페스트(`kubectl get -o yaml|json`, `helm template`), `terraform show -json` 결과를 현재 구성도에 합친다. 기존 객체의 ID·위치·고정은 유지되고 새 객체만 배치된다. 오류가 있으면 아무것도 바뀌지 않는다. 한 번의 실행 취소로 되돌린다. 같은 내용을 붙여넣어도 된다. Terraform에서 읽은 VM 정보는 인스펙터의 **장비 사양**에서 확인한다. 2D에서는 **캔버스에 상세 사양 표시**, 아이소메트릭에서는 **전체 라벨**을 사용한다.
 - **복사·붙여넣기** — ⌘C/⌘X/⌘V. 영역은 내용과 내부 연결선까지 복사되고, 선택한 영역 안에 붙는다.
 - **점검** — 아무것도 선택하지 않으면 인스펙터에 점검 결과(퍼블릭 서브넷의 데이터 저장소, 클라이언트→DB 직접 연결, 모르는 서비스, 연결 없는 서비스, 빈 영역)가 나오고, 누르면 해당 객체를 선택한다.
 
@@ -218,7 +218,7 @@ docs/adr/       설계 기록. stormlet-reference/ 에 참고한 Stormlet ADR �
 ## 검증 현황
 
 <details>
-<summary><b>단위 155개</b> (<code>tests/unit</code>)</summary>
+<summary><b>단위 159개</b> (<code>tests/unit</code>)</summary>
 
 - **domain** — 계층·로컬 좌표·자식 동반 이동, 부모 변경·순환 거부, 패치 undo(인접 삭제 순서 포함), 조각 복사·붙여넣기, 문서 차이
 - **domain** — 3방향 병합(필드·위치 묶음·삭제 충돌·계층 복구·순환)
@@ -242,7 +242,7 @@ docs/adr/       설계 기록. stormlet-reference/ 에 참고한 Stormlet ADR �
 </details>
 
 <details>
-<summary><b>E2E 55개</b> (<code>tests/e2e</code>, 프로덕션 빌드)</summary>
+<summary><b>E2E 56개</b> (<code>tests/e2e</code>, 프로덕션 빌드)</summary>
 
 - **기본 흐름** — 노드 두 개 → 연결 → 저장 → 열기 → 새로 고침 → SVG(화면과 같은 경로), PNG, 잘못된 파일 거부
 - **영역** — VPC 끌기 후 한 번의 undo, 다른 영역으로 끌어 넣기, 감싸기

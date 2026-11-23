@@ -1,6 +1,7 @@
-import { ANNOTATION_KINDS, AREA_COLORS, CONTAINER_KINDS, LIMITS, NODE_VARIANTS, type AnnotationKind, type AreaColor, type ArrowHeads, type ContainerKind, type EdgeShape, type NodeVariant } from '../../domain';
+import { ANNOTATION_KINDS, AREA_COLORS, CONTAINER_KINDS, LIMITS, NODE_VARIANTS, type AnnotationKind, type AreaColor, type ArrowHeads, type ContainerKind, type EdgeShape, type NodeSpecs, type NodeVariant } from '../../domain';
 import { LAYOUT_MODES, type LayoutMode } from '../../engine';
 import { arr, bool, FormatError, id, num, obj, oneOf, str, type Json } from '../format/reader';
+import { readNodeSpecs } from '../format/node-specs';
 
 
 export interface DraftContainer {
@@ -29,6 +30,7 @@ export interface DraftNode {
   variant?: NodeVariant;
   size?: 's' | 'm' | 'l';
   locked?: boolean;
+  specs?: NodeSpecs | null;
 }
 
 export interface DraftEdge {
@@ -103,6 +105,7 @@ export function readDraft(raw: unknown): Draft {
         x: opt(o, 'x', () => num(o, 'x', p)),
         y: opt(o, 'y', () => num(o, 'y', p)),
         variant: opt(o, 'variant', () => oneOf(o, 'variant', p, NODE_VARIANTS)),
+        specs: opt(o, 'specs', () => o.specs === null ? null : readNodeSpecs(o.specs, `${p}.specs`)),
         size: opt(o, 'size', () => oneOf(o, 'size', p, ['s', 'm', 'l'] as const)),
         locked: opt(o, 'locked', () => bool(o, 'locked', p, false)),
       };

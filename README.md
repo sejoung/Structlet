@@ -127,7 +127,7 @@ The panels can be hidden. Two toggles — **[left panel] [right panel]** — alw
 - **Align, distribute, auto-layout** — with several objects selected, the inspector offers six alignments, even spacing and auto-layout (left → right, top → bottom, grid). With an area selected, "Lay out contents". Pinned boxes and manual paths are left alone. While dragging, objects snap to other objects' edges and centers, otherwise to an 8 px grid (hold Alt to turn off).
 - **Node shape** — **Shape** in the inspector chooses icon or box style, size S · M · L.
 - **Notes** — the **Notes** panel adds text, flow numbers and a legend. The legend fills itself from the role colors and line styles used in the diagram; "Rebuild" refreshes it. Notes attached to an object move with it.
-- **Import** — **File → Import** merges a draft JSON ([format](docs/draft-format.md), [example](samples/draft-example.json)), `docker-compose.yml`, Kubernetes manifests (`kubectl get -o yaml|json`, `helm template`) or `terraform show -json` output into the current diagram. Existing objects keep their IDs, positions and pins; only new objects are placed. If anything is invalid, nothing changes. One undo reverts it. Pasting the same content also works.
+- **Import** — **File → Import** merges a draft JSON ([format](docs/draft-format.md), [example](samples/draft-example.json)), `docker-compose.yml`, Kubernetes manifests (`kubectl get -o yaml|json`, `helm template`) or `terraform show -json` output into the current diagram. Existing objects keep their IDs, positions and pins; only new objects are placed. If anything is invalid, nothing changes. One undo reverts it. Pasting the same content also works. Terraform VM specifications appear in the node inspector. Enable detailed specs on the canvas to show them in 2D, or use **All labels** in isometric view.
 - **Copy and paste** — ⌘C / ⌘X / ⌘V. Areas copy with their contents and internal connections, and paste into the selected area.
 - **Checks** — with nothing selected, the inspector lists findings (data stores in a public subnet, direct client → DB connections, unknown services, unconnected services, empty areas). Clicking one selects the object.
 
@@ -222,7 +222,7 @@ The layer rules are enforced in three places, all part of `npm run check` and CI
 ## Tests
 
 <details>
-<summary><b>155 unit tests</b> (<code>tests/unit</code>)</summary>
+<summary><b>159 unit tests</b> (<code>tests/unit</code>)</summary>
 
 - **domain** — hierarchy, local coordinates, children moving with parents, reparenting and cycle rejection, patch undo (including adjacent-delete order), fragment copy / paste, document diff
 - **domain** — three-way merge (fields, grouped positions, delete conflicts, hierarchy repair, cycles)
@@ -246,7 +246,7 @@ The layer rules are enforced in three places, all part of `npm run check` and CI
 </details>
 
 <details>
-<summary><b>55 E2E tests</b> (<code>tests/e2e</code>, production builds)</summary>
+<summary><b>56 E2E tests</b> (<code>tests/e2e</code>, production builds)</summary>
 
 - **Basic flow** — two nodes → connect → save → open → reload → SVG (same paths as the screen), PNG, rejecting an invalid file
 - **Areas** — dragging a VPC then a single undo, dragging into another area, wrapping

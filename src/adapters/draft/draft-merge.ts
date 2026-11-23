@@ -91,6 +91,12 @@ export function mergeDraft(base: Document, draft: Draft): MergeResult {
     if (old) {
       if (d.service !== undefined) old.serviceId = d.service;
       if (d.label !== undefined) old.label = d.label;
+      if (d.specs === null) old.specs = undefined;
+      else if (d.specs !== undefined) {
+        const changedType = old.specs?.instanceType !== undefined && d.specs.instanceType !== undefined && d.specs.instanceType !== old.specs.instanceType;
+        const retained = changedType ? { diskGiB: old.specs?.diskGiB, showDetails: old.specs?.showDetails } : old.specs;
+        old.specs = { ...retained, ...d.specs };
+      }
       if (d.variant && d.variant !== old.variant) Object.assign(old, { variant: d.variant }, NODE_SIZES[d.variant].m);
       if (d.size && !old.locked) Object.assign(old, NODE_SIZES[old.variant][d.size]);
       reparent(old, d.parent, hasXY);
@@ -109,6 +115,7 @@ export function mergeDraft(base: Document, draft: Draft): MergeResult {
       ...NODE_SIZES[variant][d.size ?? 'm'],
       locked: d.locked ?? false,
       variant,
+      ...(d.specs ? { specs: d.specs } : {}),
     });
     if (!hasXY) place.add(d.id);
     created.push(d.id);

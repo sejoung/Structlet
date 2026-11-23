@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { parseStructlet, serializeStructlet } from '../../../src/adapters/format/structlet-format';
+import { parseFragment, serializeFragment } from '../../../src/adapters/format/clipboard';
 import { LocalDocumentStore } from '../../../src/adapters/storage/local-document-store';
+import { extractFragment } from '../../../src/domain';
 import { newEditor, sampleDocument, sampleText } from '../fixtures';
 
 function mutate(fn: (raw: any) => void): string {
@@ -40,6 +42,16 @@ describe('.structlet format', () => {
     expect(result.ok && result.document.edges[0]!.waypoints).toEqual([]);
   });
 
+  it('keeps structured equipment specs through save, reopen, and clipboard', () => {
+    const editor = newEditor(sampleDocument());
+    const specs = { instanceType: 't4g.nano', vcpus: 2, memoryGiB: 0.5, diskGiB: 20, showDetails: true };
+    editor.update('nodes', 'api', { specs });
+    const doc = editor.session.document;
+    expect(parseStructlet(serializeStructlet(doc))).toEqual({ ok: true, document: doc });
+    const fragment = extractFragment(doc, ['api']);
+    expect(parseFragment(serializeFragment(fragment))?.nodes[0]?.specs).toEqual(specs);
+  });
+
   it.each([
     ['not JSON', '{nope'],
     ['another format', mutate((r) => (r.format = 'stormlet'))],
@@ -52,6 +64,7 @@ describe('.structlet format', () => {
     ['a bad side', mutate((r) => (r.edges[0].target.side = 'middle'))],
     ['an offset outside 0..1', mutate((r) => (r.edges[0].target.offset = 3))],
     ['an unsafe id', mutate((r) => (r.nodes[0].id = '<script>'))],
+    ['a negative memory capacity', mutate((r) => (r.nodes[0].specs = { memoryGiB: -1 }))],
     ['an oversized file', 'x'.repeat(5 * 1024 * 1024 + 1)],
   ])('rejects %s without throwing', (_name, text) => {
     const result = parseStructlet(text);

@@ -26,6 +26,7 @@ import type { Translate } from '../../i18n/messages';
 import type { PaletteService } from '../sidebar/types';
 import { Row, Section, Segmented, Switch } from '../ui/controls';
 import { Pair, Select, TextArea } from './fields';
+import { NodeSpecsSection } from './NodeSpecsSection';
 
 export type LayoutChoice = 'flow' | 'flow-down' | 'grid';
 
@@ -87,6 +88,7 @@ export function NodeSection({ node, services, ...p }: SectionProps & { node: Nod
         <TextArea label={t('props.label')} value={node.label} onChange={(v) => editor.rename(node.id, v)} testId="prop-label" />
         <Select label={t('props.service')} value={node.serviceId} options={options} onChange={(v) => editor.update('nodes', node.id, { serviceId: v })} testId="prop-service" />
       </Section>
+      <NodeSpecsSection t={t} editor={editor} node={node} />
       <Section title={t('section.appearance')}>
         <Row label={t('props.variant')}>
           <Segmented label={t('props.variant')} testId="prop-variant" value={node.variant} onChange={(v: NodeVariant) => editor.setNodeStyle(node.id, v)} options={(['icon', 'box'] as const).map((v) => ({ value: v, label: t(`props.variant.${v}`) }))} />

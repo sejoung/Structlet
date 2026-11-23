@@ -1,6 +1,8 @@
 import { manual } from './manual-en';
+import { specsEn } from './specs';
 export const en = {
   ...manual,
+  ...specsEn,
   'app.untitled': 'Untitled diagram',
   'toolbar.new': 'New',
   'toolbar.open': 'Open',

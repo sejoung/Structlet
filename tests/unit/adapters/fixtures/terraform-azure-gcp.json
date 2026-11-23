@@ -6,12 +6,12 @@
         { "address": "azurerm_virtual_network.main", "mode": "managed", "type": "azurerm_virtual_network", "name": "main", "values": { "id": "/subs/1/vnet/main", "name": "vnet-main" } },
         { "address": "azurerm_subnet.app", "mode": "managed", "type": "azurerm_subnet", "name": "app", "values": { "id": "/subs/1/vnet/main/subnets/app", "virtual_network_name": "vnet-main" } },
         { "address": "azurerm_kubernetes_cluster.aks", "mode": "managed", "type": "azurerm_kubernetes_cluster", "name": "aks", "values": { "id": "/aks", "default_node_pool": [{ "vnet_subnet_id": "/subs/1/vnet/main/subnets/app" }] } },
-        { "address": "azurerm_linux_virtual_machine.vm", "mode": "managed", "type": "azurerm_linux_virtual_machine", "name": "vm", "values": { "id": "/vm", "network_interface_ids": ["/nic"] } },
+        { "address": "azurerm_linux_virtual_machine.vm", "mode": "managed", "type": "azurerm_linux_virtual_machine", "name": "vm", "values": { "id": "/vm", "network_interface_ids": ["/nic"], "size": "Standard_D2s_v5", "os_disk": [{ "disk_size_gb": 64 }] } },
         { "address": "azurerm_network_interface.nic", "mode": "managed", "type": "azurerm_network_interface", "name": "nic", "values": { "id": "/nic", "ip_configuration": [{ "subnet_id": "/subs/1/vnet/main/subnets/app" }] } },
         { "address": "azurerm_key_vault.kv", "mode": "managed", "type": "azurerm_key_vault", "name": "kv", "values": { "id": "/kv" } },
         { "address": "google_compute_network.vpc", "mode": "managed", "type": "google_compute_network", "name": "vpc", "values": { "id": "projects/p/global/networks/vpc", "self_link": "https://g/networks/vpc" } },
         { "address": "google_compute_subnetwork.sub", "mode": "managed", "type": "google_compute_subnetwork", "name": "sub", "values": { "id": "projects/p/regions/r/subnetworks/sub", "self_link": "https://g/subnetworks/sub", "network": "https://g/networks/vpc" } },
-        { "address": "google_compute_instance.web", "mode": "managed", "type": "google_compute_instance", "name": "web", "values": { "id": "web", "self_link": "https://g/instances/web", "network_interface": [{ "subnetwork": "https://g/subnetworks/sub" }] } },
+        { "address": "google_compute_instance.web", "mode": "managed", "type": "google_compute_instance", "name": "web", "values": { "id": "web", "self_link": "https://g/instances/web", "network_interface": [{ "subnetwork": "https://g/subnetworks/sub" }], "machine_type": "n2-custom-4-8192", "boot_disk": [{ "initialize_params": [{ "size": 40 }] }] } },
         { "address": "google_sql_database_instance.db", "mode": "managed", "type": "google_sql_database_instance", "name": "db", "values": { "id": "db-1", "self_link": "https://g/sql/db" } },
         { "address": "google_pubsub_topic.t", "mode": "managed", "type": "google_pubsub_topic", "name": "t", "values": { "id": "projects/p/topics/t" } }
       ]

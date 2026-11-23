@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { createAppearance } from '../../../src/adapters/catalog/services';
 import { parseStructlet } from '../../../src/adapters/format/structlet-format';
 import { applyPatch, getBox, moveEach, validateDocument, worldRect, type Document } from '../../../src/domain';
-import { arrange, computeScene, containsRect, fitView, intersects, layoutDocument, layoutSelection, LAYOUT_MODES, polylineLength, routeAuto, segmentHitsRect, worldToScreen, zoomAt } from '../../../src/engine';
+import { arrange, computeScene, containsRect, fitView, intersects, layoutDocument, layoutSelection, LAYOUT_MODES, polylineLength, routeAuto, segmentHitsRect, union, worldToScreen, zoomAt } from '../../../src/engine';
 
 function readSample(name: string) {
   const result = parseStructlet(readFileSync(new URL(`../../../samples/${name}.structlet`, import.meta.url), 'utf8'));
@@ -15,6 +15,29 @@ const look = createAppearance('en');
 const attachment = (e: Document['edges'][number]['source']) => e.kind === 'attached' ? e.objectId : e;
 
 describe('auto-layout regressions', () => {
+  it('reserves equipment captions for icon and box nodes inside nested groups in every layout mode', () => {
+    const base = readSample('commerce-and-ml');
+    const doc: Document = { ...base, nodes: base.nodes.map((node) => node.parentId === 'app-api' ? {
+      ...node, variant: node.id === 'checkout' ? 'box' : 'icon',
+      specs: { instanceType: 't4g.small', vcpus: 2, memoryGiB: 2, diskGiB: 80, showDetails: true },
+    } : node) };
+    for (const mode of LAYOUT_MODES) {
+      const next = layoutDocument(doc, mode);
+      const scene = computeScene(next, look);
+      const group = scene.rects.get('app-api')!;
+      const children = scene.nodes.filter((node) => next.nodes.find((item) => item.id === node.id)?.parentId === 'app-api');
+      expect(children).toHaveLength(2);
+      const footprints = children.map((node) => {
+        expect(node.specCaption?.lines).toContain('2 vCPU · 2 GiB RAM');
+        const bounds = union([node.rect, node.specCaption!.box])!;
+        expect(containsRect(group, bounds), mode).toBe(true);
+        expect(containsRect(scene.bounds!, bounds), mode).toBe(true);
+        return bounds;
+      });
+      expect(intersects(footprints[0]!, footprints[1]!), mode).toBe(false);
+    }
+  });
+
   it.each(LAYOUT_MODES)('keeps NVIDIA annotation clear and orthogonal links out of boxes in %s mode', (mode) => {
     const doc = readSample('gpu-training');
     const next = layoutDocument(doc, mode);

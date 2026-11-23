@@ -18,6 +18,21 @@ export const SIDES: readonly Side[] = ['top', 'right', 'bottom', 'left'];
 export const NODE_VARIANTS = ['icon', 'box'] as const;
 export type NodeVariant = (typeof NODE_VARIANTS)[number];
 
+export const NODE_SPEC_TEXT_LIMIT = 128;
+
+export interface NodeSpecs {
+  readonly instanceType?: string;
+  readonly vcpus?: number;
+  readonly memoryGiB?: number;
+  readonly gpu?: string;
+  readonly diskGiB?: number;
+  readonly showDetails?: boolean;
+}
+
+export function isSpecQuantity(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0;
+}
+
 export interface Node {
   readonly id: Id;
   readonly serviceId: string;
@@ -29,6 +44,7 @@ export interface Node {
   readonly height: number;
   readonly locked: boolean;
   readonly variant: NodeVariant;
+  readonly specs?: NodeSpecs;
 }
 
 export const CONTAINER_KINDS = [

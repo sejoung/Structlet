@@ -17,11 +17,14 @@
 | --- | --- |
 | 최상위 | `format: "structlet-draft"`, `formatVersion: 1`, `title`, `layout`(`flow` 왼→오, `flow-down` 위→아래, `grid`), `containers`, `nodes`, `edges`, `annotations`, `remove` |
 | `containers[]` | `id`, `kind`(cloud, account, region, availability-zone, vpc, subnet, custom), `label`, `parent`, `layout`, `x`, `y`, `width`, `height`, `color`(gray, teal, purple, green, blue, orange, pink, red), `dashed`, `filled`, `locked` |
-| `nodes[]` | `id`, `service`(서비스 ID, 예: `database`, `aws.lambda`; 모르는 ID는 일반 아이콘으로 보존), `label`(`\n`으로 줄바꿈: 첫 줄은 역할, 둘째 줄은 기술), `parent`, `x`, `y`, `variant`(`icon`, `box`), `size`(`s`, `m`, `l`), `locked` |
+| `nodes[]` | `id`, `service`(서비스 ID, 예: `database`, `aws.lambda`; 모르는 ID는 일반 아이콘으로 보존), `label`(`\n`으로 줄바꿈: 첫 줄은 역할, 둘째 줄은 기술), `parent`, `x`, `y`, `variant`(`icon`, `box`), `size`(`s`, `m`, `l`), `locked`, `specs` |
+| `nodes[].specs` | `instanceType`, `vcpus`, `memoryGiB`, `gpu`, `diskGiB`(시스템 디스크), `showDetails`(2D에서 상세 사양 표시) |
 | `edges[]` | `id`, `from`, `to`, `label`, `dashed`(비동기), `arrow`(end, start, both, none), `shape`(orthogonal, straight) |
 | `annotations[]` | `id`, `kind`(text, step, legend), `text`, `x`, `y`(월드 좌표), `target`(붙을 객체; 좌표가 없으면 대상 옆에 놓인다) |
 
 범례 `text`의 줄은 `#rrggbb 이름`(색 견본), `--- 이름`(실선 견본), `- - 이름`(점선 견본)으로 시작할 수 있다.
+
+`specs: null`은 노드의 사양을 지운다. 인스턴스 타입이 바뀌면 새 입력에서 제공한 CPU·메모리·GPU 값을 사용한다. 사양 값은 노드와 함께 저장되며 자동 배치가 사양 라벨의 공간을 확보한다.
 
 ## 배치 방식
 
@@ -35,4 +38,6 @@
 
 - **docker-compose.yml**: 서비스 → 노드(이미지로 아이콘 추정), `depends_on`과 `environment` 안의 서비스 이름 → 선, `ports` → 클라이언트 노드, 이름 있는 볼륨 → 스토리지 노드, 네트워크가 둘 이상이면 영역.
 - **Terraform**: HCL이 아니라 `terraform show -json`(state 또는 `terraform show -json plan.out`) 결과를 읽는다. VPC/서브넷(가상 네트워크) → 중첩 영역, 알려진 리소스 → 노드, 선은 plan의 참조, state의 `depends_on`, 다른 리소스의 ID·ARN을 값으로 가진 속성, 이벤트 소스 매핑 같은 연결 리소스에서 만든다. 정책·첨부·규칙처럼 설정만 하는 리소스는 그리지 않는다.
+  - AWS EC2는 인스턴스 타입, CPU 설정, 시스템 디스크를 읽는다. T4g는 [AWS 공식 사양](https://docs.aws.amazon.com/ec2/latest/instancetypes/gp.html)으로 기본 vCPU와 메모리를 채운다. `data.aws_ec2_instance_type`의 결과가 있으면 일치하는 타입의 vCPU·메모리·GPU를 가져온다.
+  - Google Compute Engine은 머신 타입, 커스텀 타입의 vCPU와 메모리, 지정된 GPU와 시스템 디스크를 읽는다. Azure VM은 크기와 지정된 시스템 디스크를 읽는다. Terraform 출력에서 확인할 수 없는 값은 인스펙터에서 입력할 수 있다.
 - **Kubernetes**: 여러 문서 YAML, `kubectl get -o yaml` 또는 `-o json`(List), `helm template` 결과. 클러스터·네임스페이스 → 영역, 워크로드·Service·Ingress·ConfigMap·Secret·PVC·HPA → 노드. 선은 Ingress 규칙, Service selector, 볼륨·환경 변수 참조, HPA 대상에서 만든다. 컨트롤러가 관리하는 Pod·ReplicaSet은 그리지 않는다.

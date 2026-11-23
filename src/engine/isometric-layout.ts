@@ -85,6 +85,7 @@ interface LabelInput {
   readonly anchor: Point;
   readonly preferred: Point;
   readonly color?: ContainerStyle['color'];
+  readonly details?: readonly string[];
 }
 
 export interface IsometricLabel {
@@ -92,7 +93,7 @@ export interface IsometricLabel {
   readonly kind: LabelKind;
   readonly box: Rect;
   readonly leader: Point | null;
-  readonly lines: readonly { text: string; marker: LegendMarker }[];
+  readonly lines: readonly { text: string; marker: LegendMarker; detailSize?: number }[];
   readonly size: number;
   readonly weight: number;
   readonly lineHeight: number;
@@ -108,15 +109,21 @@ export interface IsometricLayout {
 
 function measureLabel(input: LabelInput) {
   const { size, weight, maxWidth } = ISOMETRIC_TEXT[input.kind];
-  const measure = (text: string) => measureText(text, size) * (weight >= 600 ? 1.2 : 1.12);
-  const lines = input.text.split('\n').flatMap((line) => {
+  const scale = weight >= 600 ? 1.2 : 1.12;
+  const lines: IsometricLabel['lines'][number][] = (input.text.trim() ? input.text.split('\n') : []).flatMap((line) => {
     const { marker, text } = input.kind === 'legend' ? legendMarker(line) : { marker: null, text: line };
-    const available = (maxWidth - (marker ? LEGEND_MARKER_WIDTH : 0)) / (weight >= 600 ? 1.2 : 1.12);
+    const available = (maxWidth - (marker ? LEGEND_MARKER_WIDTH : 0)) / scale;
     return wrapText(text, available, size, Number.POSITIVE_INFINITY)
       .map((text, i) => ({ text, marker: i === 0 ? marker : null }));
   });
+  const detailSize = size - 3;
+  for (const detail of input.details ?? []) {
+    for (const text of wrapText(detail, maxWidth / 1.12, detailSize, Number.POSITIVE_INFINITY)) {
+      lines.push({ text, marker: null, detailSize });
+    }
+  }
   const lineHeight = Math.ceil(size * 1.42);
-  const width = Math.ceil(Math.max(12, ...lines.map((line) => measure(line.text) + (line.marker ? LEGEND_MARKER_WIDTH : 0)))) + LABEL_PAD.x * 2;
+  const width = Math.ceil(Math.max(12, ...lines.map((line) => measureText(line.text, line.detailSize ?? size) * (line.detailSize ? 1.12 : scale) + (line.marker ? LEGEND_MARKER_WIDTH : 0)))) + LABEL_PAD.x * 2;
   return { lines, lineHeight, size, weight, width, height: lineHeight * lines.length + LABEL_PAD.y * 2 };
 }
 
@@ -169,7 +176,8 @@ export function computeIsometricLayout(scene: Scene, options: IsometricOptions =
   }
   for (const node of scene.nodes) {
     const anchor = labelAnchorOnRect(node.rect, rotation, 1);
-    inputs.push({ kind: 'node', id: node.id, text: node.fullLabel ?? node.label.join('\n'), anchor, preferred: { x: anchor.x, y: anchor.y + 8 } });
+    const details = options.labels === 'compact' ? undefined : node.specDetails;
+    inputs.push({ kind: 'node', id: node.id, text: node.fullLabel ?? node.label.join('\n'), details, anchor, preferred: { x: anchor.x, y: anchor.y + 8 } });
   }
   for (const note of annotations) {
     const anchor = project(note.rect);
@@ -186,7 +194,7 @@ export function computeIsometricLayout(scene: Scene, options: IsometricOptions =
   const occupied = [...blocks];
   const fallback = { x: ground.x + ground.width + 24, y: ground.y };
   const labelOffsets = new Map<Id, Point>();
-  const measured = inputs.filter((input) => input.text.trim()).map((input) => ({ input, ...measureLabel(input) }));
+  const measured = inputs.filter((input) => input.text.trim() || input.details?.length).map((input) => ({ input, ...measureLabel(input) }));
   const retained = new Map<Id, Rect>();
   if (options.labelOffsets) {
     for (const { input, width, height } of measured) {

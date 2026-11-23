@@ -29,12 +29,12 @@ function renderLabel(label: IsometricLabel, theme: DiagramTheme): string {
   const center = { x: r.x + r.width / 2, y: r.y + r.height / 2 };
   out.push(`<rect x="${n(r.x)}" y="${n(r.y)}" width="${n(r.width)}" height="${n(r.height)}" rx="${kind === 'step' ? n(r.height / 2) : 5}" fill="${fill}" stroke="${border}"/>`);
   if (color) out.push(`<path d="M${n(r.x + 4)} ${n(r.y + 7)}V${n(r.y + r.height - 7)}" stroke="${color}" stroke-width="2"/>`);
-  for (const [index, { text, marker }] of label.lines.entries()) {
+  for (const [index, { text, marker, detailSize }] of label.lines.entries()) {
     const y = r.y + isometricLabelPadding.y + (index + 0.79) * label.lineHeight;
     if (marker?.kind === 'swatch') out.push(`<rect x="${n(textX)}" y="${n(y - 11)}" width="12" height="12" rx="3" fill="${marker.color}"/>`);
     if (marker?.kind === 'line') out.push(`<line x1="${n(textX)}" y1="${n(y - 5)}" x2="${n(textX + 22)}" y2="${n(y - 5)}" stroke="${theme.edge}" stroke-width="1.5"${marker.dashed ? ' stroke-dasharray="5 3"' : ''}/>`);
     const x = kind === 'step' ? center.x : textX + (marker ? LEGEND_MARKER_WIDTH : 0);
-    out.push(`<text x="${n(x)}" y="${n(y)}" font-size="${label.size}" font-weight="${label.weight}" fill="${ink}"${kind === 'step' ? ' text-anchor="middle"' : ''}>${escapeXml(text)}</text>`);
+    out.push(`<text x="${n(x)}" y="${n(y)}" font-size="${detailSize ?? label.size}" font-weight="${detailSize ? 400 : label.weight}" fill="${ink}"${detailSize ? ' data-spec-detail="true"' : ''}${kind === 'step' ? ' text-anchor="middle"' : ''}>${escapeXml(text)}</text>`);
   }
   return out.join('') + '</g>';
 }

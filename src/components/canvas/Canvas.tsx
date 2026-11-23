@@ -260,6 +260,7 @@ export function Canvas(props: CanvasProps) {
               <g key={n.id} data-hit="box" data-id={n.id} data-testid={`node-${n.id}`}>
                 <rect className="hit-area" x={n.rect.x} y={n.rect.y} width={n.rect.width} height={n.rect.height} />
                 {n.labelBox && <rect className="hit-area" x={n.labelBox.x} y={n.labelBox.y} width={n.labelBox.width} height={n.labelBox.height} />}
+                {n.specCaption && <rect className="hit-area" {...n.specCaption.box} />}
               </g>
             ))}
             {scene.edges.map((e) =>

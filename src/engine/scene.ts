@@ -16,17 +16,17 @@ import {
 } from '../domain';
 import { AREA_STROKE, type Appearance, type Glyph } from './appearance';
 import { containsRect, inflate, intersects, polylineLength, union } from './geometry';
+import { layoutNodeLabels, type NodeLabels } from './node-labels';
 import { resolveEndpoints, type Blocker, type PortFrame } from './routing/ports';
 import { routeAuto, routeManual, routeStraight } from './routing/route';
 import { measureText, wrapText } from './text';
 
 
-export const NODE_LABEL = { fontSize: 12, lineHeight: 15, gap: 6, maxWidth: 136 } as const;
+export { BOX_NODE, NODE_LABEL } from './node-labels';
 export const CONTAINER_HEADER = { height: 28, fontSize: 12, glyph: 22 } as const;
 export const EDGE_LABEL = { fontSize: 11, lineHeight: 14, padX: 5, padY: 3 } as const;
 export const ANNOTATION_TEXT = { fontSize: 13, lineHeight: 18, maxWidth: 320 } as const;
 export const STEP_SIZE = 24;
-export const BOX_NODE = { icon: 32, pad: 12, gap: 10, fontSize: 12, lineHeight: 15 } as const;
 
 export interface SceneContainer {
   readonly id: Id;
@@ -40,14 +40,12 @@ export interface SceneContainer {
   readonly locked: boolean;
 }
 
-export interface SceneNode {
+export interface SceneNode extends NodeLabels {
   readonly id: Id;
   readonly variant: NodeVariant;
   readonly summary?: boolean;
   readonly rect: Rect;
-  readonly label: readonly string[];
   readonly fullLabel?: string;
-  readonly labelBox: Rect | null;
   readonly glyph: Glyph;
   readonly image: string | null;
   readonly color: string;
@@ -178,29 +176,16 @@ export function computeScene(doc: Document, appearance: Appearance, summaries?: 
     } : appearance.service(n.serviceId);
     const look = service ?? appearance.fallback;
     const base = { id: n.id, fullLabel: n.label, summary: !!group, variant: n.variant, rect, glyph: look.glyph, image: look.image ?? null, color: look.color, serviceName: look.name, knownService: !!service, locked: n.locked };
-    blockers.push({ id: n.id, rect });
-    if (n.variant === 'box') {
-      const textWidth = rect.width - BOX_NODE.pad - BOX_NODE.icon - BOX_NODE.gap - BOX_NODE.pad;
-      const maxLines = Math.max(1, Math.floor((rect.height - 8) / BOX_NODE.lineHeight));
-      const label = n.label.trim() ? wrapText(n.label, Math.max(textWidth, 24), BOX_NODE.fontSize, maxLines) : [];
-      frames.set(n.id, { left: rect.x, right: rect.x + rect.width, top: rect.y, bottom: rect.y + rect.height, sideTop: rect.y, sideBottom: rect.y + rect.height });
-      obstacles.push(rect);
-      return { ...base, label, labelBox: null };
-    }
-    const label = n.label.trim() ? wrapText(n.label, NODE_LABEL.maxWidth, NODE_LABEL.fontSize, 4) : [];
-    let labelBox: Rect | null = null;
-    if (label.length > 0) {
-      const w = textBlock(label, NODE_LABEL.fontSize);
-      labelBox = { x: rect.x + rect.width / 2 - w / 2, y: rect.y + rect.height + NODE_LABEL.gap, width: w, height: label.length * NODE_LABEL.lineHeight };
-    }
-    const bottom = labelBox ? labelBox.y + labelBox.height + 2 : rect.y + rect.height;
+    const labels = layoutNodeLabels(n, rect);
+    const lowerLabel = labels.specCaption?.box ?? labels.labelBox;
+    const bottom = lowerLabel ? lowerLabel.y + lowerLabel.height + 2 : rect.y + rect.height;
     frames.set(n.id, { left: rect.x, right: rect.x + rect.width, top: rect.y, bottom, sideTop: rect.y, sideBottom: rect.y + rect.height });
-    obstacles.push(rect);
-    if (labelBox) {
-      obstacles.push(labelBox);
-      blockers.push({ id: n.id, rect: labelBox });
+    for (const box of [rect, labels.labelBox, labels.specCaption?.box]) {
+      if (!box) continue;
+      obstacles.push(box);
+      blockers.push({ id: n.id, rect: box });
     }
-    return { ...base, label, labelBox };
+    return { ...base, ...labels };
   });
 
   const annotations: SceneAnnotation[] = doc.annotations.map((a) => ({ id: a.id, kind: a.kind, fullText: a.text, ...annotationRect(a) }));
@@ -246,7 +231,7 @@ export function computeScene(doc: Document, appearance: Appearance, summaries?: 
 
   const all: Rect[] = [
     ...containers.map((c) => c.rect),
-    ...nodes.flatMap((n) => (n.labelBox ? [n.rect, n.labelBox] : [n.rect])),
+    ...nodes.flatMap((n) => [n.rect, ...(n.labelBox ? [n.labelBox] : []), ...(n.specCaption ? [n.specCaption.box] : [])]),
     ...edges.flatMap((e) => [...e.points.map((p) => ({ x: p.x, y: p.y, width: 0, height: 0 })), ...(e.labelBox ? [e.labelBox] : [])]),
     ...annotations.map((a) => a.rect),
   ];

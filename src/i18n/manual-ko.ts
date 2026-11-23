@@ -30,7 +30,7 @@ export const manual: Record<keyof typeof english, string> = {
   'manual.editingGuide': '편집, 가져오기, 저장',
   'manual.areaGuide': '영역으로 관련 서비스를 묶으세요. 여러 객체를 선택한 뒤 영역을 추가하면 한꺼번에 감쌀 수 있고, 레이어에서 서비스를 다른 그룹으로 옮길 수 있습니다.',
   'manual.inspectorGuide': '오른쪽 패널에서 선택한 객체의 속성을 바꿉니다. 연결선의 화살표, 모양, 프리셋도 여기서 바꿀 수 있습니다. 선택을 해제하면 구성 점검 결과가 보입니다.',
-  'manual.importGuide': '파일 → 가져오기는 초안 JSON, Compose, Kubernetes 매니페스트, Terraform JSON을 현재 구성도에 합칩니다. 저장한 .structlet 구성도는 파일 → 열기를 사용하세요.',
+  'manual.importGuide': '파일 → 가져오기는 초안 JSON, Compose, Kubernetes 매니페스트, Terraform JSON을 현재 구성도에 합칩니다. 가져온 VM을 선택하면 인스펙터의 장비 사양에서 값을 확인하거나 수정할 수 있습니다. 2D에서는 캔버스에 상세 사양 표시를 켜고, 아이소메트릭에서는 전체 라벨을 선택하세요. 자동 배치는 그룹 안에 표시된 사양의 공간도 확보합니다. 저장한 .structlet 구성도는 파일 → 열기를 사용하세요.',
   'manual.storageGuide': '작업 중인 구성도는 브라우저에 자동 저장됩니다. 파일 → 저장으로 파일을 받거나, Drive를 연결해 여러 기기에서 동기화하세요.',
   'manual.examples': '구성도 예제',
   'manual.example.basic': '기본 예제',
