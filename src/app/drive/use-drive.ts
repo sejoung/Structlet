@@ -69,9 +69,16 @@ export function useDrive({ services, editor, t, language, notify, onOpened }: Op
       }
     });
     if (sync.current.status !== 'unlinked') void auth.prepare().catch(() => undefined);
+    const flush = () => { if (auth.getToken()) void sync.flushPending(); };
+    document.addEventListener('visibilitychange', flush);
+    window.addEventListener('pagehide', flush);
+    window.addEventListener('online', flush);
     return () => {
       offSync();
       offAuth();
+      document.removeEventListener('visibilitychange', flush);
+      window.removeEventListener('pagehide', flush);
+      window.removeEventListener('online', flush);
     };
   }, [services]);
 

@@ -1,7 +1,6 @@
 import { manual } from './manual-ko';
 import type { MessageKey } from './en';
 import { specsKo } from './specs';
-
 export const ko: Record<MessageKey, string> = {
   ...manual,
   ...specsKo,
@@ -258,6 +257,7 @@ export const ko: Record<MessageKey, string> = {
   'zoom.in': '확대',
   'zoom.out': '축소',
   'zoom.fit': '화면 맞춤',
+  'zoom.fitGroup': '그룹 화면 맞춤',
   'zoom.level': '확대 비율',
   'shortcuts.title': '단축키',
   'sc.undo': '실행 취소',

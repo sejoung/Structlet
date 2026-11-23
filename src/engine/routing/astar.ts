@@ -29,9 +29,9 @@ class Heap {
       i = p;
     }
   }
-  pop(): number {
+  pop(): { key: number; cost: number } {
     const a = this.items;
-    const top = a[0]!.key;
+    const top = a[0]!;
     const last = a.pop()!;
     if (a.length > 0) {
       a[0] = last;
@@ -52,7 +52,7 @@ class Heap {
 }
 
 function uniqueSorted(values: number[]): number[] {
-  return [...new Set(values.map((v) => Math.round(v * 100) / 100))].sort((a, b) => a - b);
+  return [...new Set(values)].sort((a, b) => a - b);
 }
 
 export interface SearchInput {
@@ -80,9 +80,9 @@ export function crossCount(a: Point, b: Point, segments: readonly (readonly [Poi
       continue;
     }
     if (horizontal && p.x === q.x) {
-      if (p.x > Math.min(a.x, b.x) && p.x < Math.max(a.x, b.x) && a.y > Math.min(p.y, q.y) && a.y < Math.max(p.y, q.y)) n++;
+      if (p.x > Math.min(a.x, b.x) && p.x <= Math.max(a.x, b.x) && a.y > Math.min(p.y, q.y) && a.y < Math.max(p.y, q.y)) n++;
     } else if (!horizontal && p.y === q.y) {
-      if (p.y > Math.min(a.y, b.y) && p.y < Math.max(a.y, b.y) && a.x > Math.min(p.x, q.x) && a.x < Math.max(p.x, q.x)) n++;
+      if (p.y > Math.min(a.y, b.y) && p.y <= Math.max(a.y, b.y) && a.x > Math.min(p.x, q.x) && a.x < Math.max(p.x, q.x)) n++;
     }
   }
   return n;
@@ -90,7 +90,9 @@ export function crossCount(a: Point, b: Point, segments: readonly (readonly [Poi
 
 export function orthogonalSearch(input: SearchInput): Point[] | null {
   const { start, end, obstacles, area } = input;
-  const lanes = (input.crossings ?? []).slice(0, 40);
+  const distance = ([a, b]: readonly [Point, Point]) => Math.abs((start.x + end.x - a.x - b.x) / 2) + Math.abs((start.y + end.y - a.y - b.y) / 2);
+  const relevant = [...(input.crossings ?? [])].sort((a, b) => distance(a) - distance(b)).slice(0, 96);
+  const lanes = relevant.slice(0, 28);
   const laneX = lanes.filter(([p, q]) => p.x === q.x).flatMap(([p]) => [p.x - LANE_GAP, p.x + LANE_GAP]);
   const laneY = lanes.filter(([p, q]) => p.y === q.y).flatMap(([p]) => [p.y - LANE_GAP, p.y + LANE_GAP]);
   const xs = uniqueSorted([start.x, end.x, (start.x + end.x) / 2, area.x, area.x + area.width, ...obstacles.flatMap((o) => [o.x, o.x + o.width]), ...laneX]);
@@ -98,10 +100,10 @@ export function orthogonalSearch(input: SearchInput): Point[] | null {
   const W = xs.length;
   const H = ys.length;
   const blocked = (p: Point) => obstacles.some((o) => strictlyInside(o, p));
-  const si = xs.indexOf(Math.round(start.x * 100) / 100);
-  const sj = ys.indexOf(Math.round(start.y * 100) / 100);
-  const ei = xs.indexOf(Math.round(end.x * 100) / 100);
-  const ej = ys.indexOf(Math.round(end.y * 100) / 100);
+  const si = xs.indexOf(start.x);
+  const sj = ys.indexOf(start.y);
+  const ei = xs.indexOf(end.x);
+  const ej = ys.indexOf(end.y);
   if (si < 0 || sj < 0 || ei < 0 || ej < 0) return null;
   if (blocked(start) || blocked(end)) return null;
 
@@ -109,6 +111,7 @@ export function orthogonalSearch(input: SearchInput): Point[] | null {
   const key = (i: number, j: number, d: number) => (j * W + i) * 5 + d;
   const best = new Map<number, number>();
   const prev = new Map<number, number>();
+  const segmentCosts = new Map<number, number>();
   const heap = new Heap();
   const h = (i: number, j: number) => Math.abs(xs[i]! - end.x) + Math.abs(ys[j]! - end.y);
   const startKey = key(si, sj, dirIndex(input.startDir));
@@ -117,14 +120,15 @@ export function orthogonalSearch(input: SearchInput): Point[] | null {
   const endDir = dirIndex(input.endDir);
   let found = -1;
   let iterations = 0;
-  while (heap.size > 0 && iterations++ < 40000) {
-    const k = heap.pop();
+  while (heap.size > 0 && iterations++ < 12000) {
+    const { key: k, cost: estimate } = heap.pop();
     const d = k % 5;
     const cell = (k - d) / 5;
     const i = cell % W;
     const j = (cell - i) / W;
     const g = best.get(k)!;
-    if (i === ei && j === ej && (endDir === 4 || d === endDir)) {
+    if (estimate > g + h(i, j)) continue;
+    if (i === ei && j === ej) {
       found = k;
       break;
     }
@@ -133,13 +137,22 @@ export function orthogonalSearch(input: SearchInput): Point[] | null {
       const ni = i + DIRS[nd]!.x;
       const nj = j + DIRS[nd]!.y;
       if (ni < 0 || nj < 0 || ni >= W || nj >= H) continue;
-      const a = { x: xs[i]!, y: ys[j]! };
-      const b = { x: xs[ni]!, y: ys[nj]! };
-      if (b.x < area.x || b.x > area.x + area.width || b.y < area.y || b.y > area.y + area.height) continue;
-      if (blocked(b) || obstacles.some((o) => segmentHitsRect(a, b, o))) continue;
+      const atTarget = ni === ei && nj === ej && endDir !== 4;
+      if (atTarget && nd === (endDir ^ 1)) continue;
+      const segment = cell * 4 + nd;
+      let step = segmentCosts.get(segment);
+      if (step === undefined) {
+        const a = { x: xs[i]!, y: ys[j]! };
+        const b = { x: xs[ni]!, y: ys[nj]! };
+        const permitted = b.x >= area.x && b.x <= area.x + area.width && b.y >= area.y && b.y <= area.y + area.height &&
+          !blocked(b) && !obstacles.some((o) => segmentHitsRect(a, b, o));
+        step = permitted ? Math.abs(b.x - a.x) + Math.abs(b.y - a.y) + crossCount(a, b, relevant) * CROSS_COST : -1;
+        segmentCosts.set(segment, step);
+      }
+      if (step < 0) continue;
       const turn = d !== 4 && nd !== d ? BEND_COST : 0;
-      const cross = input.crossings?.length ? crossCount(a, b, input.crossings) * CROSS_COST : 0;
-      const cost = g + Math.abs(b.x - a.x) + Math.abs(b.y - a.y) + turn + cross;
+      const arrival = atTarget && nd !== endDir ? BEND_COST : 0;
+      const cost = g + step + turn + arrival;
       const nk = key(ni, nj, nd);
       if (cost < (best.get(nk) ?? Infinity)) {
         best.set(nk, cost);

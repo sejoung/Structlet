@@ -6,6 +6,7 @@ export * from './snap';
 export * from './align';
 export * from './hit';
 export * from './scene';
+export * from './scene-focus';
 export * from './render-svg';
 export * from './routing/ports';
 export * from './routing/route';

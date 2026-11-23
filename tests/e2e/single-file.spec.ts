@@ -65,6 +65,10 @@ test('single structlet.html works from file://', async ({ page }) => {
   const [complex] = await Promise.all([
     secondGuide.waitForEvent('download'), complexManual.getByRole('button', { name: 'Download Commerce & ML platform (.structlet)' }).click(),
   ]);
+  const [large] = await Promise.all([
+    secondGuide.waitForEvent('download'), complexManual.getByRole('button', { name: 'Download Polar Observatory Network (.structlet)' }).click(),
+  ]);
+  expect(large.suggestedFilename()).toBe('polar-observatory.structlet');
   await secondGuide.close();
   const [complexChooser] = await Promise.all([page.waitForEvent('filechooser'), act(page, 'tb-open')]);
   await complexChooser.setFiles((await complex.path())!);

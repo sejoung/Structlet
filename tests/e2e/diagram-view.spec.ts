@@ -19,7 +19,7 @@ test('the bilingual manual shows separate example tabs and downloads the complex
   await expect(manual.getByRole('radio', { name: 'NVIDIA examples' })).toBeVisible();
 
   await complex.click();
-  await expect(manual.getByRole('img')).toHaveCount(2);
+  await expect(manual.getByRole('img')).toHaveCount(3);
   await expect(manual.getByRole('img').first()).toHaveAttribute('src', /manual-summary-en/);
   const [download] = await Promise.all([
     guide.waitForEvent('download'), manual.getByRole('button', { name: 'Download Commerce & ML platform (.structlet)' }).click(),
@@ -35,10 +35,11 @@ test('the bilingual manual shows separate example tabs and downloads the complex
   const korean = koreanGuide.getByRole('main', { name: '사용 매뉴얼' });
   await expect(korean.getByRole('radio', { name: '기본 예제' })).toBeVisible();
   await korean.getByRole('radio', { name: '복잡한 예제' }).click();
-  const preview = korean.getByRole('img').last();
+  const preview = korean.getByRole('img', { name: '쇼핑몰·ML 플랫폼의 전체 구성도를 격자로 자동 배치한 상세 화면' });
   await preview.scrollIntoViewIfNeeded();
   await expect(preview).toHaveAttribute('src', /manual-layout-ko/);
   await expect.poll(() => preview.evaluate((image: HTMLImageElement) => image.naturalWidth)).toBe(1080);
+  await expect(korean.getByRole('button', { name: '극지 관측망 다운로드 (.structlet)' })).toBeVisible();
   await korean.getByRole('radio', { name: 'NVIDIA 예제' }).click();
   await expect(korean.getByRole('img').first()).toHaveAttribute('src', /manual-training-ko/);
   await expect(korean.getByRole('button', { name: 'MIG 추론 (.structlet)' })).toBeVisible();

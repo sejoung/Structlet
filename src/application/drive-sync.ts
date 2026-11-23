@@ -126,12 +126,17 @@ export class DriveSync {
     return this.otherAccount() || this.state.status === 'paused' ? this.resume() : this.run();
   }
 
-  async resume(): Promise<void> {
-    if (!this.link) return;
-    const generation = this.generation;
-    this.set('saving');
-    if (!(await this.verify(this.activeFor(generation)))) return;
+  flushPending(): Promise<void> {
+    const { status } = this.state;
+    const ready = status === 'pending' || status === 'saving' || (status === 'failed' && this.state.reason === 'network');
+    return ready && this.link && !same(this.load(), this.link.base) ? this.run() : Promise.resolve();
+  }
+
+  resume(): Promise<void> {
+    if (!this.link || this.state.status === 'conflict') return Promise.resolve();
+    this.recheck = true;
     this.pullWanted = true;
+    this.set('saving');
     return this.run();
   }
 
@@ -140,7 +145,8 @@ export class DriveSync {
     const { status } = this.state;
     if (status === 'paused' || this.otherAccount()) return this.resume();
     this.recheck = true;
-    return ['synced', 'pending', 'saving'].includes(status) ? this.run() : Promise.resolve();
+    return ['synced', 'pending', 'saving'].includes(status) || (status === 'failed' && this.state.reason === 'network')
+      ? this.run() : Promise.resolve();
   }
 
   resolve(choices: Readonly<Record<string, MergeSide>>): Promise<void> {
@@ -149,6 +155,7 @@ export class DriveSync {
     const merged = mergeDocuments(this.link.base, this.load(), theirs.document, (c) => choices[c.key]);
     this.theirs = null;
     this.adopt(theirs, merged.document);
+    this.set('pending');
     return this.run();
   }
 
@@ -163,14 +170,21 @@ export class DriveSync {
   }
 
   private activeFor(generation: number): () => boolean {
-    return () => generation === this.generation && this.link !== null && this.state.status !== 'paused';
+    return () => generation === this.generation && this.canRun();
+  }
+
+  private canRun(): boolean {
+    return this.link !== null && this.state.status !== 'paused' && this.state.status !== 'conflict' && !this.otherAccount();
   }
 
   private async verify(active: () => boolean): Promise<boolean> {
     this.recheck = false;
     const expected = this.link?.account;
-    const current = await this.account();
-    if (!active()) return false;
+    const current = await this.remote.account?.().catch((error: unknown) => {
+      if (active()) this.recheck = true;
+      throw error;
+    });
+    if (!active() || this.recheck) return false;
     if (expected && current && current.id !== expected.id) {
       this.cancelWait();
       this.set('failed', { reason: 'account', detail: expected.email });
@@ -211,22 +225,28 @@ export class DriveSync {
     this.theirs = null;
     this.pullWanted = false;
     this.retries = 0;
+    this.rerun = false;
+    this.recheck = false;
     return ++this.generation;
   }
 
   private run(): Promise<void> {
+    if (!this.canRun()) return Promise.resolve();
     this.cancelWait();
     if (this.running) {
       this.rerun = true;
       return this.running;
     }
-    this.running = this.sync().finally(() => {
-      this.running = null;
-      if (!this.rerun) return;
-      this.rerun = false;
-      void this.run();
-    });
+    this.running = this.drain().finally(() => { this.running = null; });
     return this.running;
+  }
+
+  private async drain(): Promise<void> {
+    do {
+      this.rerun = false;
+      this.cancelWait();
+      await this.sync();
+    } while (this.rerun && this.canRun() && this.state.status !== 'failed');
   }
 
   private async sync(): Promise<void> {
@@ -250,7 +270,10 @@ export class DriveSync {
           this.retries = 0;
           if (!active()) return;
           if (same(this.load(), doc)) this.set('synced');
-          else this.changed();
+          else {
+            this.set('pending');
+            this.changed();
+          }
           return;
         } catch (error) {
           if (!(error instanceof RemoteError && error.reason === 'conflict')) throw error;

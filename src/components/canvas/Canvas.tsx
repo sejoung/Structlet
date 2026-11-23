@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent } from 'react';
 import type { Editor, SessionSnapshot } from '../../application';
 import { indexDocument, type Id, type Point } from '../../domain';
-import { polylineMidpoint, renderSceneBody, screenToWorld, worldToScreen, zoomAt, type DiagramTheme, type IsometricOptions, type Scene, type Viewport } from '../../engine';
+import { fitView, groupBounds, MAX_ZOOM, polylineMidpoint, renderSceneBody, screenToWorld, worldToScreen, zoomAt, type DiagramTheme, type IsometricOptions, type Scene, type Viewport } from '../../engine';
 import type { Translate } from '../../i18n/messages';
 import { SERVICE_DRAG_TYPE } from '../sidebar/types';
 import type { ViewMode } from '../Toolbar';
@@ -212,6 +212,11 @@ export function Canvas(props: CanvasProps) {
   }
 
   const empty = snapshot.document.nodes.length === 0 && snapshot.document.containers.length === 0 && snapshot.document.annotations.length === 0;
+  const fitGroup = (id: Id) => {
+    const size = svgRef.current?.getBoundingClientRect();
+    const bounds = groupBounds(snapshot.document, scene, id);
+    if (bounds && size?.width && size.height) setViewport(fitView(bounds, size, 48, MAX_ZOOM));
+  };
   const grid = 16 * viewport.zoom;
   const z = viewport.zoom;
 
@@ -277,7 +282,7 @@ export function Canvas(props: CanvasProps) {
       {!props.presenting && !props.summary && <ToolBar t={t} tool={props.tool} onTool={props.onTool} />}
       {!props.presenting && !props.summary && props.tool === 'connect' && <div className="tool-hint" role="status">{t('tool.connectHint')}</div>}
       {presentHint && <div className="tool-hint present" role="status">{t('view.hint')}</div>}
-      {menu?.docId === snapshot.document.id && !props.presenting && <ContextMenu {...props.context} t={t} doc={snapshot.document} scene={scene} editor={editor} request={menu} fit={props.onFit} edit={props.setEditing} toggle={props.onToggleArea} dismiss={dismissMenu} />}
+      {menu?.docId === snapshot.document.id && !props.presenting && <ContextMenu {...props.context} t={t} doc={snapshot.document} scene={scene} editor={editor} request={menu} fit={props.onFit} fitGroup={fitGroup} edit={props.setEditing} toggle={props.onToggleArea} dismiss={dismissMenu} />}
       <div className="canvas-corner">
         <ZoomBar t={t} viewport={viewport} size={size} setViewport={setViewport} onFit={props.onFit} />
         <Minimap scene={scene} viewport={viewport} size={size} setViewport={setViewport} label={t('minimap')} />

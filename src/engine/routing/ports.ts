@@ -155,6 +155,16 @@ export function resolveEndpoints(edges: readonly Edge[], frames: ReadonlyMap<Id,
 
 export const STUB = 20;
 
+export function alternatePorts(end: Endpoint, frame: PortFrame | undefined, resolved: ResolvedEnd): ResolvedEnd[] {
+  if (end.kind !== 'attached' || end.side !== 'auto' || end.offset !== null || !frame) return [];
+  const current = resolved.side;
+  const along = current === 'top' || current === 'bottom'
+    ? (resolved.point.x - frame.left) / Math.max(1, frame.right - frame.left)
+    : (resolved.point.y - frame.sideTop) / Math.max(1, frame.sideBottom - frame.sideTop);
+  const sides: Side[] = ['left', 'right', 'top', 'bottom'];
+  return sides.filter((side) => side !== current).map((side) => ({ ...resolved, side, point: pointOnSide(frame, side, along) }));
+}
+
 export function stubPoint(end: ResolvedEnd, length = STUB): Point {
   if (!end.side) return end.point;
   const n = normal(end.side);

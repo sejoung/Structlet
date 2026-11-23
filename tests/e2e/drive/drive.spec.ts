@@ -48,14 +48,31 @@ test('after a reload the file waits for reconnecting, then catches up', async ({
   await button(page).click();
   await pick(page);
   await expect(button(page)).toHaveAttribute('data-status', 'synced');
+  await rename(page, 'api', 'Immediately before reload');
   await page.reload();
   await expect(button(page)).toHaveAttribute('data-status', 'paused');
   await expect(button(page)).toHaveText('Reconnect');
+  await page.getByTestId('node-api').locator('rect').first().click();
+  await expect(page.getByTestId('prop-label')).toHaveValue('Immediately before reload');
   await rename(page, 'api', 'Edited offline');
   await button(page).click();
   await expect(button(page)).toHaveAttribute('data-status', 'synced', { timeout: 8000 });
   await expect.poll(() => labelIn(stored(drive), 'api')).toBe('Edited offline');
   expect(stored(drive).nodes).toHaveLength(11);
+});
+
+test('pagehide flushes the pending Drive upload before the autosave debounce expires', async ({ page }) => {
+  const drive = await setup(page);
+  await openSample(page);
+  await button(page).click();
+  await button(page).click();
+  await pick(page);
+  await expect(button(page)).toHaveAttribute('data-status', 'synced');
+  await rename(page, 'api', 'Keep this before leaving');
+  await expect(button(page)).toHaveAttribute('data-status', 'pending');
+  await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pagehide')));
+  await expect.poll(() => labelIn(stored(drive), 'api'), { timeout: 1500 }).toBe('Keep this before leaving');
+  await expect(button(page)).toHaveAttribute('data-status', 'synced');
 });
 
 test('changes made elsewhere are merged; a real conflict asks which side to keep', async ({ page }) => {

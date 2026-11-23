@@ -100,6 +100,51 @@ describe('DriveSync', () => {
     expect(remote.saves).toBeGreaterThan(0);
   });
 
+  it('flushes a pending edit and waits for the queued save requested during upload', async () => {
+    const { editor, remote, sync } = setup();
+    const file = await sync.create('folder');
+    const realSave = remote.save.bind(remote);
+    let releaseFirst!: () => void;
+    let releaseSecond!: () => void;
+    const first = new Promise<void>((resolve) => { releaseFirst = resolve; });
+    const second = new Promise<void>((resolve) => { releaseSecond = resolve; });
+    const save = vi.spyOn(remote, 'save')
+      .mockImplementationOnce(async (...args) => { await first; return realSave(...args); })
+      .mockImplementationOnce(async (...args) => { await second; return realSave(...args); });
+    editor.rename('api', 'First edit');
+    const background = sync.flushPending();
+    expect(save).toHaveBeenCalledTimes(1);
+    editor.rename('api', 'Latest edit');
+    let completed = false;
+    const manual = sync.saveNow().then(() => { completed = true; });
+    releaseFirst();
+    await flush();
+    expect(save).toHaveBeenCalledTimes(2);
+    expect(completed).toBe(false);
+    releaseSecond();
+    await Promise.all([background, manual]);
+    expect(sync.current.status).toBe('synced');
+    expect(label(remote.files.get(file.id)!.document, 'api')).toBe('Latest edit');
+  });
+
+  it('retries account verification before uploading after a failed reconnect', async () => {
+    const { editor, remote, sync } = setup();
+    await sync.create('folder');
+    sync.pause();
+    editor.rename('api', 'Edited offline');
+    vi.spyOn(remote, 'account').mockRejectedValueOnce(new RemoteError('network'));
+    await sync.resume();
+    expect(sync.current).toMatchObject({ status: 'failed', reason: 'network' });
+    remote.accountId = 'other';
+    await sync.flushPending();
+    expect(sync.current).toMatchObject({ status: 'failed', reason: 'account' });
+    expect(remote.saves).toBe(0);
+    remote.accountId = 'me';
+    await sync.resume();
+    expect(sync.current.status).toBe('synced');
+    expect(remote.saves).toBe(1);
+  });
+
   it('merges another device’s changes without adding them to undo', async () => {
     const { editor, session, remote, sync } = setup();
     const file = await sync.create('folder');

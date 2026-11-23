@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import type { Editor } from '../../application';
 import type { Document, Id, Point } from '../../domain';
-import { adjacentIsoPreset, center, computeIsometricLayout, fitView, normalizeIsoAngle, projectIso, renderIsometricLayers, zoomAt, type DiagramTheme, type IsometricOptions, type Scene, type Viewport } from '../../engine';
+import { adjacentIsoPreset, center, computeIsometricLayout, fitView, groupBounds, MAX_ZOOM, normalizeIsoAngle, projectIso, renderIsometricLayers, zoomAt, type DiagramTheme, type IsometricOptions, type Scene, type Viewport } from '../../engine';
 import type { Translate } from '../../i18n/messages';
 import { IconButton, Segmented } from '../ui/controls';
 import { Icon } from '../ui/Icon';
@@ -63,14 +63,24 @@ export function IsometricView({ t, scene, theme, options, onOptions, doc, editor
   const drag = useRef<Drag | null>(null);
   const [menu, setMenu] = useState<ContextRequest | null>(null);
   const activeObject = useRef<Id | null>(null);
-  const pivot = scene.bounds ? center(scene.bounds) : { x: 0, y: 0 };
+  const focusedArea = useRef<Id | null>(null);
+  const pivotBounds = (focusedArea.current ? scene.rects.get(focusedArea.current) : undefined) ?? scene.bounds;
+  const pivot = pivotBounds ? center(pivotBounds) : { x: 0, y: 0 };
   const fit = useCallback(() => {
     const r = ref.current?.getBoundingClientRect();
     if (!r || !r.width || !r.height) return;
     const next = { width: r.width, height: r.height };
+    focusedArea.current = null;
     setSize(next);
     setView(fitView(latestLayout.current.bounds, next));
   }, []);
+  const fitGroup = (id: Id) => {
+    const r = ref.current?.getBoundingClientRect();
+    const bounds = groupBounds(doc, scene, id, layout);
+    if (!bounds || !r?.width || !r.height) return;
+    focusedArea.current = id;
+    setView(fitView(bounds, r, 48, MAX_ZOOM));
+  };
   const commitRotation = (rotation: number, keepLabels = true) => {
     setPreview(null);
     onOptions({ ...latestOptions.current, rotation, labelOffsets: keepLabels ? latestLayout.current.labelOffsets : null });
@@ -244,7 +254,7 @@ export function IsometricView({ t, scene, theme, options, onOptions, doc, editor
         )}
       </svg>
       {menu?.docId === doc.id && !presenting && (
-        <ContextMenu {...context} t={t} doc={doc} scene={scene} editor={editor} request={menu} fit={fit}
+        <ContextMenu {...context} t={t} doc={doc} scene={scene} editor={editor} request={menu} fit={fit} fitGroup={fitGroup}
           toggle={toggle} dismiss={dismiss} readOnly rotate={rotate} flow={flow} />
       )}
       <div className="iso-toolbar">

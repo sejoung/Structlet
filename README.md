@@ -81,6 +81,8 @@ For Codex or Claude Code, download the skill ZIP from the same tab and extract t
 
 **Large diagrams** — Use the − button on an area to collapse it into one tile. **Diagram → Collapse top-level groups** summarizes the whole system and bundles matching external links. **Arrange summary view** affects the canvas and image exports. **Auto-layout entire diagram** updates the editable document in one undoable step. Try both with the [commerce and ML platform](samples/commerce-and-ml.structlet) in **Help → Complex example**. Full auto-layout fits area titles and boxed node labels, places notes below the contents of their area, and rearranges neighboring grid items to shorten links. It may choose a different side for a connection whose port offset is automatic. Fixed port offsets are preserved.
 
+The [Polar Observatory Network](samples/polar-observatory.structlet) example in the same guide has 70 services and 100 connections. Right-click a group and choose **Fit group to screen** to inspect its details or its collapsed tile in 2D or isometric view.
+
 **Canvas context menu** — Right-click a service, area, or connection for its actions. Right-click a selected object to keep the multi-selection. Right-click empty space for paste, fit, and diagram-wide layout. You can also press **Shift+F10** with the canvas focused. **Collapse to middle-level groups** lets you keep the outer boundaries visible while summarizing their subgroups.
 
 The screen has four parts:
@@ -226,7 +228,7 @@ The layer rules are enforced in three places, all part of `npm run check` and CI
 ## Tests
 
 <details>
-<summary><b>166 unit tests</b> (<code>tests/unit</code>)</summary>
+<summary><b>172 unit tests</b> (<code>tests/unit</code>)</summary>
 
 - **domain** — hierarchy, local coordinates, children moving with parents, reparenting and cycle rejection, patch undo (including adjacent-delete order), fragment copy / paste, document diff
 - **domain** — three-way merge (fields, grouped positions, delete conflicts, hierarchy repair, cycles)
@@ -251,7 +253,7 @@ The layer rules are enforced in three places, all part of `npm run check` and CI
 </details>
 
 <details>
-<summary><b>57 E2E tests</b> (<code>tests/e2e</code>, production builds)</summary>
+<summary><b>59 E2E tests</b> (<code>tests/e2e</code>, production builds)</summary>
 
 - **Basic flow** — two nodes → connect → save → open → reload → SVG (same paths as the screen), PNG, rejecting an invalid file
 - **Areas** — dragging a VPC then a single undo, dragging into another area, wrapping

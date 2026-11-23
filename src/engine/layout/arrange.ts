@@ -13,6 +13,7 @@ export interface LayoutItem {
 export interface LayoutLink {
   readonly from: Id;
   readonly to: Id;
+  readonly rank?: boolean;
 }
 
 export const LAYOUT_GAP = { primary: 72, secondary: 56 } as const;
@@ -97,19 +98,21 @@ export function arrange(items: readonly LayoutItem[], links: readonly LayoutLink
   const ids = items.map((i) => i.id);
   const validLinks = links.filter((link) => size.has(link.from) && size.has(link.to));
   if (mode === 'grid') return arrangeGrid(ids, size, validLinks, gap.secondary);
-  const rank = ranks(ids, validLinks);
+  const flowLinks = validLinks.filter((link) => link.rank !== false);
+  if (!flowLinks.length && ids.length > 3) return arrangeGrid(ids, size, validLinks, gap.secondary);
+  const rank = ranks(ids, flowLinks);
   const layerCount = Math.max(...rank.values()) + 1;
   const layers: Id[][] = Array.from({ length: layerCount }, () => []);
   for (const id of ids) layers[rank.get(id)!]!.push(id);
   const ordered = orderLayers(layers, validLinks);
   const place = (layers: Id[][]) => placeFlow(layers, size, mode, gap);
   let best = place(ordered);
-  let cost = wireLength(best, size, validLinks) + countCrossings(ordered, validLinks) * gap.primary;
+  let cost = wireCost(best, size, validLinks);
   if (ids.length <= 80) for (const layer of ordered) {
     for (let i = 1; i < layer.length; i++) {
       [layer[i - 1], layer[i]] = [layer[i]!, layer[i - 1]!];
       const candidate = place(ordered);
-      const score = wireLength(candidate, size, validLinks) + countCrossings(ordered, validLinks) * gap.primary;
+      const score = wireCost(candidate, size, validLinks);
       if (score < cost) {
         best = candidate;
         cost = score;
@@ -147,12 +150,12 @@ function arrangeGrid(ids: Id[], size: ReadonlyMap<Id, LayoutItem>, links: readon
   let best = place();
   if (links.length === 0 || ids.length > 160) return best;
 
-  let cost = wireLength(best, size, links);
+  let cost = wireCost(best, size, links);
   const optimize = (a: number, b: number) => {
     if (a === b || b >= ids.length) return;
     [ids[a], ids[b]] = [ids[b]!, ids[a]!];
     const candidate = place();
-    const score = wireLength(candidate, size, links);
+    const score = wireCost(candidate, size, links);
     if (score < cost) {
       best = candidate;
       cost = score;
@@ -199,16 +202,36 @@ function placeGrid(ids: readonly Id[], size: ReadonlyMap<Id, LayoutItem>, cols: 
   }));
 }
 
-function wireLength(positions: ReadonlyMap<Id, Point>, sizes: ReadonlyMap<Id, LayoutItem>, links: readonly LayoutLink[]): number {
+function wireCost(positions: ReadonlyMap<Id, Point>, sizes: ReadonlyMap<Id, LayoutItem>, links: readonly LayoutLink[]): number {
+  const centers = new Map([...positions].map(([id, point]) => {
+    const size = sizes.get(id)!;
+    return [id, { x: point.x + size.width / 2, y: point.y + size.height / 2 }];
+  }));
+  const pairs = new Map<Id, Set<Id>>();
+  const segments: [Point, Point][] = [];
   let cost = 0;
   for (const { from, to } of links) {
-    const a = positions.get(from)!;
-    const b = positions.get(to)!;
-    const sa = sizes.get(from)!;
-    const sb = sizes.get(to)!;
-    const x = Math.abs(a.x + sa.width / 2 - b.x - sb.width / 2);
-    const y = Math.abs(a.y + sa.height / 2 - b.y - sb.height / 2);
-    cost += x + y;
+    const a = centers.get(from)!;
+    const b = centers.get(to)!;
+    cost += Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+    if (pairs.get(from)?.has(to) || pairs.get(to)?.has(from)) continue;
+    const targets = pairs.get(from) ?? new Set<Id>();
+    targets.add(to);
+    pairs.set(from, targets);
+    segments.push([a, b]);
+  }
+  if (segments.length > 100) return cost;
+  for (const [i, [a, b]] of segments.entries()) {
+    for (let j = 0; j < i; j++) {
+      const [p, q] = segments[j]!;
+      if (crosses(a, b, p, q)) cost += 120;
+    }
   }
   return cost;
+}
+
+function crosses(a: Point, b: Point, p: Point, q: Point): boolean {
+  const side = (start: Point, end: Point, point: Point) =>
+    (end.x - start.x) * (point.y - start.y) - (end.y - start.y) * (point.x - start.x);
+  return side(a, b, p) * side(a, b, q) < 0 && side(p, q, a) * side(p, q, b) < 0;
 }

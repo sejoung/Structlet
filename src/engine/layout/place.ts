@@ -22,14 +22,17 @@ export function footprint(box: Node | Container): Footprint {
   return { width, height, offsetX: (width - box.width) / 2 };
 }
 
-export function liftLinks(doc: Document, items: ReadonlySet<Id>): LayoutLink[] {
+export function liftLinks(doc: Document, items: ReadonlySet<Id>, rankDashed = true): LayoutLink[] {
   const itemFor = (id: Id): Id | null => (items.has(id) ? id : (ancestors(doc, id).find((a) => items.has(a)) ?? null));
   const links: LayoutLink[] = [];
   for (const e of doc.edges) {
     if (e.source.kind !== 'attached' || e.target.kind !== 'attached') continue;
     const from = itemFor(e.source.objectId);
     const to = itemFor(e.target.objectId);
-    if (from && to && from !== to) links.push({ from, to });
+    if (!from || !to || from === to) continue;
+    const rank = rankDashed || !e.style.dashed;
+    if (e.style.arrow === 'start') links.push({ from: to, to: from, rank });
+    else links.push({ from, to, rank: rank && e.style.arrow === 'end' });
   }
   return links;
 }

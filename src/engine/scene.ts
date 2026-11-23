@@ -15,10 +15,10 @@ import {
   type Side,
 } from '../domain';
 import { AREA_STROKE, type Appearance, type Glyph } from './appearance';
-import { containsRect, inflate, intersects, polylineLength, union } from './geometry';
+import { containsPoint, containsRect, inflate, intersects, polylineLength, union } from './geometry';
 import { layoutNodeLabels, type NodeLabels } from './node-labels';
-import { resolveEndpoints, type Blocker, type PortFrame } from './routing/ports';
-import { routeAuto, routeManual, routeStraight } from './routing/route';
+import { alternatePorts, resolveEndpoints, type Blocker, type PortFrame } from './routing/ports';
+import { OBSTACLE_MARGIN, routeAuto, routeClears, routeInTightSpace, routeManual, routeStraight } from './routing/route';
 import { measureText, wrapText } from './text';
 
 
@@ -189,27 +189,83 @@ export function computeScene(doc: Document, appearance: Appearance, summaries?: 
   });
 
   const annotations: SceneAnnotation[] = doc.annotations.map((a) => ({ id: a.id, kind: a.kind, fullText: a.text, ...annotationRect(a) }));
-  obstacles.push(...annotations.filter((note) => note.kind !== 'step').map((note) => note.rect));
-  const ends = resolveEndpoints(doc.edges, frames, blockers);
+  for (const note of annotations) {
+    if (note.kind === 'step') continue;
+    obstacles.push(note.rect);
+    blockers.push({ id: note.id, rect: note.rect });
+  }
   const edges: SceneEdge[] = [];
   const routed: (readonly [Point, Point])[] = [];
   const taken: Rect[] = [...obstacles, ...annotations.filter((note) => note.kind === 'step').map((note) => note.rect)];
-  for (const area of containers) {
-    if (!area.label) continue;
+  const titles = containers.filter((area) => area.label).map((area) => {
     const extra = area.glyph || area.image ? CONTAINER_HEADER.glyph + 8 : 10;
-    taken.push({ x: area.rect.x, y: area.rect.y, width: extra + measureText(area.label, CONTAINER_HEADER.fontSize), height: CONTAINER_HEADER.height });
+    const width = extra + measureText(area.label, CONTAINER_HEADER.fontSize);
+    return { id: area.id, rect: { x: area.rect.x, y: area.rect.y, width, height: CONTAINER_HEADER.height } };
+  });
+  taken.push(...titles.map(({ rect }) => rect));
+  const ends = resolveEndpoints(doc.edges, frames, [...blockers, ...titles]);
+  const parents = new Map<Id, readonly Id[]>();
+  const parentsOf = (id: Id) => {
+    const cached = parents.get(id);
+    if (cached) return cached;
+    const chain = ancestors(doc, id);
+    parents.set(id, chain);
+    return chain;
+  };
+  const paths = new Map<Id, Point[]>();
+  const order = doc.edges.flatMap((edge) => {
+    const pair = ends.get(edge.id);
+    if (!pair) return [];
+    const { source, target } = pair;
+    const distance = Math.abs(source.point.x - target.point.x) + Math.abs(source.point.y - target.point.y);
+    const fixed = edge.routingMode === 'manual' || edge.style.shape === 'straight';
+    return [{ edge, pair, distance, fixed }];
+  }).sort((a, b) => Number(b.fixed) - Number(a.fixed) || a.distance - b.distance);
+  for (const { edge, pair } of order) {
+    const { source, target } = pair;
+    let points: Point[];
+    if (edge.style.shape === 'straight') points = routeStraight(source, target, edge.routingMode === 'manual' ? edge.waypoints : []);
+    else if (edge.routingMode === 'manual') points = routeManual(source, target, edge.waypoints, obstacles);
+    else {
+      const related = new Set([source.objectId, target.objectId]);
+      for (const id of [source.objectId, target.objectId]) if (id) for (const parent of parentsOf(id)) related.add(parent);
+      const offLimits = new Set<Id>();
+      const areas: Rect[] = [];
+      for (const { id, rect } of containers) {
+        if (related.has(id) || parentsOf(id).some((parent) => offLimits.has(parent))) continue;
+        if (containsPoint(inflate(rect, OBSTACLE_MARGIN), source.point) || containsPoint(inflate(rect, OBSTACLE_MARGIN), target.point)) continue;
+        offLimits.add(id);
+        areas.push(rect);
+      }
+      const headers = titles.filter(({ id, rect }) => id !== source.objectId && id !== target.objectId &&
+        !containsPoint(inflate(rect, OBSTACLE_MARGIN), source.point) && !containsPoint(inflate(rect, OBSTACLE_MARGIN), target.point)).map(({ rect }) => rect);
+      const hard = [...obstacles, ...headers];
+      points = cachedAuto(source, target, hard, areas, routed);
+      if (hard.length <= 180 && !routeClears(points, hard)) {
+        const sources = alternatePorts(edge.source, source.objectId ? frames.get(source.objectId) : undefined, source);
+        const targets = alternatePorts(edge.target, target.objectId ? frames.get(target.objectId) : undefined, target);
+        const choices = [source, ...sources].flatMap((from) => [target, ...targets]
+          .filter((to) => from !== source || to !== target).map((to) => ({ source: from, target: to,
+            cost: Math.abs(from.point.x - to.point.x) + Math.abs(from.point.y - to.point.y) + Number(from !== source && to !== target) * 40 })))
+          .sort((a, b) => a.cost - b.cost);
+        for (const choice of choices.slice(0, 6)) {
+          const alternative = routeInTightSpace(choice.source, choice.target, hard);
+          if (!alternative || !routeClears(alternative, hard)) continue;
+          points = alternative;
+          ends.set(edge.id, choice);
+          break;
+        }
+      }
+    }
+    paths.set(edge.id, points);
+    for (let i = 1; i < points.length; i++) routed.push([points[i - 1]!, points[i]!]);
   }
+
   for (const e of doc.edges) {
     const pair = ends.get(e.id);
-    if (!pair) continue;
+    const points = paths.get(e.id);
+    if (!pair || !points) continue;
     const manual = e.routingMode === 'manual';
-    const points =
-      e.style.shape === 'straight'
-        ? routeStraight(pair.source, pair.target, manual ? e.waypoints : [])
-        : manual
-          ? routeManual(pair.source, pair.target, e.waypoints, obstacles)
-          : cachedAuto(pair.source, pair.target, obstacles, routed);
-    for (let i = 1; i < points.length; i++) routed.push([points[i - 1]!, points[i]!]);
     const label = e.label.trim() ? wrapText(e.label, 160, EDGE_LABEL.fontSize, 3) : [];
     let labelBox: Rect | null = null;
     let labelAnchor: Point | null = null;
@@ -296,18 +352,22 @@ const routeCache = new Map<string, Point[]>();
 
 type Segment = readonly [Point, Point];
 
-function cachedAuto(source: Parameters<typeof routeAuto>[0], target: Parameters<typeof routeAuto>[1], obstacles: readonly Rect[], routed: readonly Segment[]): Point[] {
+function cachedAuto(source: Parameters<typeof routeAuto>[0], target: Parameters<typeof routeAuto>[1], obstacles: readonly Rect[], areas: readonly Rect[], routed: readonly Segment[]): Point[] {
   const minX = Math.min(source.point.x, target.point.x) - 300;
   const maxX = Math.max(source.point.x, target.point.x) + 300;
   const minY = Math.min(source.point.y, target.point.y) - 300;
   const maxY = Math.max(source.point.y, target.point.y) + 300;
   const inside = (r: Rect) => r.x < maxX && r.x + r.width > minX && r.y < maxY && r.y + r.height > minY;
   const near = obstacles.filter(inside);
+  const nearbyAreas = areas.filter(inside);
   const crossings = routed.filter(([a, b]) => inside({ x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), width: Math.abs(a.x - b.x), height: Math.abs(a.y - b.y) }));
-  const key = JSON.stringify([source.point, source.side, target.point, target.side, near.map((r) => [r.x, r.y, r.width, r.height]), crossings]);
+  const coords = (rects: readonly Rect[]) => rects.map((r) => [r.x, r.y, r.width, r.height]);
+  const key = JSON.stringify([source.point, source.side, target.point, target.side, coords(near), coords(nearbyAreas), crossings]);
   const hit = routeCache.get(key);
   if (hit) return hit;
-  const route = routeAuto(source, target, near, crossings);
+  const preferredObstacles = [...nearbyAreas, ...near.filter((rect) => !nearbyAreas.some((area) => containsRect(area, rect)))];
+  const preferred = routeAuto(source, target, preferredObstacles, crossings);
+  const route = nearbyAreas.length && !routeClears(preferred, preferredObstacles) ? routeAuto(source, target, near, crossings) : preferred;
   if (routeCache.size > 4000) routeCache.clear();
   routeCache.set(key, route);
   return route;

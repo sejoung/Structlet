@@ -4,12 +4,32 @@ import { annotationRect, BOX_NODE, CONTAINER_HEADER, worldRects } from '../scene
 import { measureText, wrapText } from '../text';
 import { arrange, LAYOUT_GAP, type LayoutMode } from './arrange';
 import { AREA_PADDING, footprint, liftLinks } from './place';
+import { layoutRoutingQuality } from './routing-quality';
 
 const NOTE_GAP = 24;
 const ORIGIN = { x: 0, y: 0 };
 const offset = (point: Point, by: Point): Point => ({ x: point.x + by.x, y: point.y + by.y });
 
 export function layoutDocument(doc: Document, mode: LayoutMode): Document {
+  const compareGroups = mode !== 'grid' && hasDenseGroupConnections(doc);
+  const standard = arrangeDocument(doc, mode, false, !compareGroups);
+  if (!compareGroups) return standard;
+  const compact = arrangeDocument(doc, mode, true, false);
+  const a = layoutRoutingQuality(standard);
+  const b = layoutRoutingQuality(compact);
+  const difference = b[0] - a[0] || b[1] - a[1] || b[2] - a[2];
+  return difference < 0 ? compact : standard;
+}
+
+function hasDenseGroupConnections(doc: Document): boolean {
+  if (doc.edges.length < 36 || doc.edges.length > 180 || doc.containers.length < 6) return false;
+  const parents = new Map([...doc.nodes, ...doc.containers].map(({ id, parentId }) => [id, parentId]));
+  const boundaryLinks = doc.edges.filter(({ source, target }) => source.kind === 'attached' && target.kind === 'attached' &&
+    parents.get(source.objectId) !== parents.get(target.objectId)).length;
+  return boundaryLinks >= 14;
+}
+
+function arrangeDocument(doc: Document, mode: LayoutMode, compactGroups: boolean, rankDashed: boolean): Document {
   const index = indexDocument(doc);
   const before = worldRects(doc);
   const areaOrder = doc.containers.map((area) => ({ area, depth: ancestors(doc, area.id).length }))
@@ -50,7 +70,8 @@ export function layoutDocument(doc: Document, mode: LayoutMode): Document {
     const children = index.children.get(parent) ?? [];
     const movable = children.filter((id) => !anchored.has(id));
     const fixed = union(children.filter((id) => anchored.has(id)).map(slot));
-    const pos = arrange(movable.map((id) => ({ id, ...footprint(boxes.get(id)!) })), liftLinks(doc, new Set(movable)), mode);
+    const grouping = compactGroups && parent !== null ? 'grid' : mode;
+    const pos = arrange(movable.map((id) => ({ id, ...footprint(boxes.get(id)!) })), liftLinks(doc, new Set(movable), rankDashed), grouping);
     const x = parent === null ? 40 : AREA_PADDING.side;
     const top = parent === null ? 40 : AREA_PADDING.top;
     const y = fixed ? Math.max(top, fixed.y + fixed.height + LAYOUT_GAP.secondary) : top;

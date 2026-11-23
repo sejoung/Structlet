@@ -24,11 +24,11 @@ export function zoomAt(v: Viewport, anchor: Point, factor: number): Viewport {
   return { zoom, panX: anchor.x - w.x * zoom, panY: anchor.y - w.y * zoom };
 }
 
-export function fitView(bounds: Rect | null, size: { width: number; height: number }, padding = 48): Viewport {
+export function fitView(bounds: Rect | null, size: { width: number; height: number }, padding = 48, maximum = 1.5): Viewport {
   if (!bounds || bounds.width <= 0 || bounds.height <= 0) return DEFAULT_VIEWPORT;
   const width = Math.max(1, size.width - padding * 2);
   const height = Math.max(1, size.height - padding * 2);
-  const zoom = Math.min(1.5, width / bounds.width, height / bounds.height);
+  const zoom = Math.min(maximum, width / bounds.width, height / bounds.height);
   return {
     zoom,
     panX: (size.width - bounds.width * zoom) / 2 - bounds.x * zoom,

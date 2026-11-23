@@ -42,7 +42,7 @@ const GPU_EXAMPLES = [
   { sample: 'mig-inference', label: 'manual.migInference', description: 'manual.migPreview', en: migEn, ko: migKo },
 ] as const;
 
-export function ManualPage({ t, language, ai, onDownloadSample }: { t: Translate; language: Language; ai: ManualAiActions; onDownloadSample(sample: 'three-tier' | 'gpu-training' | 'mig-inference' | 'commerce-and-ml'): void }) {
+export function ManualPage({ t, language, ai, onDownloadSample }: { t: Translate; language: Language; ai: ManualAiActions; onDownloadSample(sample: 'three-tier' | 'gpu-training' | 'mig-inference' | 'commerce-and-ml' | 'polar-observatory'): void }) {
   const [section, setSection] = useState<(typeof GUIDE_TABS)[number]>('basic');
   const mac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
   return (
@@ -69,7 +69,7 @@ export function ManualPage({ t, language, ai, onDownloadSample }: { t: Translate
           </section>
         </>
       )}
-      {section === 'complex' && <LayoutGuide t={t} language={language} onDownload={() => onDownloadSample('commerce-and-ml')} />}
+      {section === 'complex' && <LayoutGuide t={t} language={language} onDownload={() => onDownloadSample('commerce-and-ml')} onDownloadLarge={() => onDownloadSample('polar-observatory')} />}
       {section === 'nvidia' && (
         <section className="manual-packs" aria-labelledby="manual-gpu-title">
           <h2 id="manual-gpu-title">{t('manual.gpuSamples')}</h2>

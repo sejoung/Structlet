@@ -256,6 +256,7 @@ export const en = {
   'zoom.in': 'Zoom in',
   'zoom.out': 'Zoom out',
   'zoom.fit': 'Fit to screen',
+  'zoom.fitGroup': 'Fit group to screen',
   'zoom.level': 'Zoom level',
   'shortcuts.title': 'Keyboard shortcuts',
   'sc.undo': 'Undo',
@@ -396,5 +397,4 @@ export const en = {
   'field.targetId': 'Attached to',
   'toast.dismiss': 'Dismiss',
 } as const;
-
 export type MessageKey = keyof typeof en;

@@ -37,6 +37,7 @@ interface Props extends ContextActions {
   editor: Editor;
   request: ContextRequest;
   fit(): void;
+  fitGroup(id: Id): void;
   edit?(id: Id): void;
   toggle(id: Id): void;
   dismiss(restoreFocus: boolean): void;
@@ -47,7 +48,7 @@ interface Props extends ContextActions {
 
 const ALIGNMENTS: readonly AlignMode[] = ['left', 'center', 'right', 'top', 'middle', 'bottom'];
 
-function groups({ t, doc, scene, editor, diagram, actions, paste, request, fit, edit, toggle, readOnly, rotate, flow }: Props): Group[] {
+function groups({ t, doc, scene, editor, diagram, actions, paste, request, fit, fitGroup, edit, toggle, readOnly, rotate, flow }: Props): Group[] {
   const index = indexDocument(doc);
   const ids = request.ids;
   const id = ids.length === 1 ? ids[0]! : null;
@@ -64,6 +65,7 @@ function groups({ t, doc, scene, editor, diagram, actions, paste, request, fit, 
     const label = t(folded ? 'summary.expandArea' : 'summary.foldArea', { name: area.label || t(`area.${area.kind}`) });
     add({ label, run: () => toggle(area.id) });
   }
+  if (area && scene.rects.has(area.id)) add({ label: t('zoom.fitGroup'), run: () => fitGroup(area.id) });
   if (ids.length === 0 || diagram.active || readOnly) {
     add(
       ...(!diagram.active && !readOnly ? [{ label: t('context.paste'), run: () => paste(request.world) }] : []),
