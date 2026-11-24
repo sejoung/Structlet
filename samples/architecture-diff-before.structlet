@@ -1,0 +1,174 @@
+{
+  "format": "structlet",
+  "formatVersion": 1,
+  "id": "sample-architecture-diff",
+  "title": "Order processing",
+  "containers": [
+    {
+      "id": "app",
+      "label": "Application",
+      "x": 30,
+      "y": 46,
+      "width": 530,
+      "height": 165,
+      "locked": false,
+      "kind": "custom",
+      "parentId": null,
+      "style": {
+        "color": "blue",
+        "dashed": true,
+        "filled": true
+      }
+    },
+    {
+      "id": "data",
+      "label": "Data",
+      "x": 30,
+      "y": 264,
+      "width": 530,
+      "height": 165,
+      "locked": false,
+      "kind": "custom",
+      "parentId": null,
+      "style": {
+        "color": "teal",
+        "dashed": true,
+        "filled": true
+      }
+    }
+  ],
+  "nodes": [
+    {
+      "id": "api",
+      "label": "Orders API",
+      "x": 55,
+      "y": 60,
+      "width": 136,
+      "height": 52,
+      "locked": false,
+      "serviceId": "server",
+      "parentId": "app",
+      "variant": "box"
+    },
+    {
+      "id": "worker",
+      "label": "Order Worker",
+      "x": 330,
+      "y": 60,
+      "width": 136,
+      "height": 52,
+      "locked": false,
+      "serviceId": "worker",
+      "parentId": "app",
+      "variant": "box"
+    },
+    {
+      "id": "db",
+      "label": "Orders DB",
+      "x": 55,
+      "y": 60,
+      "width": 136,
+      "height": 52,
+      "locked": false,
+      "serviceId": "database",
+      "parentId": "data",
+      "variant": "box"
+    },
+    {
+      "id": "legacy",
+      "label": "Legacy queue",
+      "x": 330,
+      "y": 60,
+      "width": 136,
+      "height": 52,
+      "locked": false,
+      "serviceId": "queue",
+      "parentId": "data",
+      "variant": "box"
+    },
+    {
+      "id": "client",
+      "label": "Web client",
+      "x": -208,
+      "y": 106,
+      "width": 136,
+      "height": 52,
+      "locked": false,
+      "serviceId": "browser",
+      "parentId": null,
+      "variant": "box"
+    }
+  ],
+  "edges": [
+    {
+      "id": "client-api",
+      "source": {
+        "kind": "attached",
+        "objectId": "client",
+        "side": "auto",
+        "offset": null
+      },
+      "target": {
+        "kind": "attached",
+        "objectId": "api",
+        "side": "auto",
+        "offset": null
+      },
+      "label": "HTTPS",
+      "style": {
+        "arrow": "end",
+        "shape": "orthogonal",
+        "dashed": false
+      },
+      "routingMode": "auto",
+      "waypoints": []
+    },
+    {
+      "id": "api-db",
+      "source": {
+        "kind": "attached",
+        "objectId": "api",
+        "side": "auto",
+        "offset": null
+      },
+      "target": {
+        "kind": "attached",
+        "objectId": "db",
+        "side": "auto",
+        "offset": null
+      },
+      "label": "SQL",
+      "style": {
+        "arrow": "end",
+        "shape": "orthogonal",
+        "dashed": false
+      },
+      "routingMode": "auto",
+      "waypoints": []
+    },
+    {
+      "id": "queue-worker",
+      "source": {
+        "kind": "attached",
+        "objectId": "legacy",
+        "side": "auto",
+        "offset": null
+      },
+      "target": {
+        "kind": "attached",
+        "objectId": "worker",
+        "side": "auto",
+        "offset": null
+      },
+      "label": "",
+      "style": {
+        "arrow": "end",
+        "shape": "orthogonal",
+        "dashed": false
+      },
+      "routingMode": "auto",
+      "waypoints": []
+    }
+  ],
+  "annotations": []
+}

@@ -1,3 +1,4 @@
+import { comparisonEn } from './comparison';
 import { checksEn } from './checks';
 import { manual } from './manual-en';
 import { infrastructureEn } from './infrastructure';
@@ -6,6 +7,7 @@ import { diagramViewEn } from './diagram-view';
 export const en = {
   ...manual,
   ...checksEn,
+  ...comparisonEn,
   ...specsEn,
   ...infrastructureEn,
   ...diagramViewEn,

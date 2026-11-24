@@ -12,6 +12,7 @@ export type ThemeChoice = 'system' | 'light' | 'dark';
 export interface ToolbarActions {
   onNew(): void;
   onOpen(): void;
+  onCompare(): void;
   onImport(): void;
   onSave(): void;
   onSaveAs(): void;
@@ -93,6 +94,7 @@ export function Toolbar(props: ToolbarProps) {
           items={[
             { id: 'tb-new', label: t('toolbar.new'), icon: 'newFile', onSelect: props.onNew },
             { id: 'tb-open', label: t('toolbar.open'), icon: 'open', shortcut: `${mod}O`, onSelect: props.onOpen },
+            { id: 'tb-compare', label: t('compare.open'), disabled: props.presenting, onSelect: props.onCompare },
             { id: 'tb-import', label: t('toolbar.import'), icon: 'import', onSelect: props.onImport },
             { id: 'tb-save', label: t('toolbar.save'), icon: 'save', shortcut: `${mod}S`, separated: true, onSelect: props.onSave },
             { id: 'tb-save-as', label: t('toolbar.saveAs'), shortcut: `⇧${mod}S`, onSelect: props.onSaveAs },

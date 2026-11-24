@@ -7,6 +7,7 @@ import migEn from './assets/manual-mig-en.webp';
 import migKo from './assets/manual-mig-ko.webp';
 import type { Language, MessageKey, Translate } from '../i18n/messages';
 import { IconPackSources } from './IconPacksDialog';
+import { ComparisonGuide, type ComparisonSample } from './comparison/ComparisonGuide';
 import { LayoutGuide } from './LayoutGuide';
 import { ManualAiGuide, type ManualAiActions } from './ManualAiGuide';
 import { Icon } from './ui/Icon';
@@ -36,13 +37,13 @@ const SHORTCUTS: [string, MessageKey][] = [
   ['⌘.', 'sc.present'],
 ];
 
-const GUIDE_TABS = ['basic', 'complex', 'nvidia', 'ai'] as const;
+const GUIDE_TABS = ['basic', 'comparison', 'complex', 'nvidia', 'ai'] as const;
 const GPU_EXAMPLES = [
   { sample: 'gpu-training', label: 'manual.gpuTraining', description: 'manual.trainingPreview', en: trainingEn, ko: trainingKo },
   { sample: 'mig-inference', label: 'manual.migInference', description: 'manual.migPreview', en: migEn, ko: migKo },
 ] as const;
 
-export function ManualPage({ t, language, ai, onDownloadSample }: { t: Translate; language: Language; ai: ManualAiActions; onDownloadSample(sample: 'three-tier' | 'gpu-training' | 'mig-inference' | 'commerce-and-ml' | 'polar-observatory'): void }) {
+export function ManualPage({ t, language, ai, onDownloadSample }: { t: Translate; language: Language; ai: ManualAiActions; onDownloadSample(sample: 'three-tier' | 'gpu-training' | 'mig-inference' | 'commerce-and-ml' | 'polar-observatory' | ComparisonSample): void }) {
   const [section, setSection] = useState<(typeof GUIDE_TABS)[number]>('basic');
   const mac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
   return (
@@ -69,6 +70,7 @@ export function ManualPage({ t, language, ai, onDownloadSample }: { t: Translate
           </section>
         </>
       )}
+      {section === 'comparison' && <ComparisonGuide t={t} language={language} download={onDownloadSample} />}
       {section === 'complex' && <LayoutGuide t={t} language={language} onDownload={() => onDownloadSample('commerce-and-ml')} onDownloadLarge={() => onDownloadSample('polar-observatory')} />}
       {section === 'nvidia' && (
         <section className="manual-packs" aria-labelledby="manual-gpu-title">

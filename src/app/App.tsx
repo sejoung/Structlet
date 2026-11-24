@@ -16,8 +16,9 @@ import { Sidebar, type SidebarTab } from '../components/sidebar/Sidebar';
 import type { CanvasTool } from '../components/canvas/use-gestures';
 import type { PaletteService } from '../components/sidebar/types';
 import { PropertiesPanel, type PanelFinding } from '../components/properties/PropertiesPanel';
-import { Toolbar, type ViewMode } from '../components/Toolbar';
+import type { ViewMode } from '../components/Toolbar';
 import { useSession } from '../components/use-session';
+import { ComparisonToolbar } from './ComparisonToolbar';
 import { createDocumentActions } from './document-actions';
 import { createIconPackActions } from './icon-pack-actions';
 import { createPanelActions } from './panel-actions';
@@ -33,7 +34,6 @@ import { useUsageStats } from './use-usage-stats';
 import type { UsageStats } from '../adapters/analytics/google-analytics';
 import { log } from '../adapters/diagnostics/log';
 import { ConsentBanner } from '../components/drive/DriveDialogs';
-
 const CANVAS_LIGHT = '#eef0f4';
 const CANVAS_DARK = '#101318';
 
@@ -264,8 +264,8 @@ export function App({ editor, store, files, packStore, drive: driveServices, dri
 
   return (
     <div className={`app${presenting ? ' presenting' : ''}${diagram.active ? ' summary' : ''}`}>
-      <Toolbar
-        t={t}
+      <ComparisonToolbar
+        t={t} document={snapshot.committed} appearance={appearance} canvasTheme={canvasTheme} notify={setNotice}
         title={snapshot.document.title}
         diagram={canvasDiagram}
         canUndo={snapshot.canUndo}

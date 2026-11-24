@@ -15,7 +15,7 @@ export function downloadText(text: string, fileName: string, type: string): void
 }
 
 export function pickTextFile(accept: string): Promise<{ name: string; text: string } | null> {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = accept;
@@ -24,7 +24,11 @@ export function pickTextFile(accept: string): Promise<{ name: string; text: stri
       const file = input.files?.[0];
       input.remove();
       if (!file) return resolve(null);
-      resolve({ name: file.name, text: await file.text() });
+      try {
+        resolve({ name: file.name, text: await file.text() });
+      } catch (error) {
+        reject(error);
+      }
     });
     input.addEventListener('cancel', () => {
       input.remove();

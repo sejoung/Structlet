@@ -29,7 +29,7 @@ export async function nodeIds(page: Page): Promise<string[]> {
 }
 
 const MENU: Record<string, string> = {
-  'tb-new': 'menu-file', 'tb-open': 'menu-file', 'tb-import': 'menu-file', 'tb-save': 'menu-file', 'tb-save-as': 'menu-file',
+  'tb-new': 'menu-file', 'tb-open': 'menu-file', 'tb-compare': 'menu-file', 'tb-import': 'menu-file', 'tb-save': 'menu-file', 'tb-save-as': 'menu-file',
   'tb-svg': 'menu-export', 'tb-png': 'menu-export',
   'tb-icon-packs': 'menu-settings', 'tb-theme-dark': 'menu-settings', 'tb-theme-light': 'menu-settings', 'tb-theme-system': 'menu-settings', 'tb-lang-ko': 'menu-settings', 'tb-lang-en': 'menu-settings', 'tb-usage-stats': 'menu-settings',
 };

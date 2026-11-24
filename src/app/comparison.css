@@ -1,0 +1,25 @@
+dialog.comparison { width: min(1100px, 94vw); max-width: none; box-sizing: border-box; }
+.comparison-header, .comparison-controls { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.comparison-header { margin-bottom: 12px; }
+.comparison-header > div { min-width: 0; overflow-wrap: anywhere; }
+.comparison-body { display: grid; grid-template-columns: minmax(210px, 28%) minmax(0, 1fr); height: min(65vh, 660px); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.comparison-changes { overflow: auto; padding: 12px; }
+.comparison-changes ul { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 6px; }
+.comparison-changes li button { width: 100%; display: grid; justify-items: start; gap: 3px; text-align: start; overflow-wrap: anywhere; padding: 8px; border: 1px solid var(--line); border-radius: 6px; }
+.comparison-changes li button:hover, .comparison-changes li button[aria-pressed='true'], .comparison-versions button[aria-pressed='true'] { background: var(--surface-3); }
+.comparison-status { color: var(--change-text); font-size: 11px; font-weight: 700; }
+.comparison-detail { color: var(--ink-2); font-size: 11px; white-space: pre-line; }
+.comparison-preview { min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); border-inline-start: 1px solid var(--line); }
+.comparison-controls { padding: 8px; flex-wrap: wrap; }
+.comparison-versions { display: flex; gap: 4px; }
+.comparison-preview svg { width: 100%; height: 100%; }
+[data-theme="dark"] .comparison { --comparison-added: #57d7b0; }
+.comparison [data-status='added'] { --change-color: #1aaf83; --change-text: var(--comparison-added, #08765a); }
+.comparison [data-status='removed'] { --change-color: #ef5668; --change-text: var(--danger); }
+.comparison [data-status='modified'] { --change-color: #dd9a29; --change-text: var(--warn); }
+.comparison-marks > * { fill: none; stroke: var(--change-color); stroke-width: 2; stroke-dasharray: 6 3; stroke-linejoin: round; }
+.comparison-marks > [data-focused='true'] { stroke-width: 3; stroke-dasharray: none; }
+@media (max-width: 640px) {
+  .comparison-body { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 36%) minmax(0, 1fr); }
+  .comparison-preview { border-inline-start: 0; border-block-start: 1px solid var(--line); }
+}

@@ -1,3 +1,4 @@
+import { comparisonKo } from './comparison';
 import { checksKo } from './checks';
 import { manual } from './manual-ko';
 import type { MessageKey } from './en';
@@ -7,6 +8,7 @@ import { diagramViewKo } from './diagram-view';
 export const ko: Record<MessageKey, string> = {
   ...manual,
   ...checksKo,
+  ...comparisonKo,
   ...specsKo,
   ...infrastructureKo,
   ...diagramViewKo,
