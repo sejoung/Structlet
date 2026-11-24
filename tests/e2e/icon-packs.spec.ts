@@ -82,3 +82,60 @@ test('loading a Kubernetes icon folder', async ({ page }, info) => {
   await expect(page.locator('.diagram [data-container="k8s-ns-shop"] use')).toHaveCount(1);
   await expect(page.locator('.diagram [data-container]')).toHaveCount(3);
 });
+
+test('AWS icons and equipment specs render in both image exports', async ({ page }) => {
+  await freshApp(page);
+  const color = '#e7157b';
+  await act(page, 'tb-icon-packs');
+  const [packPicker] = await Promise.all([page.waitForEvent('filechooser'), page.getByTestId('pack-zip').click()]);
+  await packPicker.setFiles({
+    name: 'aws-icons.zip',
+    mimeType: 'application/zip',
+    buffer: Buffer.from(zipSync({ 'Architecture-Service-Icons/Arch_Compute/48/Arch_Amazon-EC2_48.svg': icon(color) })),
+  });
+  await expect(page.locator('[data-testid^="pack-pack-"]')).toContainText('AWS');
+  await page.getByTestId('packs-close').click();
+
+  const [diagramPicker] = await Promise.all([page.waitForEvent('filechooser'), act(page, 'tb-import')]);
+  await diagramPicker.setFiles('tests/unit/adapters/fixtures/terraform-state.json');
+  await expect(page.locator('.diagram [data-node="tf-aws_instance.app"] use')).toHaveCount(1);
+  await expect(page.locator('.diagram [data-node="tf-aws_instance.app"] [data-node-specs]')).toContainText('t4g.small');
+
+  for (const view of ['2d', 'isometric']) {
+    if (view === 'isometric') {
+      await page.getByTestId('tb-view').locator('[data-value="isometric"]').click();
+      await page.getByRole('radio', { name: 'All labels' }).click();
+    }
+    const [svg] = await Promise.all([page.waitForEvent('download'), act(page, 'tb-svg')]);
+    const source = readFileSync((await svg.path())!, 'utf8');
+    const xml = await page.evaluate(({ source, view }) => {
+      const svg = new DOMParser().parseFromString(source, 'image/svg+xml');
+      return {
+        error: svg.querySelector('parsererror')?.textContent ?? null,
+        icon: svg.querySelector('symbol image')?.getAttribute('href'),
+        specs: svg.querySelector(view === '2d' ? '[data-node-specs]' : '[data-spec-detail]')?.textContent,
+      };
+    }, { source, view });
+    expect(xml.error).toBeNull();
+    expect(xml.icon).toMatch(/^data:image\/svg\+xml;base64,/);
+    expect(xml.specs).toContain('t4g.small');
+
+    const [png] = await Promise.all([page.waitForEvent('download'), act(page, 'tb-png')]);
+    const bytes = readFileSync((await png.path())!);
+    expect(bytes.subarray(1, 4).toString()).toBe('PNG');
+    expect(await page.evaluate(async (png) => {
+      const bitmap = await createImageBitmap(new Blob([Uint8Array.from(atob(png), (byte) => byte.charCodeAt(0))], { type: 'image/png' }));
+      const canvas = document.createElement('canvas');
+      canvas.width = bitmap.width;
+      canvas.height = bitmap.height;
+      const context = canvas.getContext('2d')!;
+      context.drawImage(bitmap, 0, 0);
+      bitmap.close();
+      const { data } = context.getImageData(0, 0, canvas.width, canvas.height);
+      for (let i = 0; i < data.length; i += 4) {
+        if (data[i] === 231 && data[i + 1] === 21 && data[i + 2] === 123 && data[i + 3] === 255) return true;
+      }
+      return false;
+    }, bytes.toString('base64'))).toBe(true);
+  }
+});

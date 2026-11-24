@@ -197,7 +197,7 @@ function nodeMarkup(node: SceneNode, t: DiagramTheme, images: ImageSymbols): str
 function specCaptionMarkup({ box, lines }: NonNullable<SceneNode['specCaption']>, theme: DiagramTheme): string {
   const { x, y, width, height } = box;
   const { fontSize, lineHeight, padY } = SPEC_CAPTION;
-  return `<g data-node-specs><rect x="${n(x)}" y="${n(y)}" width="${n(width)}" height="${n(height)}" rx="4" fill="${theme.legendFill}" stroke="${theme.legendBorder}" stroke-width="0.7"/>` +
+  return `<g data-node-specs="true"><rect x="${n(x)}" y="${n(y)}" width="${n(width)}" height="${n(height)}" rx="4" fill="${theme.legendFill}" stroke="${theme.legendBorder}" stroke-width="0.7"/>` +
     textLines(lines, x + width / 2, y + padY + fontSize - 1, lineHeight, `font-size="${fontSize}" fill="${theme.edgeLabel}" text-anchor="middle"`) + '</g>';
 }
 
