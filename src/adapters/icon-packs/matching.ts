@@ -7,6 +7,7 @@ type PackProvider = IconPack['provider'];
 
 const STOP = new Set(['and', 'for', 'of', 'the', 'service', 'services', 'icon']);
 const VENDOR = /^(amazon|aws|azure|microsoft|google|gcp)-/;
+const gcpProductKey = (key: string) => key.replace(/-\d+(?:-color-rgb)?$/, '').replace(/-/g, '');
 
 export function normalize(path: string): string {
   let s = (path.split(/[\\/]/).pop() ?? path).replace(/\.(svg|png)$/i, '').toLowerCase();
@@ -67,18 +68,24 @@ export interface Matcher {
 
 export function createMatcher(provider: PackProvider, catalog: readonly ServiceDefinition[]): Matcher {
   const byToken = new Map<string, string>();
+  const byGcpProduct = provider === 'gcp' ? new Map<string, string>() : undefined;
   for (const s of catalog) {
     if (s.provider !== provider) continue;
-    byToken.set(tokenKey(s.name.en), s.id);
-    byToken.set(tokenKey(s.id.slice(s.id.indexOf('.') + 1)), s.id);
+    for (const name of [s.name.en, s.id.slice(s.id.indexOf('.') + 1)]) {
+      byToken.set(tokenKey(name), s.id);
+      byGcpProduct?.set(gcpProductKey(normalize(name)), s.id);
+    }
   }
   const aliases = ALIASES[provider];
+  if (byGcpProduct) {
+    for (const [name, service] of Object.entries(aliases)) byGcpProduct.set(gcpProductKey(name), service);
+  }
   const areas = AREA_ALIASES[provider];
   return {
     service(path) {
       const key = normalize(path);
       const bare = key.replace(VENDOR, '');
-      return aliases[key] ?? aliases[bare] ?? byToken.get(tokenKey(key)) ?? null;
+      return aliases[key] ?? aliases[bare] ?? byToken.get(tokenKey(key)) ?? byGcpProduct?.get(gcpProductKey(bare)) ?? null;
     },
     area(path) {
       const key = normalize(path);

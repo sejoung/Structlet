@@ -53,6 +53,11 @@ describe('icon file matching', () => {
     expect(gcp.service('Cloud-Run.svg')).toBe('gcp.cloud-run');
     expect(gcp.service('BigQuery.svg')).toBe('gcp.bigquery');
     expect(gcp.service('pubsub.svg')).toBe('gcp.pubsub');
+    expect(gcp.service('ComputeEngine-512-color-rgb.svg')).toBe('gcp.compute-engine');
+    expect(gcp.service('CloudSQL-512-color.svg')).toBe('gcp.cloud-sql');
+    expect(gcp.service('CloudRun-512-color-rgb.png')).toBe('gcp.cloud-run');
+    expect(gcp.service('GKE-512-color.svg')).toBe('gcp.gke');
+    expect(gcp.service('AIHypercomputer-512-color.svg')).toBeNull();
     const k8s = createMatcher('k8s', SERVICES);
     expect(k8s.service('resources/unlabeled/deploy.svg')).toBe('k8s.deployment');
     expect(k8s.area('resources/unlabeled/ns.svg')).toBe('namespace');
@@ -97,16 +102,17 @@ describe('building a pack', () => {
     }
   });
 
-  it('links new AWS nodes to previously loaded packs and old nodes to re-imported packs', () => {
-    const service = 'aws.ecr';
-    const legacy = 'aws.pack.elastic-container-registry';
-    const result = buildIconPack([file('Arch_Amazon-Elastic-Container-Registry_48.svg')], 'aws', 'AWS', 'p');
+  it.each([
+    ['aws', 'aws.ecr', 'aws.pack.elastic-container-registry', 'Arch_Amazon-Elastic-Container-Registry_48.svg'],
+    ['gcp', 'gcp.compute-engine', 'gcp.pack.computeengine-512-color-rgb', 'ComputeEngine-512-color-rgb.svg'],
+  ] as const)('links %s services to previously loaded packs and old nodes to re-imported packs', (provider, service, legacy, path) => {
+    const result = buildIconPack([file(path)], provider, provider, 'p');
     if (!result.ok) throw new Error(result.error);
     const current = createAppearance('en', [result.pack]);
     const stored = createAppearance('en', [{
       ...result.pack,
       icons: { [legacy]: result.pack.icons[service]! },
-      extras: [{ id: legacy, name: 'Elastic Container Registry' }],
+      extras: [{ id: legacy, name: 'Legacy service' }],
     }]);
     for (const appearance of [current, stored]) {
       expect(appearance.service(legacy)?.image).toBe(current.service(service)?.image);

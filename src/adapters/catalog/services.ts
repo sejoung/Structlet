@@ -16,11 +16,15 @@ export { ROLE_COLORS, PROVIDERS, type Provider, type ServiceDefinition } from '.
 
 export const SERVICES: readonly ServiceDefinition[] = [...GENERAL_SERVICES, ...AWS_SERVICES, ...GCP_SERVICES, ...AZURE_SERVICES, ...K8S_SERVICES, ...NVIDIA_SERVICES];
 const BY_ID = new Map(SERVICES.map((s) => [s.id, s]));
-const matchAwsIcon = createMatcher('aws', AWS_SERVICES);
-const AWS_PACK_PREFIX = 'aws.pack.';
+const packServiceMatchers = {
+  aws: createMatcher('aws', AWS_SERVICES),
+  gcp: createMatcher('gcp', GCP_SERVICES),
+};
 
-function awsServiceForPackId(id: string): string | null {
-  return id.startsWith(AWS_PACK_PREFIX) ? matchAwsIcon.service(id.slice(AWS_PACK_PREFIX.length)) : null;
+function serviceForPackId(id: string): string | null {
+  const [provider, name] = id.split('.pack.');
+  if (!name || (provider !== 'aws' && provider !== 'gcp')) return null;
+  return packServiceMatchers[provider].service(name);
 }
 
 export function findService(id: string): ServiceDefinition | undefined {
@@ -72,7 +76,7 @@ export function createAppearance(language: 'en' | 'ko', packs: readonly IconPack
   const packImages = enabled.map((pack) => {
     const aliases = new Map<string, IconAsset>();
     for (const { id } of pack.extras) {
-      const service = awsServiceForPackId(id);
+      const service = serviceForPackId(id);
       const icon = pack.icons[id];
       if (service && icon && !aliases.has(service)) aliases.set(service, icon);
     }
@@ -92,7 +96,7 @@ export function createAppearance(language: 'en' | 'ko', packs: readonly IconPack
     service(serviceId) {
       const hit = cache.get(serviceId);
       if (hit !== undefined) return hit ?? undefined;
-      const canonical = awsServiceForPackId(serviceId) ?? serviceId;
+      const canonical = serviceForPackId(serviceId) ?? serviceId;
       const def = BY_ID.get(canonical) ?? extras.get(serviceId);
       const look = def ? { name: def.name[language], glyph: def.glyph, color: def.color, image: imageFor(serviceId, canonical) } : null;
       cache.set(serviceId, look);

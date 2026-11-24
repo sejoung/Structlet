@@ -48,7 +48,10 @@ export function buildIconPack(files: readonly PackFile[], provider: PackProvider
   const chosen =
     provider !== 'auto'
       ? provider
-      : PACK_PROVIDERS.map((p) => ({ p, n: icons.filter((f) => createMatcher(p, SERVICES).service(f.path)).length })).sort((a, b) => b.n - a.n)[0]!.p;
+      : PACK_PROVIDERS.map((p) => {
+          const matcher = createMatcher(p, SERVICES);
+          return { p, n: icons.filter((f) => matcher.service(f.path)).length };
+        }).sort((a, b) => b.n - a.n)[0]!.p;
   const matcher = createMatcher(chosen, SERVICES);
   const best = new Map<string, { file: PackFile; score: number }>();
   const bestArea = new Map<ContainerKind, { file: PackFile; score: number }>();
