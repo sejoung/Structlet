@@ -133,3 +133,119 @@ test('group fold controls shrink with zoom and remain anchored and usable', asyn
   await fold.press('Enter');
   await expect(fold).toHaveAttribute('aria-expanded', 'true');
 });
+
+test('service flow and operations share the current view across rendering and exports and remember it per file', async ({ page }) => {
+  await freshApp(page, 'en', { inspector: false });
+  const [picker] = await Promise.all([page.waitForEvent('filechooser'), act(page, 'tb-import')]);
+  await picker.setFiles({
+    name: 'example-cluster.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify({
+      format: 'structlet-draft', title: 'Example cluster',
+      containers: [
+        { id: 'cluster', kind: 'cluster', label: 'Cluster' },
+        { id: 'app', parent: 'cluster', kind: 'namespace', label: 'Application' },
+        { id: 'ops', parent: 'cluster', kind: 'namespace', label: 'Operations' },
+      ],
+      nodes: [
+        { id: 'client', service: 'user' },
+        { id: 'ingress', parent: 'app', service: 'k8s.ingress' },
+        { id: 'workload', parent: 'app', service: 'k8s.deployment' },
+        { id: 'database', service: 'database' },
+        { id: 'pool', parent: 'ops', service: 'k8s.karpenter-nodepool' },
+        { id: 'gitops', parent: 'ops', service: 'workflow' },
+      ],
+      edges: [
+        { id: 'request', from: 'client', to: 'ingress', label: 'HTTPS' },
+        { id: 'backend', from: 'ingress', to: 'workload' },
+        { id: 'async', from: 'workload', to: 'database', dashed: true },
+        { id: 'placement', from: 'workload', to: 'pool', dashed: true, relationship: true },
+        { id: 'sync', from: 'gitops', to: 'cluster', dashed: true, relationship: true },
+      ],
+    })),
+  });
+  const visibleEdges = page.locator('.diagram path[data-edge]');
+  await expect(visibleEdges).toHaveCount(5);
+  const [original] = await Promise.all([page.waitForEvent('download'), act(page, 'tb-save')]);
+  const menu = page.getByTestId('menu-diagram-content');
+  const choose = async (content: string) => {
+    await menu.click();
+    await page.getByTestId(`diagram-content-${content}`).click();
+  };
+  await menu.press('Enter');
+  await page.getByRole('menuitemradio', { name: 'Full diagram' }).press('ArrowDown');
+  const flowOption = page.getByRole('menuitemradio', { name: 'Service flow' });
+  await expect(flowOption).toBeFocused();
+  await flowOption.press('Enter');
+  await expect(menu).toHaveText('Service flow');
+  await expect(visibleEdges).toHaveCount(3);
+  await expect(page.locator('.diagram [data-edge="async"]')).toHaveAttribute('stroke-dasharray', '6 4');
+  await expect(page.getByTestId('node-pool')).toHaveCount(0);
+  await expect(page.getByTestId('node-workload')).toBeVisible();
+  const [flowSvg] = await Promise.all([page.waitForEvent('download'), act(page, 'tb-svg')]);
+  const read = async (file: typeof original) => readFileSync((await file.path())!, 'utf8');
+  expect(await read(flowSvg)).toContain('data-edge="request"');
+  expect(await read(flowSvg)).not.toContain('data-edge="placement"');
+
+  await page.getByTestId('tb-view').locator('[data-value="isometric"]').click();
+  const iso = page.getByTestId('isometric');
+  await expect(iso.locator('[data-edge="request"]')).toBeVisible();
+  await expect(iso.locator('[data-edge="placement"]')).toHaveCount(0);
+  await choose('operations');
+  await expect(menu).toHaveText('Operations');
+  await expect(iso.locator('[data-edge="placement"]')).toBeVisible();
+  await expect(iso.locator('[data-node="pool"]')).toBeVisible();
+  await expect(iso.locator('[data-node="client"]')).toHaveCount(0);
+  const [operationsSvg] = await Promise.all([page.waitForEvent('download'), act(page, 'tb-svg')]);
+  expect(operationsSvg.suggestedFilename()).toContain('isometric');
+  expect(await read(operationsSvg)).toContain('data-edge="placement"');
+  expect(await read(operationsSvg)).not.toContain('data-edge="request"');
+  const [png] = await Promise.all([page.waitForEvent('download'), act(page, 'tb-png')]);
+  expect(readFileSync((await png.path())!).subarray(1, 4).toString()).toBe('PNG');
+  const [saved] = await Promise.all([page.waitForEvent('download'), act(page, 'tb-save')]);
+  expect(JSON.parse(await read(saved))).toEqual(JSON.parse(await read(original)));
+
+  await page.reload();
+  await expect(menu).toHaveText('Operations');
+  await expect(visibleEdges).toHaveCount(2);
+  await choose('all');
+  await expect(visibleEdges).toHaveCount(5);
+  await expect(page.getByTestId('tools')).toBeVisible();
+  await choose('operations');
+  const [other] = await Promise.all([page.waitForEvent('filechooser'), act(page, 'tb-open')]);
+  await other.setFiles('samples/three-tier.structlet');
+  await expect(menu).toHaveText('Full diagram');
+  await menu.click();
+  await expect(page.getByTestId('diagram-content-flow')).toBeDisabled();
+  await expect(page.getByTestId('diagram-content-operations')).toBeDisabled();
+  await page.keyboard.press('Escape');
+  const [reopen] = await Promise.all([page.waitForEvent('filechooser'), act(page, 'tb-open')]);
+  await reopen.setFiles((await saved.path())!);
+  await expect(menu).toHaveText('Operations');
+});
+
+test('the recommended summary preserves useful detail on small, GPU, and large diagrams', async ({ page }) => {
+  await freshApp(page, 'ko', { inspector: false });
+  const edges = page.locator('.diagram path[data-edge]');
+  const nodes = page.locator('.diagram [data-node]');
+  for (const { sample, before, after, count, layout } of [
+    { sample: 'three-tier', before: 10, after: 10, count: 11, layout: null },
+    { sample: 'gpu-training', before: 6, after: 2, count: 3, layout: null },
+    { sample: 'polar-observatory', before: 100, after: 28, count: 9, layout: 'grid' },
+  ]) {
+    const [picker] = await Promise.all([page.waitForEvent('filechooser'), act(page, 'tb-open')]);
+    await picker.setFiles(`samples/${sample}.structlet`);
+    await expect(edges).toHaveCount(before);
+    await diagram(page, 'recommend-summary');
+    await expect(edges).toHaveCount(after);
+    await expect(nodes).toHaveCount(count);
+    if (layout) {
+      await page.getByTestId('menu-diagram').click();
+      await expect(page.getByTestId(`layout-summary-${layout}`)).toHaveAttribute('aria-checked', 'true');
+      await page.keyboard.press('Escape');
+    }
+  }
+  await page.reload();
+  await expect(nodes).toHaveCount(9);
+  await expect(edges).toHaveCount(28);
+  await diagram(page, 'expand-all');
+  await expect(edges).toHaveCount(100);
+});

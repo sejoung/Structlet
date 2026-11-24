@@ -3,12 +3,12 @@ import { describe, expect, it } from 'vitest';
 import { createAppearance } from '../../../src/adapters/catalog/services';
 import { parseStructlet } from '../../../src/adapters/format/structlet-format';
 import { getBox, indexDocument, worldRect, type Document, type Edge } from '../../../src/domain';
-import { computeDiagramView, computeScene, intersects, layoutDocument, LAYOUT_MODES, type DiagramView } from '../../../src/engine';
+import { availableDiagramContents, computeDiagramView, computeScene, intersects, layoutDocument, LAYOUT_MODES, recommendDiagramSummary, summaryGroups, type DiagramView } from '../../../src/engine';
 import { newEditor } from '../fixtures';
 
 const appearance = createAppearance('en');
-function sample(): Document {
-  const parsed = parseStructlet(readFileSync(new URL('../../../samples/commerce-and-ml.structlet', import.meta.url), 'utf8'));
+function sample(name = 'commerce-and-ml'): Document {
+  const parsed = parseStructlet(readFileSync(new URL(`../../../samples/${name}.structlet`, import.meta.url), 'utf8'));
   if (!parsed.ok) throw new Error(parsed.errors.join(', '));
   return parsed.document;
 }
@@ -72,6 +72,64 @@ describe('diagram summary', () => {
     }
     expect(JSON.stringify(doc)).toBe(original);
     expect(computeDiagramView(doc, appearance, view([])).edges.find((edge) => edge.id === manual.id)?.manual).toBe(true);
+  });
+});
+
+describe('diagram content', () => {
+  it('keeps traffic, configuration, ancestors, and attached notes in their respective projections', () => {
+    const base = sample();
+    const pool = { ...base.nodes[0]!, id: 'pool', label: 'Node pool', parentId: 'ops' };
+    const edge = base.edges[0]!;
+    const config: Edge = {
+      ...edge, id: 'placement', label: 'Placement', relationship: true, style: { ...edge.style, dashed: true },
+      source: { kind: 'attached', objectId: 'checkout', side: 'auto', offset: null },
+      target: { kind: 'attached', objectId: pool.id, side: 'auto', offset: null },
+    };
+    const asyncTraffic = { ...edge, style: { ...edge.style, dashed: true } };
+    const notes = ['pool', 'placement', edge.id].map((targetId) => ({ kind: 'text' as const, id: `note-${targetId}`, text: targetId, targetId, x: 40, y: 100 }));
+    const doc = { ...base, nodes: [...base.nodes, pool], edges: [asyncTraffic, ...base.edges.slice(1), config], annotations: notes };
+    const original = JSON.stringify(doc);
+    const flow = computeDiagramView(doc, appearance, { ...view([]), content: 'flow' });
+    expect(flow.edges.map(({ id }) => id)).toEqual(base.edges.map(({ id }) => id));
+    expect(flow.edges[0]?.style.dashed).toBe(true);
+    expect(flow.rects.has(pool.id)).toBe(false);
+    expect(flow.annotations.map(({ id }) => id)).toEqual([`note-${edge.id}`]);
+
+    const operations = computeDiagramView(doc, appearance, { ...view([]), content: 'operations' });
+    expect(operations.edges.map(({ id }) => id)).toEqual([config.id]);
+    expect(operations.nodes.map(({ id }) => id)).toEqual(['checkout', 'pool']);
+    expect(operations.containers.map(({ id }) => id)).toEqual(expect.arrayContaining(['app', 'ops']));
+    expect(operations.annotations.map(({ id }) => id)).toEqual(['note-pool', 'note-placement']);
+    expect(availableDiagramContents(base)).toEqual(['all']);
+    expect(availableDiagramContents(doc)).toEqual(['all', 'flow', 'operations']);
+    expect(availableDiagramContents({ ...doc, edges: [config] })).toEqual(['all', 'operations']);
+    expect(computeDiagramView(doc, appearance, view([]))).toEqual(computeScene(doc, appearance));
+    expect(JSON.stringify(doc)).toBe(original);
+  });
+});
+
+describe('summary recommendation', () => {
+  const size = { width: 1216, height: 856 };
+
+  it('leaves a readable small diagram expanded and keeps GPU hosts and their network visible', () => {
+    const basic = sample('three-tier');
+    expect(recommendDiagramSummary(basic, appearance, view([]), size)).toEqual({ folded: [], layout: null });
+    const training = sample('gpu-training');
+    const recommendation = recommendDiagramSummary(training, appearance, view([]), size);
+    expect(recommendation.folded).toEqual(['host-1', 'host-2']);
+    const scene = computeDiagramView(training, appearance, view([...recommendation.folded], recommendation.layout));
+    expect(scene.nodes.map(({ id }) => id)).toEqual(['fabric-switch', 'host-1', 'host-2']);
+    expect(scene.edges).toHaveLength(2);
+    expect(scene.edges.every(({ sourceId, targetId }) => [sourceId, targetId].includes('fabric-switch'))).toBe(true);
+  });
+
+  it('chooses top-level tiles and a grid for the large observatory diagram', () => {
+    const doc = sample('polar-observatory');
+    const recommendation = recommendDiagramSummary(doc, appearance, view([]), size);
+    expect(recommendation).toEqual({ folded: summaryGroups(doc).top, layout: 'grid' });
+    const scene = computeDiagramView(doc, appearance, view([...recommendation.folded], recommendation.layout));
+    expect(scene.nodes).toHaveLength(9);
+    expect(scene.edges).toHaveLength(28);
   });
 });
 

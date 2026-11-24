@@ -2,11 +2,13 @@ import { checksEn } from './checks';
 import { manual } from './manual-en';
 import { infrastructureEn } from './infrastructure';
 import { specsEn } from './specs';
+import { diagramViewEn } from './diagram-view';
 export const en = {
   ...manual,
   ...checksEn,
   ...specsEn,
   ...infrastructureEn,
+  ...diagramViewEn,
   'app.untitled': 'Untitled diagram',
   'toolbar.new': 'New',
   'toolbar.open': 'Open',

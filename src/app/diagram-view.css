@@ -1,0 +1,14 @@
+.diagram-content-menu .menu-button { border: 1px solid var(--line); white-space: nowrap; }
+
+@media (max-width: 940px) {
+  .app { grid-template-rows: auto minmax(0, 1fr); }
+  .topbar { grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; padding-block: 4px; }
+  .topbar-center { grid-column: 1 / -1; grid-row: 2; justify-content: center; }
+  .topbar .title-input { min-width: 0; }
+}
+
+@media (max-width: 570px) {
+  .topbar { grid-template-columns: minmax(0, 1fr); }
+  .topbar-center { grid-row: 2; }
+  .topbar-end { grid-row: 3; justify-content: center; }
+}

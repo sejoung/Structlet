@@ -63,7 +63,7 @@ function groups({ t, doc, scene, editor, diagram, actions, paste, request, fit, 
   const add = (...items: Item[]) => result.push({ items });
   if (id && inspect && getBox(doc, id)?.infrastructure) add({ label: t('infra.show'), run: () => inspect(id) });
   if (id && flow?.canStart(id)) add({ label: t('flow.start'), run: () => flow.start(id) });
-  if (area && index.children.get(area.id)?.length) {
+  if (area && (folded || index.children.get(area.id)?.some((child) => scene.rects.has(child)))) {
     const label = t(folded ? 'summary.expandArea' : 'summary.foldArea', { name: area.label || t(`area.${area.kind}`) });
     add({ label, run: () => toggle(area.id) });
   }
@@ -74,11 +74,11 @@ function groups({ t, doc, scene, editor, diagram, actions, paste, request, fit, 
       { label: t('zoom.fit'), run: fit },
       { label: t('summary.foldTop'), run: diagram.foldTop, disabled: !diagram.canFoldTop },
       { label: t('summary.foldMiddle'), run: diagram.foldMiddle, disabled: !diagram.canFoldMiddle },
-      ...(diagram.active ? [{ label: t('summary.expandAll'), run: diagram.expandAll }] : []),
+      ...(diagram.hasFolds ? [{ label: t('summary.expandAll'), run: diagram.expandAll }] : []),
     );
     if (diagram.active) result.push(layout(t('summary.layout'), diagram.arrange));
     if (rotate) add({ label: t('iso.rotateLeft'), run: () => rotate(-1) }, { label: t('iso.rotateRight'), run: () => rotate(1) });
-    if (diagram.hasObjects && !ids.length && !readOnly) result.push(layout(t('summary.layoutAll'), diagram.layoutAll));
+    if (diagram.hasObjects && diagram.content === 'all' && !ids.length && !readOnly) result.push(layout(t('summary.layoutAll'), diagram.layoutAll));
     return result;
   }
 

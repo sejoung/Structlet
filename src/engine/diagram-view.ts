@@ -1,18 +1,21 @@
 import { indexDocument, type Container, type Document, type Edge, type Endpoint, type Id, type Node } from '../domain';
 import type { Appearance } from './appearance';
+import { projectDiagramContent, type DiagramContent } from './diagram-content';
 import type { LayoutMode } from './layout/arrange';
 import { layoutDocument } from './layout/document';
 import { computeScene } from './scene';
 import { measureText } from './text';
 
 export interface DiagramView {
+  readonly content?: DiagramContent;
   readonly folded: ReadonlySet<Id>;
   readonly layout: LayoutMode | null;
   label(area: Container, services: number): readonly [string, string];
 }
 
-export function computeDiagramView(doc: Document, appearance: Appearance, view: DiagramView) {
-  if (view.folded.size === 0) return computeScene(doc, appearance);
+export function computeDiagramView(source: Document, appearance: Appearance, view: DiagramView) {
+  const doc = projectDiagramContent(source, view.content ?? 'all');
+  if (view.folded.size === 0) return renderProjection(source, doc, appearance, view);
   const index = indexDocument(doc);
   const representatives = new Map<Id, Id>();
   const summaries = new Map<Id, Container>();
@@ -29,7 +32,7 @@ export function computeDiagramView(doc: Document, appearance: Appearance, view: 
     }
   };
   walk(null);
-  if (summaries.size === 0) return computeScene(doc, appearance);
+  if (summaries.size === 0) return renderProjection(source, doc, appearance, view);
 
   const lift = (end: Endpoint): Endpoint => {
     if (end.kind !== 'attached') return end;
@@ -68,9 +71,14 @@ export function computeDiagramView(doc: Document, appearance: Appearance, view: 
     ...doc, containers, nodes, edges,
     annotations: doc.annotations.filter((note) => !note.targetId || !representatives.has(note.targetId)),
   };
-  const arranged = view.layout ? layoutDocument({
-    ...projected, containers: containers.map((area) => ({ ...area, locked: false })),
-    nodes: nodes.map((node) => ({ ...node, locked: false })),
+  return renderProjection(source, projected, appearance, view, summaries);
+}
+
+function renderProjection(source: Document, projected: Document, appearance: Appearance, view: DiagramView, summaries?: ReadonlyMap<Id, Container>) {
+  const arranged = view.layout && source !== projected ? layoutDocument({
+    ...projected,
+    containers: projected.containers.map((area) => ({ ...area, locked: false })),
+    nodes: projected.nodes.map((node) => ({ ...node, locked: false })),
   }, view.layout) : projected;
   return computeScene(arranged, appearance, summaries);
 }

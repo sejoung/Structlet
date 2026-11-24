@@ -3,11 +3,13 @@ import { manual } from './manual-ko';
 import type { MessageKey } from './en';
 import { infrastructureKo } from './infrastructure';
 import { specsKo } from './specs';
+import { diagramViewKo } from './diagram-view';
 export const ko: Record<MessageKey, string> = {
   ...manual,
   ...checksKo,
   ...specsKo,
   ...infrastructureKo,
+  ...diagramViewKo,
   'app.untitled': '제목 없는 구성도',
   'toolbar.new': '새로 만들기',
   'toolbar.open': '열기',

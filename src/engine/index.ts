@@ -16,6 +16,8 @@ export * from './layout/place';
 export * from './layout/imported-annotations';
 export * from './layout/document';
 export * from './diagram-view';
+export * from './diagram-content';
+export * from './summary-recommendation';
 export * from './render-isometric';
 export * from './isometric-layout';
 export * from './isometric-flow';

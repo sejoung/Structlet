@@ -14,8 +14,8 @@ export function FoldControls({ t, doc, scene, viewport, size, onToggle }: {
   const inset = 2 * scale;
   return doc.containers.map((area) => {
     const rect = scene.rects.get(area.id);
-    if (!rect || !index.children.get(area.id)?.length) return null;
     const folded = foldedIds.has(area.id);
+    if (!rect || (!folded && !index.children.get(area.id)?.some((child) => scene.rects.has(child)))) return null;
     const p = worldToScreen(viewport, { x: rect.x + rect.width, y: rect.y });
     const left = p.x - controlSize - inset;
     const top = p.y + inset;

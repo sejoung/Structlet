@@ -1,5 +1,5 @@
 import type { Language, Translate } from '../i18n/messages';
-import { DiagramMenu, type DiagramMenuProps } from './DiagramMenu';
+import { DiagramContentMenu, DiagramMenu, type DiagramMenuProps } from './DiagramMenu';
 import { DriveButton } from './drive/DriveButton';
 import type { DriveActions, DriveView } from './drive/types';
 import { Icon } from './ui/Icon';
@@ -139,6 +139,7 @@ export function Toolbar(props: ToolbarProps) {
             { value: 'isometric', label: t('toolbar.view.isometric') },
           ]}
         />
+        <DiagramContentMenu t={t} diagram={props.diagram} />
         </>
         )}
       </div>

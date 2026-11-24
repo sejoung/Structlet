@@ -239,7 +239,9 @@ export function App({ editor, store, files, packStore, drive: driveServices, dri
   });
 
   const fit = () => fitTo(editor.session.committedDocument);
-  const canvasDiagram = { ...diagram, layout: diagram.settings.layout, hasObjects: !!(scene.rects.size || scene.annotations.length),
+  const canvasDiagram = { ...diagram, hasObjects: !!(scene.rects.size || scene.annotations.length || scene.edges.length),
+    recommend: () => setNotice(diagram.recommend(size, view === 'isometric' ? isoView : undefined)),
+    setContent: (content: typeof diagram.content) => { setEditing(null); editor.session.select([]); diagram.setContent(content); },
     layoutAll: (mode: Parameters<typeof layoutDocument>[1]) => {
       editor.applyDocumentLayout(layoutDocument(editor.session.committedDocument, mode));
       diagram.expandAll();

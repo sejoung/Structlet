@@ -25,7 +25,7 @@ export function useShortcuts(deps: ShortcutDeps): void {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
-      if (target?.closest?.('dialog, .fold-control, .canvas-context-menu, input, textarea, select, [contenteditable="true"]')) return;
+      if (target?.closest?.('dialog, .fold-control, .canvas-context-menu, .menu, input, textarea, select, [contenteditable="true"]')) return;
       const { editor, actions, fit, zoom, edit, setTool, tool, togglePanels, toggleInspector, presenting, summary, setPresenting } = latest.current;
       const session = editor.session;
       const mod = e.metaKey || e.ctrlKey;

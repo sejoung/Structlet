@@ -21,7 +21,7 @@ export const manual = {
   'manual.foldStep': 'Collapse an area into one tile',
   'manual.foldBody': 'Click − on the ML inference area to hide its serving workloads and MIG instances. Click + on the tile to see them again. In the Diagram menu, Collapse top-level groups shows the entire architecture as five tiles. Collapse to middle-level groups keeps the larger boundaries visible and summarizes smaller groups. Matching external connections are grouped with a count.',
   'manual.summaryStep': 'Arrange the summary for a presentation',
-  'manual.summaryBody': 'Under Diagram → Arrange summary view, choose Left → right, Top → bottom, or Grid. Use original positions restores the view positions. The SVG and PNG exports follow the visible view. Saving a .structlet file keeps the detailed diagram.',
+  'manual.summaryBody': 'Choose Apply recommended summary in the Diagram menu to fit the current canvas, or choose a direction under Arrange summary view. Use the menu next to 2D and Isometric to switch among Full diagram, Service flow, and Operations when the file has configuration links. SVG and PNG show the current view. Saving a .structlet file keeps the detailed diagram.',
   'manual.summaryPreview': 'Collapsed architecture with five group tiles, bundled HTTPS and SQL connections, and the Diagram menu open',
   'manual.fullStep': 'Automatically lay out the detailed diagram',
   'manual.fullBody': 'Under Diagram → Auto-layout entire diagram, choose a direction or Grid. This expands all groups and updates the editable layout. Locked objects stay in place. Manual connections are rerouted if their endpoints move differently or an attached area is resized. Use Undo to restore the previous layout.',

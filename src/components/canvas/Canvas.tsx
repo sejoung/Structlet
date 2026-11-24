@@ -314,7 +314,7 @@ export function Canvas(props: CanvasProps) {
           {(tool !== 'hand' || (props.summary && !props.presenting)) && <Handles readOnly={props.summary} scene={scene} selection={snapshot.selection} hover={tool === 'select' ? gestures.hover : null} zoom={z} overlay={gestures.overlay} connecting={!!gestures.overlay.connect} />}
         </g>
       </svg>
-      {props.summary && !props.presenting && <div className="tool-hint present" role="status">{t('summary.hint')}</div>}
+      {props.summary && !props.presenting && <div className="tool-hint present" role="status">{t(props.context.diagram.content === 'all' ? 'summary.hint' : 'diagramContent.hint')}</div>}
       {!props.presenting && !props.summary && <ToolBar t={t} tool={props.tool} onTool={props.onTool} />}
       {!props.presenting && !props.summary && props.tool === 'connect' && <div className="tool-hint" role="status">{t('tool.connectHint')}</div>}
       {presentHint && <div className="tool-hint present" role="status">{t('view.hint')}</div>}
