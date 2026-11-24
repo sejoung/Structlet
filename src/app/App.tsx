@@ -243,8 +243,8 @@ export function App({ editor, store, files, packStore, drive: driveServices, dri
     recommend: () => setNotice(diagram.recommend(size, view === 'isometric' ? isoView : undefined)),
     setContent: (content: typeof diagram.content) => { setEditing(null); editor.session.select([]); diagram.setContent(content); },
     layoutAll: (mode: Parameters<typeof layoutDocument>[1]) => {
-      editor.applyDocumentLayout(layoutDocument(editor.session.committedDocument, mode));
-      diagram.expandAll();
+      editor.applyDocumentLayout(layoutDocument(editor.session.committedDocument, mode, diagram.folded));
+      diagram.arrange(null);
     },
   };
   function togglePanels() {

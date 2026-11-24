@@ -202,7 +202,7 @@ export const en = {
   'summary.foldArea': 'Collapse {name}',
   'summary.expandArea': 'Expand {name}',
   'summary.services': '{count} services',
-  'summary.hint': 'Summary view · Expand groups to edit details',
+  'summary.hint': 'Drag visible items to move them. Expand a group to edit its contents.',
   'menu.file': 'File',
   'menu.export': 'Export',
   'menu.settings': 'Settings',

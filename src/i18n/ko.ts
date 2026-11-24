@@ -203,7 +203,7 @@ export const ko: Record<MessageKey, string> = {
   'summary.foldArea': '{name} 접기',
   'summary.expandArea': '{name} 펼치기',
   'summary.services': '서비스 {count}개',
-  'summary.hint': '요약 보기 · 그룹을 모두 펼치면 상세 구성을 편집할 수 있습니다',
+  'summary.hint': '드래그해 위치를 옮기세요. 그룹을 펼치면 내부를 편집할 수 있습니다.',
   'menu.file': '파일',
   'menu.export': '내보내기',
   'menu.settings': '설정',

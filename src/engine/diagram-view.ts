@@ -1,4 +1,4 @@
-import { indexDocument, type Container, type Document, type Edge, type Endpoint, type Id, type Node } from '../domain';
+import { applyPatch, getBox, indexDocument, moveEach, type Container, type Document, type Edge, type Endpoint, type Id, type Node, type Point } from '../domain';
 import type { Appearance } from './appearance';
 import { projectDiagramContent, type DiagramContent } from './diagram-content';
 import type { LayoutMode } from './layout/arrange';
@@ -10,6 +10,7 @@ export interface DiagramView {
   readonly content?: DiagramContent;
   readonly folded: ReadonlySet<Id>;
   readonly layout: LayoutMode | null;
+  readonly layoutOrigins?: ReadonlyMap<Id, Point>;
   label(area: Container, services: number): readonly [string, string];
 }
 
@@ -63,7 +64,7 @@ export function computeDiagramView(source: Document, appearance: Appearance, vie
   const summaryNodes: Node[] = [...summaries.values()].map((area) => {
     const lines = view.label(area, counts.get(area.id) ?? 0);
     const width = Math.max(172, Math.min(290, Math.ceil(Math.max(...lines.map((line) => measureText(line, 12))) + 68)));
-    return { id: area.id, serviceId: '', label: lines.join('\n'), parentId: area.parentId, x: area.x, y: area.y, width, height: 58, locked: false, variant: 'box' };
+    return { id: area.id, serviceId: '', label: lines.join('\n'), parentId: area.parentId, x: area.x, y: area.y, width, height: 58, locked: area.locked, variant: 'box' };
   });
   const containers = doc.containers.filter((area) => !summaries.has(area.id) && !representatives.has(area.id));
   const nodes = [...doc.nodes.filter((node) => !representatives.has(node.id)), ...summaryNodes];
@@ -75,12 +76,26 @@ export function computeDiagramView(source: Document, appearance: Appearance, vie
 }
 
 function renderProjection(source: Document, projected: Document, appearance: Appearance, view: DiagramView, summaries?: ReadonlyMap<Id, Container>) {
-  const arranged = view.layout && source !== projected ? layoutDocument({
+  if (!view.layout || source === projected) return computeScene(projected, appearance, summaries);
+  const unlocked = {
     ...projected,
     containers: projected.containers.map((area) => ({ ...area, locked: false })),
     nodes: projected.nodes.map((node) => ({ ...node, locked: false })),
-  }, view.layout) : projected;
-  return computeScene(arranged, appearance, summaries);
+  };
+  const offsets = new Map<Id, Point>();
+  const resets = new Map<Id, Point>();
+  for (const [id, origin] of view.layoutOrigins ?? []) {
+    const box = getBox(unlocked, id);
+    if (!box || (box.x === origin.x && box.y === origin.y)) continue;
+    const x = box.x - origin.x;
+    const y = box.y - origin.y;
+    offsets.set(id, { x, y });
+    resets.set(id, { x: -x, y: -y });
+  }
+  const base = resets.size ? applyPatch(unlocked, moveEach(unlocked, resets)) : unlocked;
+  const arranged = layoutDocument(base, view.layout);
+  const adjusted = offsets.size ? applyPatch(arranged, moveEach(arranged, offsets)) : arranged;
+  return computeScene(adjusted, appearance, summaries);
 }
 
 function endpointKey(end: Endpoint) {

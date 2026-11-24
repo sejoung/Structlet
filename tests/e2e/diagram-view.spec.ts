@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
-import { act, freshApp, openManual } from './helpers';
+import { act, center, drag, freshApp, openManual } from './helpers';
 
 const samplePath = 'samples/commerce-and-ml.structlet';
 
@@ -93,12 +93,59 @@ test('canvas folds keep nested state, preserve the file, and are shared by expor
   expect(JSON.parse(readFileSync((await save.path())!, 'utf8'))).toEqual(JSON.parse(readFileSync(samplePath, 'utf8')));
 
   await diagram(page, 'layout-document-grid');
-  await expect(page.getByTestId('node-mig-a')).toBeVisible();
-  const node = page.getByTestId('node-mig-a').locator('rect').first();
-  const oldX = 1060 + 25 + 27;
-  await expect(node).not.toHaveAttribute('x', String(oldX));
+  await expect(page.getByTestId('fold-area-ml')).toHaveAttribute('aria-expanded', 'false');
+  await expect(page.getByTestId('node-mig-a')).toHaveCount(0);
+  await expect(tile).not.toHaveAttribute('x', originalX!);
   await page.getByTestId('tb-undo').click();
-  await expect(node).toHaveAttribute('x', String(oldX));
+  await expect(tile).toHaveAttribute('x', originalX!);
+  await diagram(page, 'expand-all');
+  await expect(page.getByTestId('node-mig-a').locator('rect').first()).toHaveAttribute('x', String(1060 + 25 + 27));
+});
+
+test('collapsed groups can be dragged and aligned on an arranged summary and their moves can be undone', async ({ page }) => {
+  await freshApp(page, 'en', { inspector: false });
+  const [picker] = await Promise.all([page.waitForEvent('filechooser'), act(page, 'tb-open')]);
+  await picker.setFiles(samplePath);
+  await diagram(page, 'fold-top');
+  await diagram(page, 'layout-summary-grid');
+  const tile = page.getByTestId('node-ml').locator('rect').first();
+  const peer = page.getByTestId('node-entry').locator('rect').first();
+  const beforeX = Number(await tile.getAttribute('x'));
+  const beforeY = await tile.getAttribute('y');
+  const peerX = await peer.getAttribute('x');
+  const point = await center(page, 'node-ml');
+  await page.keyboard.down('Alt');
+  await drag(page, point, { x: point.x + 85, y: point.y }, 6);
+  await page.keyboard.up('Alt');
+  await expect.poll(async () => Number(await tile.getAttribute('x'))).toBeGreaterThan(beforeX);
+  const dx = Number(await tile.getAttribute('x')) - beforeX;
+  await expect(tile).toHaveAttribute('y', beforeY!);
+  await expect(peer).toHaveAttribute('x', peerX!);
+  await expect(page.getByTestId('node-mig-a')).toHaveCount(0);
+
+  await peer.click({ modifiers: ['Shift'] });
+  await peer.click({ button: 'right' });
+  await page.getByRole('menuitem', { name: 'Left edges', exact: true }).click();
+  await expect(tile).toHaveAttribute('x', peerX!);
+  await page.getByTestId('tb-undo').click();
+  await expect(tile).toHaveAttribute('x', String(beforeX + dx));
+
+  const [saved] = await Promise.all([page.waitForEvent('download'), act(page, 'tb-save')]);
+  const original = JSON.parse(readFileSync(samplePath, 'utf8'));
+  const moved = JSON.parse(readFileSync((await saved.path())!, 'utf8'));
+  expect(moved.containers).toEqual(original.containers.map((area: { id: string; x: number }) => area.id === 'ml' ? { ...area, x: area.x + dx } : area));
+  expect(moved.nodes).toEqual(original.nodes);
+  await page.getByTestId('tb-undo').click();
+  await expect(tile).toHaveAttribute('x', String(beforeX));
+  await expect(page.getByTestId('fold-area-ml')).toHaveAttribute('aria-expanded', 'false');
+  await page.getByTestId('tb-redo').click();
+  await expect(tile).toHaveAttribute('x', String(beforeX + dx));
+  await expect.poll(() => page.evaluate(() => {
+    const doc = JSON.parse(localStorage.getItem('structlet:autosave:v1') ?? 'null');
+    return doc?.containers?.find((area: { id: string }) => area.id === 'ml')?.x;
+  })).toBe(1060 + dx);
+  await page.reload();
+  await expect(tile).toHaveAttribute('x', String(beforeX + dx));
 });
 
 test('group fold controls shrink with zoom and remain anchored and usable', async ({ page }) => {

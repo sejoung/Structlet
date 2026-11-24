@@ -6,6 +6,7 @@ export const diagramViewEn = {
   'diagramSummary.recommend': 'Apply recommended summary',
   'diagramSummary.applied': 'Applied the recommended summary for this canvas.',
   'diagramSummary.expanded': 'The expanded diagram is recommended at this size.',
+  'diagramSummary.layoutFolded': 'Auto-layout with groups collapsed',
 } as const;
 
 export const diagramViewKo: Record<keyof typeof diagramViewEn, string> = {
@@ -16,4 +17,5 @@ export const diagramViewKo: Record<keyof typeof diagramViewEn, string> = {
   'diagramSummary.recommend': '추천 요약 적용',
   'diagramSummary.applied': '현재 화면 크기에 맞는 추천 요약을 적용했습니다.',
   'diagramSummary.expanded': '현재 화면 크기에서는 펼쳐 보기를 추천합니다.',
+  'diagramSummary.layoutFolded': '접힌 그룹 단위로 자동 배치',
 };

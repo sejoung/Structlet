@@ -76,7 +76,8 @@ export function Canvas(props: CanvasProps) {
   const latest = useRef({ viewport, setViewport });
   latest.current = { viewport, setViewport };
   const tool: CanvasTool = props.presenting || props.summary ? 'hand' : props.tool;
-  const gestures = useGestures({ svgRef, editor, snapshot, scene, viewport, setViewport, spaceDown, tool, summary: props.summary && !props.presenting });
+  const moveSummary = props.summary && !props.presenting && props.context.diagram.content === 'all' ? props.context.diagram.beginMove : undefined;
+  const gestures = useGestures({ svgRef, editor, snapshot, scene, viewport, setViewport, spaceDown, tool, summary: props.summary && !props.presenting, moveSummary });
   const markup = useMemo(() => renderSceneBody(scene, props.theme), [scene, props.theme]);
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [presentHint, setPresentHint] = useState(false);
@@ -298,7 +299,7 @@ export function Canvas(props: CanvasProps) {
               <path key={e.id} data-hit="edge" data-id={e.id} className="hit-edge" d={e.points.map((p, i) => `${i ? 'L' : 'M'}${p.x} ${p.y}`).join(' ')} strokeWidth={12 / z} />
             ))}
             {scene.nodes.map((n) => (
-              <g key={n.id} data-hit="box" data-id={n.id} data-testid={`node-${n.id}`}>
+              <g key={n.id} data-hit="box" data-id={n.id} data-testid={`node-${n.id}`} data-summary-movable={moveSummary && !getBox(snapshot.document, n.id)?.locked ? true : undefined}>
                 <rect className="hit-area" x={n.rect.x} y={n.rect.y} width={n.rect.width} height={n.rect.height} />
                 {n.labelBox && <rect className="hit-area" x={n.labelBox.x} y={n.labelBox.y} width={n.labelBox.width} height={n.labelBox.height} />}
                 {n.specCaption && <rect className="hit-area" {...n.specCaption.box} />}

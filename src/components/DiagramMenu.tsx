@@ -1,4 +1,5 @@
 import { DIAGRAM_CONTENTS, LAYOUT_MODES, type DiagramContent, type LayoutMode } from '../engine';
+import type { Id } from '../domain';
 import type { Translate } from '../i18n/messages';
 import { Icon } from './ui/Icon';
 import { Menu } from './ui/Menu';
@@ -18,6 +19,7 @@ export interface DiagramMenuProps {
   foldMiddle(): void;
   expandAll(): void;
   arrange(mode: LayoutMode | null): void;
+  beginMove(ids: readonly Id[]): void;
   layoutAll(mode: LayoutMode): void;
 }
 
@@ -55,7 +57,7 @@ export function DiagramMenu({ t, diagram }: { t: Translate; diagram: DiagramMenu
         { id: 'layout-summary-reset', label: t('summary.resetLayout'), disabled: !diagram.active || diagram.layout === null, onSelect: () => diagram.arrange(null) },
         ...LAYOUT_MODES.map((mode, i) => ({
           id: `layout-document-${mode}`, label: t(`props.layout.${mode}`), disabled: !diagram.hasObjects || diagram.content !== 'all',
-          separated: i === 0, heading: i === 0 ? t('summary.layoutAll') : undefined,
+          separated: i === 0, heading: i === 0 ? t(diagram.hasFolds ? 'diagramSummary.layoutFolded' : 'summary.layoutAll') : undefined,
           onSelect: () => diagram.layoutAll(mode),
         })),
       ]}

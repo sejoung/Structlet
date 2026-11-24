@@ -10,11 +10,11 @@ const NOTE_GAP = 24;
 const ORIGIN = { x: 0, y: 0 };
 const offset = (point: Point, by: Point): Point => ({ x: point.x + by.x, y: point.y + by.y });
 
-export function layoutDocument(doc: Document, mode: LayoutMode): Document {
+export function layoutDocument(doc: Document, mode: LayoutMode, folded: ReadonlySet<Id> = new Set()): Document {
   const compareGroups = mode !== 'grid' && hasDenseGroupConnections(doc);
-  const standard = arrangeDocument(doc, mode, false, !compareGroups);
+  const standard = arrangeDocument(doc, mode, false, !compareGroups, folded);
   if (!compareGroups) return standard;
-  const compact = arrangeDocument(doc, mode, true, false);
+  const compact = arrangeDocument(doc, mode, true, false, folded);
   const a = layoutRoutingQuality(standard);
   const b = layoutRoutingQuality(compact);
   const difference = b[0] - a[0] || b[1] - a[1] || b[2] - a[2];
@@ -29,7 +29,7 @@ function hasDenseGroupConnections(doc: Document): boolean {
   return boundaryLinks >= 14;
 }
 
-function arrangeDocument(doc: Document, mode: LayoutMode, compactGroups: boolean, rankDashed: boolean): Document {
+function arrangeDocument(doc: Document, mode: LayoutMode, compactGroups: boolean, rankDashed: boolean, folded: ReadonlySet<Id>): Document {
   const index = indexDocument(doc);
   const before = worldRects(doc);
   const areaOrder = doc.containers.map((area) => ({ area, depth: ancestors(doc, area.id).length }))
@@ -38,12 +38,16 @@ function arrangeDocument(doc: Document, mode: LayoutMode, compactGroups: boolean
   const locked = new Set([...boxes.values()].filter((box) => box.locked).map((box) => box.id));
   const anchored = new Set([...locked, ...[...locked].flatMap((id) => ancestors(doc, id))]);
   const frozen = (id: Id) => locked.has(id) || ancestors(doc, id).some((ancestor) => locked.has(ancestor));
+  const insideFold = (id: Id) => folded.size > 0 && ancestors(doc, id).some((ancestor) => folded.has(ancestor));
+  const closed = (id: Id) => folded.has(id) || insideFold(id);
   const ownerOf = (point: Point) => areaOrder.find((area) => containsPoint(before.get(area.id)!, point))?.id ?? null;
 
   const notesByArea = new Map<Id | null, Annotation[]>();
+  const retainedNoteOwners = new Map<Id, Id>();
   for (const note of doc.annotations) {
     const target = note.targetId ? boxes.get(note.targetId) : undefined;
     const owner = !target ? ownerOf(note) : 'serviceId' in target ? target.parentId : target.id;
+    if (owner !== null && closed(owner)) retainedNoteOwners.set(note.id, owner);
     const group = notesByArea.get(owner) ?? [];
     group.push(note);
     notesByArea.set(owner, group);
@@ -56,7 +60,7 @@ function arrangeDocument(doc: Document, mode: LayoutMode, compactGroups: boolean
   };
   const notes = new Map<Id, { parent: Id | null; rect: Rect }>();
   for (const node of doc.nodes) {
-    if (node.variant !== 'box' || frozen(node.id)) continue;
+    if (node.variant !== 'box' || frozen(node.id) || insideFold(node.id)) continue;
     const box = boxes.get(node.id)!;
     const inset = BOX_NODE.pad * 2 + BOX_NODE.icon + BOX_NODE.gap;
     const natural = Math.max(...node.label.split('\n').map((line) => measureText(line, BOX_NODE.fontSize)));
@@ -66,7 +70,7 @@ function arrangeDocument(doc: Document, mode: LayoutMode, compactGroups: boolean
   }
 
   for (const parent of [...areaOrder.map((area) => area.id), null]) {
-    if (parent !== null && frozen(parent)) continue;
+    if (parent !== null && (frozen(parent) || closed(parent))) continue;
     const children = index.children.get(parent) ?? [];
     const movable = children.filter((id) => !anchored.has(id));
     const fixed = union(children.filter((id) => anchored.has(id)).map(slot));
@@ -140,6 +144,8 @@ function arrangeDocument(doc: Document, mode: LayoutMode, compactGroups: boolean
       return { ...edge, source: autoSide(edge.source), target: autoSide(edge.target), routingMode: 'auto', waypoints: [] };
     }),
     annotations: doc.annotations.map((note) => {
+      const owner = retainedNoteOwners.get(note.id);
+      if (owner !== undefined) return { ...note, ...offset(note, delta.get(owner) ?? ORIGIN) };
       const entry = notes.get(note.id);
       if (!entry) return note;
       const { x, y } = offset(entry.rect, worldOrigin(placed, entry.parent));

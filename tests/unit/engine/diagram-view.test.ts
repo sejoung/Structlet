@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { createAppearance } from '../../../src/adapters/catalog/services';
 import { parseStructlet } from '../../../src/adapters/format/structlet-format';
-import { getBox, indexDocument, worldRect, type Document, type Edge } from '../../../src/domain';
+import { applyPatch, getBox, indexDocument, moveBy, worldRect, type Document, type Edge } from '../../../src/domain';
 import { availableDiagramContents, computeDiagramView, computeScene, intersects, layoutDocument, LAYOUT_MODES, recommendDiagramSummary, summaryGroups, type DiagramView } from '../../../src/engine';
 import { newEditor } from '../fixtures';
 
@@ -73,6 +73,20 @@ describe('diagram summary', () => {
     expect(JSON.stringify(doc)).toBe(original);
     expect(computeDiagramView(doc, appearance, view([])).edges.find((edge) => edge.id === manual.id)?.manual).toBe(true);
   });
+
+  it('reflects document edits on top of an arranged summary without shifting its other tiles', () => {
+    const doc = sample();
+    const folded = view(['entry', 'app', 'ml', 'data', 'ops'], 'grid');
+    const before = computeDiagramView(doc, appearance, folded);
+    const origin = indexDocument(doc).containers.get('ml')!;
+    const shift = { x: 97, y: -34 };
+    const moved = applyPatch(doc, moveBy(doc, ['ml'], shift.x, shift.y));
+    const after = computeDiagramView(moved, appearance, { ...folded, layoutOrigins: new Map([['ml', origin]]) });
+    const tile = before.rects.get('ml')!;
+    expect(after.rects.get('ml')).toEqual({ ...tile, x: tile.x + shift.x, y: tile.y + shift.y });
+    expect(after.rects.get('entry')).toEqual(before.rects.get('entry'));
+    expect(after.rects.has('mig-a')).toBe(false);
+  });
 });
 
 describe('diagram content', () => {
@@ -134,6 +148,26 @@ describe('summary recommendation', () => {
 });
 
 describe('whole diagram layout', () => {
+  it('lays out collapsed groups as units and translates internal routes and notes with the group', () => {
+    const base = sample();
+    const edge = base.edges.find((line) => line.id === 'fraud-to-mig-a')!;
+    const manual: Edge = { ...edge, routingMode: 'manual', waypoints: [{ x: 1220, y: 350 }] };
+    const note = { id: 'folded-note', kind: 'text' as const, targetId: 'mig-a', text: 'GPU target', x: 1200, y: 480 };
+    const doc = { ...base, edges: base.edges.map((line) => line.id === edge.id ? manual : line), annotations: [note] };
+    const laidOut = layoutDocument(doc, 'grid', new Set(['ml', 'ml-gpu']));
+    const before = indexDocument(doc);
+    const after = indexDocument(laidOut);
+    const prior = before.containers.get('ml')!;
+    const next = after.containers.get('ml')!;
+    const dx = next.x - prior.x;
+    const dy = next.y - prior.y;
+    expect(Math.abs(dx) + Math.abs(dy)).toBeGreaterThan(0);
+    expect(after.containers.get('ml-gpu')).toEqual(before.containers.get('ml-gpu'));
+    expect(after.nodes.get('mig-a')).toEqual(before.nodes.get('mig-a'));
+    expect(after.edges.get(edge.id)).toEqual({ ...manual, waypoints: [{ x: 1220 + dx, y: 350 + dy }] });
+    expect(after.annotations.get(note.id)).toEqual({ ...note, x: note.x + dx, y: note.y + dy });
+  });
+
   it('arranges nested siblings without overlaps and preserves locked positions and hierarchy', () => {
     const base = sample();
     const doc = { ...base, nodes: base.nodes.map((node) => node.id === 'mig-a' ? { ...node, locked: true } : node) };

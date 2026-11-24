@@ -35,6 +35,7 @@ interface GestureDeps {
   spaceDown: RefObject<boolean>;
   tool: CanvasTool;
   summary: boolean;
+  moveSummary?(ids: readonly Id[]): void;
 }
 
 function hitOf(target: EventTarget | null): { kind: string; id: string; data: DOMStringMap } | null {
@@ -58,7 +59,7 @@ export function useGestures(deps: GestureDeps) {
   const worldOf = (e: { clientX: number; clientY: number }) => screenToWorld(latest.current.viewport, screenOf(e));
 
   function onPointerDown(e: ReactPointerEvent<SVGSVGElement>) {
-    const { editor, snapshot, scene, viewport, spaceDown, tool, summary } = latest.current;
+    const { editor, snapshot, scene, viewport, spaceDown, tool, summary, moveSummary } = latest.current;
     if (e.button === 2) return;
     const world = worldOf(e);
     const hit = hitOf(e.target);
@@ -80,7 +81,8 @@ export function useGestures(deps: GestureDeps) {
         return;
       }
     }
-    if (e.button === 1 || spaceDown.current || tool === 'hand') {
+    const moveVisible = moveSummary && hit?.kind === 'box' && scene.nodes.some((node) => node.id === hit.id);
+    if (e.button === 1 || spaceDown.current || (tool === 'hand' && !moveVisible)) {
       const select = summary && e.button === 0 && !spaceDown.current ? (hit?.id ? [hit.id] : []) : undefined;
       gesture.current = { type: 'pan', start: screenOf(e), from: viewport, select };
       return;
@@ -145,12 +147,13 @@ export function useGestures(deps: GestureDeps) {
       case 'box':
       case 'annotation': {
         const isContainer = indexDocument(doc).containers.has(hit.id);
-        if (isContainer && e.altKey) break;
+        if (isContainer && e.altKey && !moveVisible) break;
         let next = selection;
         if (e.shiftKey) next = toggle(selection, hit.id);
         else if (!selection.includes(hit.id)) next = [hit.id];
         editor.session.select(next);
-        const ids = movableIds(doc, next.includes(hit.id) ? next : [...next, hit.id]);
+        const selected = next.includes(hit.id) ? next : [...next, hit.id];
+        const ids = movableIds(doc, moveVisible ? selected.filter((id) => scene.rects.has(id)) : selected);
         const exclude = movingSet(doc, ids);
         const others = [...scene.rects].filter(([id]) => !exclude.has(id)).map(([, r]) => r);
         gesture.current = { type: 'move', ids, start: world, startScreen: screenOf(e), pressed: hit.id, moved: false, shift: e.shiftKey, delta: { x: 0, y: 0 }, base: movingRect(scene, ids), others };
@@ -164,7 +167,7 @@ export function useGestures(deps: GestureDeps) {
   }
 
   function onPointerMove(e: ReactPointerEvent<SVGSVGElement>) {
-    const { editor, scene, viewport, setViewport, tool } = latest.current;
+    const { editor, scene, viewport, setViewport, tool, moveSummary } = latest.current;
     const g = gesture.current;
     if (!g) {
       if (tool === 'hand') return;
@@ -195,7 +198,8 @@ export function useGestures(deps: GestureDeps) {
         setOverlay({ ...EMPTY_OVERLAY, marquee: normalizeRect(g.start, world) });
         return;
       case 'move': {
-        if (!g.moved && Math.hypot(screen.x - g.startScreen.x, screen.y - g.startScreen.y) < 3) return;
+        if (!g.ids.length || (!g.moved && Math.hypot(screen.x - g.startScreen.x, screen.y - g.startScreen.y) < 3)) return;
+        if (!g.moved) moveSummary?.(g.ids);
         g.moved = true;
         const dx = world.x - g.start.x;
         const dy = world.y - g.start.y;
@@ -247,7 +251,7 @@ export function useGestures(deps: GestureDeps) {
   }
 
   function onPointerUp(e: ReactPointerEvent<SVGSVGElement>) {
-    const { editor, scene, viewport, snapshot } = latest.current;
+    const { editor, scene, viewport, snapshot, moveSummary } = latest.current;
     touches.current.delete(e.pointerId);
     if (gesture.current?.type === 'pinch') {
       if (touches.current.size === 0) gesture.current = null;
@@ -272,7 +276,7 @@ export function useGestures(deps: GestureDeps) {
           if (!g.shift && snapshot.selection.length > 1) editor.session.select([g.pressed]);
           return;
         }
-        editor.move(g.ids, g.delta, dropParents(snapshot.document, scene, g.ids));
+        editor.move(g.ids, g.delta, moveSummary ? undefined : dropParents(snapshot.document, scene, g.ids));
         return;
       }
       case 'resize':

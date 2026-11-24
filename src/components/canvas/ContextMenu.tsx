@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef } from 'react';
 import type { Editor } from '../../application';
-import { getBox, indexDocument, topmost, type Document, type Id, type Point } from '../../domain';
+import { getBox, indexDocument, topmost, type Document, type Id, type Point, type Rect } from '../../domain';
 import { alignDeltas, LAYOUT_MODES, type AlignMode, type Scene } from '../../engine';
 import type { Translate } from '../../i18n/messages';
 import type { DiagramMenuProps } from '../DiagramMenu';
@@ -55,12 +55,26 @@ function groups({ t, doc, scene, editor, diagram, actions, paste, request, fit, 
   const id = ids.length === 1 ? ids[0]! : null;
   const area = id ? index.containers.get(id) : undefined;
   const edge = id ? index.edges.get(id) : undefined;
+  const boxes = topmost(doc, ids.filter((selected) => getBox(doc, selected)));
   const folded = !!area && scene.nodes.some((node) => node.summary && node.id === area.id);
   const layout = (title: string, run: (mode: typeof LAYOUT_MODES[number]) => void): Group => ({
     title, items: LAYOUT_MODES.map((mode) => ({ label: t(`props.layout.${mode}`), run: () => run(mode) })),
   });
   const result: Group[] = [];
   const add = (...items: Item[]) => result.push({ items });
+  const align = (movable: readonly { id: Id; rect: Rect }[]) => {
+    if (movable.length < 2) return;
+    result.push({ title: t('props.align'), items: ALIGNMENTS.map((mode) => ({
+      label: t(`context.align.${mode}`), run: () => {
+        if (diagram.hasFolds) diagram.beginMove(movable.map(({ id }) => id));
+        editor.moveEach(alignDeltas(movable, mode));
+      },
+    })) });
+  };
+  const movable = boxes.flatMap((id) => {
+    const rect = scene.rects.get(id);
+    return rect && !getBox(doc, id)?.locked ? [{ id, rect }] : [];
+  });
   if (id && inspect && getBox(doc, id)?.infrastructure) add({ label: t('infra.show'), run: () => inspect(id) });
   if (id && flow?.canStart(id)) add({ label: t('flow.start'), run: () => flow.start(id) });
   if (area && (folded || index.children.get(area.id)?.some((child) => scene.rects.has(child)))) {
@@ -78,11 +92,13 @@ function groups({ t, doc, scene, editor, diagram, actions, paste, request, fit, 
     );
     if (diagram.active) result.push(layout(t('summary.layout'), diagram.arrange));
     if (rotate) add({ label: t('iso.rotateLeft'), run: () => rotate(-1) }, { label: t('iso.rotateRight'), run: () => rotate(1) });
-    if (diagram.hasObjects && diagram.content === 'all' && !ids.length && !readOnly) result.push(layout(t('summary.layoutAll'), diagram.layoutAll));
+    if (diagram.content === 'all' && !readOnly) {
+      align(movable);
+      if (diagram.hasObjects && !ids.length) result.push(layout(t(diagram.hasFolds ? 'diagramSummary.layoutFolded' : 'summary.layoutAll'), diagram.layoutAll));
+    }
     return result;
   }
 
-  const boxes = topmost(doc, ids.filter((selected) => getBox(doc, selected)));
   if (id && edit) add({ label: t(edge ? 'context.edgeLabel' : 'sc.rename'), run: () => edit(id) });
   if (edge) add(
     { label: t('props.swap'), run: () => editor.reverseEdge(edge.id) },
@@ -99,16 +115,9 @@ function groups({ t, doc, scene, editor, diagram, actions, paste, request, fit, 
   if (area && (index.children.get(area.id)?.length ?? 0) >= 2) result.push(layout(t('props.layoutContents'), (mode) => actions.layoutContents(area.id, mode)));
   if (boxes.length >= 2) {
     add({ label: t('props.wrap'), run: () => editor.wrapInArea(boxes, 'custom', t('area.custom')) });
-    const movable = boxes.flatMap((id) => {
-      const rect = scene.rects.get(id);
-      return rect && !getBox(doc, id)?.locked ? [{ id, rect }] : [];
-    });
     const parents = movable.map(({ id }) => getBox(doc, id)?.parentId);
     if (new Set(parents).size < parents.length) result.push(layout(t('props.layout'), (mode) => actions.layout(boxes, mode)));
-    if (movable.length >= 2) result.push({
-      title: t('props.align'),
-      items: ALIGNMENTS.map((mode) => ({ label: t(`context.align.${mode}`), run: () => editor.moveEach(alignDeltas(movable, mode)) })),
-    });
+    align(movable);
   }
   return result;
 }

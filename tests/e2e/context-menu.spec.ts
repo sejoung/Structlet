@@ -108,7 +108,11 @@ test('blank canvas menu pastes and switches between large and intermediate group
   await blankMenu(page);
   await action(page, 'Fit to screen').click();
   await blankMenu(page);
-  await menu(page).getByRole('group', { name: 'Auto-layout entire diagram' }).getByRole('menuitem', { name: 'Grid' }).click();
+  await menu(page).getByRole('group', { name: 'Auto-layout with groups collapsed' }).getByRole('menuitem', { name: 'Grid' }).click();
+  await expect(node(page, 'private')).toBeVisible();
+  await expect(node(page, 'api')).toHaveCount(0);
+  await blankMenu(page);
+  await action(page, 'Expand all groups').click();
   await expect(page.locator('[data-testid^="node-"]')).toHaveCount(12);
 });
 

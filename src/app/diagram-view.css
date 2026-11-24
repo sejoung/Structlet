@@ -1,4 +1,5 @@
 .diagram-content-menu .menu-button { border: 1px solid var(--line); white-space: nowrap; }
+.canvas.tool-hand [data-summary-movable] .hit-area { cursor: move; }
 
 @media (max-width: 940px) {
   .app { grid-template-rows: auto minmax(0, 1fr); }
